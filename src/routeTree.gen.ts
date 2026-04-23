@@ -9,38 +9,215 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as StoriesRouteImport } from './routes/stories'
+import { Route as PrioritiesRouteImport } from './routes/priorities'
+import { Route as PollingRouteImport } from './routes/polling'
+import { Route as OpinionRouteImport } from './routes/opinion'
+import { Route as NewsRouteImport } from './routes/news'
+import { Route as FoundationsRouteImport } from './routes/foundations'
+import { Route as DonateRouteImport } from './routes/donate'
+import { Route as AskRouteImport } from './routes/ask'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as ApiChatRouteImport } from './routes/api.chat'
 
+const StoriesRoute = StoriesRouteImport.update({
+  id: '/stories',
+  path: '/stories',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PrioritiesRoute = PrioritiesRouteImport.update({
+  id: '/priorities',
+  path: '/priorities',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PollingRoute = PollingRouteImport.update({
+  id: '/polling',
+  path: '/polling',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const OpinionRoute = OpinionRouteImport.update({
+  id: '/opinion',
+  path: '/opinion',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const NewsRoute = NewsRouteImport.update({
+  id: '/news',
+  path: '/news',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const FoundationsRoute = FoundationsRouteImport.update({
+  id: '/foundations',
+  path: '/foundations',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const DonateRoute = DonateRouteImport.update({
+  id: '/donate',
+  path: '/donate',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AskRoute = AskRouteImport.update({
+  id: '/ask',
+  path: '/ask',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiChatRoute = ApiChatRouteImport.update({
+  id: '/api/chat',
+  path: '/api/chat',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/ask': typeof AskRoute
+  '/donate': typeof DonateRoute
+  '/foundations': typeof FoundationsRoute
+  '/news': typeof NewsRoute
+  '/opinion': typeof OpinionRoute
+  '/polling': typeof PollingRoute
+  '/priorities': typeof PrioritiesRoute
+  '/stories': typeof StoriesRoute
+  '/api/chat': typeof ApiChatRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/ask': typeof AskRoute
+  '/donate': typeof DonateRoute
+  '/foundations': typeof FoundationsRoute
+  '/news': typeof NewsRoute
+  '/opinion': typeof OpinionRoute
+  '/polling': typeof PollingRoute
+  '/priorities': typeof PrioritiesRoute
+  '/stories': typeof StoriesRoute
+  '/api/chat': typeof ApiChatRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/ask': typeof AskRoute
+  '/donate': typeof DonateRoute
+  '/foundations': typeof FoundationsRoute
+  '/news': typeof NewsRoute
+  '/opinion': typeof OpinionRoute
+  '/polling': typeof PollingRoute
+  '/priorities': typeof PrioritiesRoute
+  '/stories': typeof StoriesRoute
+  '/api/chat': typeof ApiChatRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/'
+  fullPaths:
+    | '/'
+    | '/ask'
+    | '/donate'
+    | '/foundations'
+    | '/news'
+    | '/opinion'
+    | '/polling'
+    | '/priorities'
+    | '/stories'
+    | '/api/chat'
   fileRoutesByTo: FileRoutesByTo
-  to: '/'
-  id: '__root__' | '/'
+  to:
+    | '/'
+    | '/ask'
+    | '/donate'
+    | '/foundations'
+    | '/news'
+    | '/opinion'
+    | '/polling'
+    | '/priorities'
+    | '/stories'
+    | '/api/chat'
+  id:
+    | '__root__'
+    | '/'
+    | '/ask'
+    | '/donate'
+    | '/foundations'
+    | '/news'
+    | '/opinion'
+    | '/polling'
+    | '/priorities'
+    | '/stories'
+    | '/api/chat'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  AskRoute: typeof AskRoute
+  DonateRoute: typeof DonateRoute
+  FoundationsRoute: typeof FoundationsRoute
+  NewsRoute: typeof NewsRoute
+  OpinionRoute: typeof OpinionRoute
+  PollingRoute: typeof PollingRoute
+  PrioritiesRoute: typeof PrioritiesRoute
+  StoriesRoute: typeof StoriesRoute
+  ApiChatRoute: typeof ApiChatRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/stories': {
+      id: '/stories'
+      path: '/stories'
+      fullPath: '/stories'
+      preLoaderRoute: typeof StoriesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/priorities': {
+      id: '/priorities'
+      path: '/priorities'
+      fullPath: '/priorities'
+      preLoaderRoute: typeof PrioritiesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/polling': {
+      id: '/polling'
+      path: '/polling'
+      fullPath: '/polling'
+      preLoaderRoute: typeof PollingRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/opinion': {
+      id: '/opinion'
+      path: '/opinion'
+      fullPath: '/opinion'
+      preLoaderRoute: typeof OpinionRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/news': {
+      id: '/news'
+      path: '/news'
+      fullPath: '/news'
+      preLoaderRoute: typeof NewsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/foundations': {
+      id: '/foundations'
+      path: '/foundations'
+      fullPath: '/foundations'
+      preLoaderRoute: typeof FoundationsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/donate': {
+      id: '/donate'
+      path: '/donate'
+      fullPath: '/donate'
+      preLoaderRoute: typeof DonateRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/ask': {
+      id: '/ask'
+      path: '/ask'
+      fullPath: '/ask'
+      preLoaderRoute: typeof AskRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/': {
       id: '/'
       path: '/'
@@ -48,21 +225,28 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/chat': {
+      id: '/api/chat'
+      path: '/api/chat'
+      fullPath: '/api/chat'
+      preLoaderRoute: typeof ApiChatRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  AskRoute: AskRoute,
+  DonateRoute: DonateRoute,
+  FoundationsRoute: FoundationsRoute,
+  NewsRoute: NewsRoute,
+  OpinionRoute: OpinionRoute,
+  PollingRoute: PollingRoute,
+  PrioritiesRoute: PrioritiesRoute,
+  StoriesRoute: StoriesRoute,
+  ApiChatRoute: ApiChatRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { createStart } from '@tanstack/react-start'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-  }
-}
