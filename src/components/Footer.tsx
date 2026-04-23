@@ -154,16 +154,17 @@ export function Footer() {
 
             <h4 className="font-display font-bold text-base mb-3 text-gold">Follow the Movement</h4>
             <div className="flex gap-3">
-              {socials.map(({ href, label, icon: Icon }) => (
+              {socials.map(({ href, label, icon: Icon, brand }) => (
                 <a
                   key={label}
                   href={href}
                   target="_blank"
                   rel="noopener noreferrer"
                   aria-label={label}
-                  className="h-10 w-10 rounded-full bg-primary-foreground/10 hover:bg-gold hover:text-gold-foreground transition-all flex items-center justify-center group"
+                  style={{ ['--brand' as string]: brand }}
+                  className="h-10 w-10 rounded-full bg-primary-foreground/10 hover:bg-[var(--brand)] hover:text-white transition-all flex items-center justify-center group"
                 >
-                  <Icon className="h-4 w-4" />
+                  <Icon className="h-4 w-4 transition-colors group-hover:text-white" />
                 </a>
               ))}
             </div>
