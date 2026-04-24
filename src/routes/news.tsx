@@ -2,11 +2,11 @@ import { createFileRoute } from "@tanstack/react-router";
 import { motion } from "framer-motion";
 import { Calendar, ArrowRight } from "lucide-react";
 import { PageHero } from "@/components/PageHero";
-import rallyImg from "@/assets/rally.jpg";
-import educationImg from "@/assets/education.jpg";
-import healthImg from "@/assets/health.jpg";
-import environmentImg from "@/assets/environment.jpg";
-import businessImg from "@/assets/business.jpg";
+import rallyImg from "@/assets/moha/foundation1.jpeg";
+import educationImg from "@/assets/moha/bursary1.jpeg";
+import healthImg from "@/assets/moha/moha10.jpeg";
+import environmentImg from "@/assets/moha/moha16.jpeg";
+import businessImg from "@/assets/moha/foundation5.jpeg";
 
 export const Route = createFileRoute("/news")({
   head: () => ({
