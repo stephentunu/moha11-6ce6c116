@@ -4,11 +4,23 @@ interface Props {
   eyebrow?: string;
   title: string;
   subtitle?: string;
+  bgImage?: string;
 }
 
-export function PageHero({ eyebrow, title, subtitle }: Props) {
+export function PageHero({ eyebrow, title, subtitle, bgImage }: Props) {
   return (
     <section className="relative pt-36 pb-16 md:pt-44 md:pb-24 bg-gradient-to-br from-primary via-[oklch(0.22_0.06_150)] to-[oklch(0.3_0.1_30)] overflow-hidden">
+      {bgImage && (
+        <>
+          <img
+            src={bgImage}
+            alt=""
+            aria-hidden="true"
+            className="absolute inset-0 w-full h-full object-cover opacity-25 mix-blend-overlay"
+          />
+          <div className="absolute inset-0 bg-gradient-to-r from-primary/85 via-primary/70 to-primary/40" />
+        </>
+      )}
       <div className="absolute inset-0 opacity-20">
         <div className="absolute top-0 left-1/4 w-96 h-96 rounded-full bg-gold blur-3xl" />
         <div className="absolute bottom-0 right-1/4 w-96 h-96 rounded-full bg-primary-glow blur-3xl" />

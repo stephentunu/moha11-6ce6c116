@@ -4,10 +4,10 @@ import { motion, AnimatePresence } from "framer-motion";
 import { GraduationCap, HeartPulse, Briefcase, Leaf, Check } from "lucide-react";
 import { PageHero } from "@/components/PageHero";
 import { cn } from "@/lib/utils";
-import educationImg from "@/assets/education.jpg";
-import healthImg from "@/assets/health.jpg";
-import businessImg from "@/assets/business.jpg";
-import environmentImg from "@/assets/environment.jpg";
+import educationImg from "@/assets/moha/moha25.jpeg";
+import healthImg from "@/assets/moha/moha10.jpeg";
+import businessImg from "@/assets/moha/foundation5.jpeg";
+import environmentImg from "@/assets/moha/moha16.jpeg";
 
 export const Route = createFileRoute("/priorities")({
   head: () => ({
@@ -101,6 +101,7 @@ function PrioritiesPage() {
         eyebrow="The Manifesto"
         title="Four pillars. One Mathare."
         subtitle="A focused, accountable plan grounded in the lived realities of our people. Click each pillar to see the deliverables."
+        bgImage={educationImg}
       />
 
       <section className="py-20 bg-background">

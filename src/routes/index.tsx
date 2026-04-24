@@ -12,12 +12,18 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { SectionHeader } from "@/components/SectionHeader";
-import heroImg from "@/assets/hero-moha.jpg";
-import rallyImg from "@/assets/rally.jpg";
-import educationImg from "@/assets/education.jpg";
-import healthImg from "@/assets/health.jpg";
-import businessImg from "@/assets/business.jpg";
-import environmentImg from "@/assets/environment.jpg";
+import heroImg from "@/assets/moha/moha-portrait.jpeg";
+import rallyImg from "@/assets/moha/foundation1.jpeg";
+import educationImg from "@/assets/moha/moha35.jpeg";
+import healthImg from "@/assets/moha/moha10.jpeg";
+import businessImg from "@/assets/moha/foundation5.jpeg";
+import environmentImg from "@/assets/moha/moha16.jpeg";
+import galleryImg1 from "@/assets/moha/moha1.jpeg";
+import galleryImg2 from "@/assets/moha/donation3.jpeg";
+import galleryImg3 from "@/assets/moha/moha40.jpeg";
+import galleryImg4 from "@/assets/moha/bursary1.jpeg";
+import galleryImg5 from "@/assets/moha/foundation10.jpeg";
+import galleryImg6 from "@/assets/moha/moha20.jpeg";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -216,6 +222,41 @@ function HomePage() {
                 </Link>
               </motion.div>
             ))}
+          </div>
+        </div>
+      </section>
+
+      {/* GALLERY — ON THE GROUND */}
+      <section className="py-24 bg-muted/30">
+        <div className="container mx-auto px-4 lg:px-8">
+          <SectionHeader
+            eyebrow="On the Ground"
+            title="Real work. Real Mathare."
+            subtitle="Snapshots from bursary drives, water donations, school visits, and community days — the work that doesn't wait for elections."
+          />
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-4 md:gap-6">
+            {[galleryImg1, galleryImg2, galleryImg3, galleryImg4, galleryImg5, galleryImg6].map(
+              (img, i) => (
+                <motion.div
+                  key={i}
+                  initial={{ opacity: 0, scale: 0.95 }}
+                  whileInView={{ opacity: 1, scale: 1 }}
+                  viewport={{ once: true, margin: "-50px" }}
+                  transition={{ duration: 0.5, delay: i * 0.06 }}
+                  className={`group relative overflow-hidden rounded-2xl shadow-elegant ${
+                    i === 0 || i === 4 ? "md:row-span-2 aspect-[3/4] md:aspect-auto" : "aspect-square"
+                  }`}
+                >
+                  <img
+                    src={img}
+                    alt="Moha in the community"
+                    loading="lazy"
+                    className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700"
+                  />
+                  <div className="absolute inset-0 bg-gradient-to-t from-primary/70 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+                </motion.div>
+              )
+            )}
           </div>
         </div>
       </section>
