@@ -94,13 +94,22 @@ function FoundationsPage() {
               }`}
             >
               <div className="lg:col-span-5">
-                <div className="relative aspect-square max-w-md mx-auto rounded-3xl bg-gradient-primary p-10 shadow-glow flex flex-col justify-center items-center text-primary-foreground text-center">
-                  <f.icon className="h-24 w-24 text-gold mb-6" strokeWidth={1.5} />
-                  <div className="text-5xl font-display font-black text-gold">
-                    {f.impact.split(" ")[0]}
-                  </div>
-                  <div className="mt-2 text-sm font-semibold tracking-wide uppercase text-primary-foreground/80">
-                    {f.impact.split(" ").slice(1).join(" ")}
+                <div className="relative aspect-square max-w-md mx-auto rounded-3xl overflow-hidden shadow-glow group">
+                  <img
+                    src={f.img}
+                    alt={f.title}
+                    loading="lazy"
+                    className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-700"
+                  />
+                  <div className="absolute inset-0 bg-gradient-to-t from-primary/95 via-primary/40 to-transparent" />
+                  <div className="absolute inset-0 p-8 flex flex-col justify-end text-primary-foreground">
+                    <f.icon className="h-12 w-12 text-gold mb-3" strokeWidth={1.5} />
+                    <div className="text-4xl md:text-5xl font-display font-black text-gold leading-none">
+                      {f.impact.split(" ")[0]}
+                    </div>
+                    <div className="mt-2 text-sm font-semibold tracking-wide uppercase text-primary-foreground/90">
+                      {f.impact.split(" ").slice(1).join(" ")}
+                    </div>
                   </div>
                 </div>
               </div>
