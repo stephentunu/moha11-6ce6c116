@@ -226,6 +226,41 @@ function HomePage() {
         </div>
       </section>
 
+      {/* GALLERY — ON THE GROUND */}
+      <section className="py-24 bg-muted/30">
+        <div className="container mx-auto px-4 lg:px-8">
+          <SectionHeader
+            eyebrow="On the Ground"
+            title="Real work. Real Mathare."
+            subtitle="Snapshots from bursary drives, water donations, school visits, and community days — the work that doesn't wait for elections."
+          />
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-4 md:gap-6">
+            {[galleryImg1, galleryImg2, galleryImg3, galleryImg4, galleryImg5, galleryImg6].map(
+              (img, i) => (
+                <motion.div
+                  key={i}
+                  initial={{ opacity: 0, scale: 0.95 }}
+                  whileInView={{ opacity: 1, scale: 1 }}
+                  viewport={{ once: true, margin: "-50px" }}
+                  transition={{ duration: 0.5, delay: i * 0.06 }}
+                  className={`group relative overflow-hidden rounded-2xl shadow-elegant ${
+                    i === 0 || i === 4 ? "md:row-span-2 aspect-[3/4] md:aspect-auto" : "aspect-square"
+                  }`}
+                >
+                  <img
+                    src={img}
+                    alt="Moha in the community"
+                    loading="lazy"
+                    className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700"
+                  />
+                  <div className="absolute inset-0 bg-gradient-to-t from-primary/70 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+                </motion.div>
+              )
+            )}
+          </div>
+        </div>
+      </section>
+
       {/* MOVEMENT BANNER */}
       <section className="relative py-32 overflow-hidden">
         <div className="absolute inset-0">
