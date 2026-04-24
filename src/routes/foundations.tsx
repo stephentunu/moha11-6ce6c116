@@ -3,6 +3,9 @@ import { motion } from "framer-motion";
 import { HandHeart, GraduationCap, Accessibility, ArrowRight } from "lucide-react";
 import { PageHero } from "@/components/PageHero";
 import { Button } from "@/components/ui/button";
+import vulnerableImg from "@/assets/moha/donation3.jpeg";
+import bursaryImg from "@/assets/moha/bursary1.jpeg";
+import pwdImg from "@/assets/moha/moha30.jpeg";
 
 export const Route = createFileRoute("/foundations")({
   head: () => ({
@@ -30,6 +33,7 @@ const foundations = [
     pill: "Mama & Mzee Care",
     desc: "Monthly food parcels, dignity packs, and emergency support for widows, orphans, and elderly residents across all 5 wards of Mathare.",
     impact: "8,500+ households reached",
+    img: vulnerableImg,
     points: [
       "Monthly food & sanitary support drives",
       "Emergency shelter for displaced families",
@@ -43,6 +47,7 @@ const foundations = [
     pill: "Education Fund",
     desc: "From primary school fees to university tuition — Moha's bursary program ensures no Mathare child is locked out of class because of money.",
     impact: "12,000+ bursaries issued",
+    img: bursaryImg,
     points: [
       "100% KCSE candidate fee coverage",
       "University & TVET tuition support",
@@ -56,6 +61,7 @@ const foundations = [
     pill: "PWD Inclusion",
     desc: "Accessible Mathare is our promise — wheelchairs, sign-language services, ramps, and economic empowerment for our brothers and sisters living with disabilities.",
     impact: "1,200+ PWDs empowered",
+    img: pwdImg,
     points: [
       "Free assistive devices (wheelchairs, white canes)",
       "PWD entrepreneur grants",
