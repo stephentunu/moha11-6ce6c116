@@ -44,6 +44,12 @@ export const Route = createRootRoute({
       },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
+      { name: "twitter:title", content: "Moha Delivers — Mathare 2027" },
+      { name: "description", content: "Moha Mathare Connect is a campaign website for an MP aspirant, featuring AI, live polling, and donations." },
+      { property: "og:description", content: "Moha Mathare Connect is a campaign website for an MP aspirant, featuring AI, live polling, and donations." },
+      { name: "twitter:description", content: "Moha Mathare Connect is a campaign website for an MP aspirant, featuring AI, live polling, and donations." },
+      { property: "og:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/835fe492-3478-47bf-874f-fc8c7eb5c36c/id-preview-1d664b0c--09fabeb3-c879-4fa6-98a5-5780a2ba97cd.lovable.app-1777063077478.png" },
+      { name: "twitter:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/835fe492-3478-47bf-874f-fc8c7eb5c36c/id-preview-1d664b0c--09fabeb3-c879-4fa6-98a5-5780a2ba97cd.lovable.app-1777063077478.png" },
     ],
     links: [
       { rel: "stylesheet", href: appCss },
