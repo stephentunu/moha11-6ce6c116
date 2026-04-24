@@ -80,6 +80,7 @@ function StoriesPage() {
         eyebrow="Voices of Mathare"
         title="Real people. Real impact."
         subtitle="These are the stories of mama mbogas, students, elders, and youth whose lives Moha has changed — long before any campaign poster went up."
+        bgImage={wanjikuImg}
       />
 
       <section className="py-20 bg-background">

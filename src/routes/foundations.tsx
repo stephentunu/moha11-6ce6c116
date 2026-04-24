@@ -78,6 +78,7 @@ function FoundationsPage() {
         eyebrow="Service in Action"
         title="The Moha Foundations"
         subtitle="Long before politics, Moha has been on the ground — delivering for vulnerable groups, students, and people with disabilities. This is the work that doesn't wait for elections."
+        bgImage={vulnerableImg}
       />
 
       <section className="py-20 bg-background">

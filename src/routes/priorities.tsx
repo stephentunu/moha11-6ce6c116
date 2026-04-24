@@ -101,6 +101,7 @@ function PrioritiesPage() {
         eyebrow="The Manifesto"
         title="Four pillars. One Mathare."
         subtitle="A focused, accountable plan grounded in the lived realities of our people. Click each pillar to see the deliverables."
+        bgImage={educationImg}
       />
 
       <section className="py-20 bg-background">

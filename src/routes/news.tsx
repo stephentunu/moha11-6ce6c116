@@ -74,6 +74,7 @@ function NewsPage() {
         eyebrow="Top Stories"
         title="The latest from the movement"
         subtitle="Campaign milestones, community wins, and the work happening on the ground every single day."
+        bgImage={rallyImg}
       />
 
       <section className="py-20 bg-background">
