@@ -322,6 +322,52 @@ function DonatePage() {
           </div>
         </div>
       </section>
+
+      {/* WHERE YOUR SHILLING GOES */}
+      <section className="py-20 bg-muted/30">
+        <div className="container mx-auto px-4 lg:px-8 max-w-6xl">
+          <div className="text-center mb-12">
+            <span className="inline-block px-4 py-1.5 mb-4 text-xs font-bold tracking-widest uppercase text-primary bg-primary/10 rounded-full">
+              Your Impact
+            </span>
+            <h2 className="text-3xl md:text-5xl font-display font-bold text-foreground text-balance">
+              Where every shilling goes
+            </h2>
+            <p className="mt-4 text-muted-foreground max-w-2xl mx-auto">
+              From food parcels to bursaries to clean water tanks — your donation funds the work
+              that's already happening, every single week, on the streets of Mathare.
+            </p>
+          </div>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            {[
+              { img: impactImg1, label: "Food & relief drives" },
+              { img: impactImg2, label: "Clean water tanks" },
+              { img: impactImg3, label: "Student bursaries" },
+              { img: impactImg4, label: "Hustler tools & capital" },
+            ].map((item, i) => (
+              <motion.div
+                key={item.label}
+                initial={{ opacity: 0, y: 20 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                transition={{ delay: i * 0.08 }}
+                className="group relative aspect-[4/5] rounded-2xl overflow-hidden shadow-elegant"
+              >
+                <img
+                  src={item.img}
+                  alt={item.label}
+                  loading="lazy"
+                  className="absolute inset-0 w-full h-full object-cover group-hover:scale-110 transition-transform duration-700"
+                />
+                <div className="absolute inset-0 bg-gradient-to-t from-primary via-primary/40 to-transparent" />
+                <div className="absolute bottom-0 left-0 right-0 p-4 text-primary-foreground">
+                  <p className="font-display font-bold text-sm md:text-base">{item.label}</p>
+                </div>
+              </motion.div>
+            ))}
+          </div>
+        </div>
+      </section>
     </>
   );
 }
