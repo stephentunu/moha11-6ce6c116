@@ -12,12 +12,18 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { SectionHeader } from "@/components/SectionHeader";
-import heroImg from "@/assets/hero-moha.jpg";
-import rallyImg from "@/assets/rally.jpg";
-import educationImg from "@/assets/education.jpg";
-import healthImg from "@/assets/health.jpg";
-import businessImg from "@/assets/business.jpg";
-import environmentImg from "@/assets/environment.jpg";
+import heroImg from "@/assets/moha/moha-portrait.jpeg";
+import rallyImg from "@/assets/moha/foundation1.jpeg";
+import educationImg from "@/assets/moha/moha35.jpeg";
+import healthImg from "@/assets/moha/moha10.jpeg";
+import businessImg from "@/assets/moha/foundation5.jpeg";
+import environmentImg from "@/assets/moha/moha16.jpeg";
+import galleryImg1 from "@/assets/moha/moha1.jpeg";
+import galleryImg2 from "@/assets/moha/donation3.jpeg";
+import galleryImg3 from "@/assets/moha/moha40.jpeg";
+import galleryImg4 from "@/assets/moha/bursary1.jpeg";
+import galleryImg5 from "@/assets/moha/foundation10.jpeg";
+import galleryImg6 from "@/assets/moha/moha20.jpeg";
 
 export const Route = createFileRoute("/")({
   head: () => ({
