@@ -10,6 +10,10 @@ import { cn } from "@/lib/utils";
 import { z } from "zod";
 import { toast } from "sonner";
 import { Toaster } from "@/components/ui/sonner";
+import impactImg1 from "@/assets/moha/donation3.jpeg";
+import impactImg2 from "@/assets/moha/foundation1.jpeg";
+import impactImg3 from "@/assets/moha/bursary1.jpeg";
+import impactImg4 from "@/assets/moha/foundation5.jpeg";
 
 export const Route = createFileRoute("/donate")({
   head: () => ({
