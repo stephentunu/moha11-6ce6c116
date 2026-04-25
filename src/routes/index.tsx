@@ -67,7 +67,7 @@ function HomePage() {
           <img
             src={heroImg}
             alt="Moha standing tall in Mathare at golden hour"
-            className="w-full h-full object-cover object-center"
+            className="w-full h-full object-cover object-top md:object-[center_top]"
             width={1600}
             height={1200}
           />
