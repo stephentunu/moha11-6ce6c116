@@ -1,5 +1,6 @@
 import { Link } from "@tanstack/react-router";
 import { Mail, Phone, MapPin } from "lucide-react";
+import mohaLogo from "@/assets/moha/moha-portrait.jpeg";
 
 // Official Facebook "f" logo
 function FacebookIcon({ className }: { className?: string }) {
