@@ -254,30 +254,37 @@ function AdvertisePage() {
         eyebrow="Mathare Business Hub"
         title="Advertise With Us"
         subtitle="Supporting Mathare Businesses — Moha Delivers. List your hustle for free and reach customers across all six wards."
-      >
-        <div className="flex flex-wrap gap-3 justify-center">
-          <Button
-            size="xl"
-            variant="hero"
-            onClick={() => setOpen(true)}
-            className="group"
-          >
-            <Plus className="h-5 w-5" />
-            Advertise Your Business
-          </Button>
-          <Button
-            size="xl"
-            variant="outline"
-            onClick={() =>
-              document
-                .getElementById("marketplace")
-                ?.scrollIntoView({ behavior: "smooth" })
-            }
-          >
-            Browse Marketplace
-          </Button>
+      />
+
+      <section className="container mx-auto px-4 lg:px-8 -mt-8 relative z-10">
+        <div className="bg-card border border-border rounded-2xl shadow-elegant p-6 md:p-8 flex flex-col md:flex-row items-center justify-between gap-4">
+          <div>
+            <h2 className="font-display text-xl md:text-2xl font-bold">
+              Ready to grow your customer base?
+            </h2>
+            <p className="text-sm text-muted-foreground">
+              List your business in under 2 minutes. Always free.
+            </p>
+          </div>
+          <div className="flex flex-wrap gap-3">
+            <Button size="lg" variant="hero" onClick={() => setOpen(true)}>
+              <Plus className="h-5 w-5" />
+              Advertise Your Business
+            </Button>
+            <Button
+              size="lg"
+              variant="outline"
+              onClick={() =>
+                document
+                  .getElementById("marketplace")
+                  ?.scrollIntoView({ behavior: "smooth" })
+              }
+            >
+              Browse Marketplace
+            </Button>
+          </div>
         </div>
-      </PageHero>
+      </section>
 
       <section id="marketplace" className="container mx-auto px-4 lg:px-8 py-16">
         <div className="max-w-3xl mx-auto text-center mb-10">
