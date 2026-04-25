@@ -69,8 +69,8 @@ export function Footer() {
           {/* Brand */}
           <div>
             <div className="flex items-center gap-2 mb-4">
-              <div className="h-12 w-12 rounded-xl bg-gold flex items-center justify-center">
-                <span className="font-display font-black text-xl text-gold-foreground">M</span>
+              <div className="h-12 w-12 rounded-xl overflow-hidden bg-gold ring-2 ring-gold/60">
+                <img src={mohaLogo} alt="Moha portrait" className="h-full w-full object-cover object-top" />
               </div>
               <div>
                 <div className="font-display font-bold text-xl">MOHA</div>
