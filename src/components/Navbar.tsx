@@ -47,8 +47,8 @@ export function Navbar() {
       <div className="container mx-auto px-4 lg:px-8">
         <div className="flex h-20 items-center justify-between">
           <Link to="/" className="flex items-center gap-2 group">
-            <div className="h-11 w-11 rounded-xl bg-gradient-primary flex items-center justify-center shadow-glow group-hover:scale-105 transition-transform">
-              <span className="font-display font-black text-lg text-primary-foreground">M</span>
+            <div className="h-11 w-11 rounded-xl overflow-hidden bg-gradient-primary shadow-glow group-hover:scale-105 transition-transform ring-2 ring-gold/40">
+              <img src={mohaLogo} alt="Moha portrait" className="h-full w-full object-cover object-top" />
             </div>
             <div className="flex flex-col leading-none">
               <span
