@@ -17,6 +17,7 @@ import { Route as NewsRouteImport } from './routes/news'
 import { Route as FoundationsRouteImport } from './routes/foundations'
 import { Route as DonateRouteImport } from './routes/donate'
 import { Route as AskRouteImport } from './routes/ask'
+import { Route as AdvertiseRouteImport } from './routes/advertise'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as ApiChatRouteImport } from './routes/api.chat'
 
@@ -60,6 +61,11 @@ const AskRoute = AskRouteImport.update({
   path: '/ask',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AdvertiseRoute = AdvertiseRouteImport.update({
+  id: '/advertise',
+  path: '/advertise',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
@@ -73,6 +79,7 @@ const ApiChatRoute = ApiChatRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/advertise': typeof AdvertiseRoute
   '/ask': typeof AskRoute
   '/donate': typeof DonateRoute
   '/foundations': typeof FoundationsRoute
@@ -85,6 +92,7 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/advertise': typeof AdvertiseRoute
   '/ask': typeof AskRoute
   '/donate': typeof DonateRoute
   '/foundations': typeof FoundationsRoute
@@ -98,6 +106,7 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/advertise': typeof AdvertiseRoute
   '/ask': typeof AskRoute
   '/donate': typeof DonateRoute
   '/foundations': typeof FoundationsRoute
@@ -112,6 +121,7 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/advertise'
     | '/ask'
     | '/donate'
     | '/foundations'
@@ -124,6 +134,7 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/advertise'
     | '/ask'
     | '/donate'
     | '/foundations'
@@ -136,6 +147,7 @@ export interface FileRouteTypes {
   id:
     | '__root__'
     | '/'
+    | '/advertise'
     | '/ask'
     | '/donate'
     | '/foundations'
@@ -149,6 +161,7 @@ export interface FileRouteTypes {
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  AdvertiseRoute: typeof AdvertiseRoute
   AskRoute: typeof AskRoute
   DonateRoute: typeof DonateRoute
   FoundationsRoute: typeof FoundationsRoute
@@ -218,6 +231,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AskRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/advertise': {
+      id: '/advertise'
+      path: '/advertise'
+      fullPath: '/advertise'
+      preLoaderRoute: typeof AdvertiseRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/': {
       id: '/'
       path: '/'
@@ -237,6 +257,7 @@ declare module '@tanstack/react-router' {
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  AdvertiseRoute: AdvertiseRoute,
   AskRoute: AskRoute,
   DonateRoute: DonateRoute,
   FoundationsRoute: FoundationsRoute,
