@@ -27,63 +27,13 @@ export const Route = createFileRoute("/polling")({
   component: PollingPage,
 });
 
-interface Poll {
-  id: string;
-  question: string;
-  options: { id: string; label: string; votes: number }[];
-}
-
-const initialPolls: Poll[] = [
-  {
-    id: "p1",
-    question: "What is the #1 issue Mathare needs solved first?",
-    options: [
-      { id: "a", label: "Youth unemployment", votes: 4820 },
-      { id: "b", label: "Drainage & flooding", votes: 3210 },
-      { id: "c", label: "Insecurity at night", votes: 2870 },
-      { id: "d", label: "Affordable healthcare", votes: 3540 },
-    ],
-  },
-  {
-    id: "p2",
-    question: "Where should the next youth hub be built?",
-    options: [
-      { id: "a", label: "Mathare 4A", votes: 1820 },
-      { id: "b", label: "Huruma", votes: 2110 },
-      { id: "c", label: "Mlango Kubwa", votes: 1560 },
-      { id: "d", label: "Hospital Ward", votes: 1340 },
-    ],
-  },
-  {
-    id: "p3",
-    question: "Which education program should we expand next?",
-    options: [
-      { id: "a", label: "University tuition fund", votes: 2400 },
-      { id: "b", label: "Digital learning labs", votes: 3120 },
-      { id: "c", label: "TVET scholarships", votes: 1980 },
-      { id: "d", label: "Adult literacy classes", votes: 980 },
-    ],
-  },
-];
-
 function PollingPage() {
-  const [polls, setPolls] = useState(initialPolls);
+  const [polls] = usePolls();
   const [voted, setVoted] = useState<Record<string, string>>({});
 
   const handleVote = (pollId: string, optionId: string) => {
     if (voted[pollId]) return;
-    setPolls((prev) =>
-      prev.map((p) =>
-        p.id !== pollId
-          ? p
-          : {
-              ...p,
-              options: p.options.map((o) =>
-                o.id === optionId ? { ...o, votes: o.votes + 1 } : o
-              ),
-            }
-      )
-    );
+    votePoll(pollId, optionId);
     setVoted((v) => ({ ...v, [pollId]: optionId }));
     toast.success("Asante! Your vote has been recorded.");
   };
