@@ -503,6 +503,8 @@ function RegistrationDialog({
       phone: form.phone.trim(),
       description: form.description.trim(),
       imageUrl: form.imageUrl,
+      status: "active",
+      createdAt: Date.now(),
     });
     handleClose(false);
   };
