@@ -13,13 +13,13 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { useAdminAuth, adminLogout, useMessages } from "@/lib/admin-store";
 
-const NAV = [
+const NAV: { to: string; label: string; icon: typeof LayoutDashboard; exact?: boolean }[] = [
   { to: "/admin", label: "Overview", icon: LayoutDashboard, exact: true },
   { to: "/admin/businesses", label: "Business Moderation", icon: Store },
   { to: "/admin/content", label: "Content Manager", icon: FileText },
   { to: "/admin/polls", label: "Poll Analytics", icon: BarChart3 },
   { to: "/admin/inbox", label: "Message Inbox", icon: Inbox },
-] as const;
+];
 
 export function AdminLayout({ children, title }: { children: ReactNode; title: string }) {
   const { authed, ready } = useAdminAuth();

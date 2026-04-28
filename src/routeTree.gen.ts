@@ -20,6 +20,7 @@ import { Route as AskRouteImport } from './routes/ask'
 import { Route as AdvertiseRouteImport } from './routes/advertise'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as ApiChatRouteImport } from './routes/api.chat'
+import { Route as AdminLoginRouteImport } from './routes/admin.login'
 
 const StoriesRoute = StoriesRouteImport.update({
   id: '/stories',
@@ -76,6 +77,11 @@ const ApiChatRoute = ApiChatRouteImport.update({
   path: '/api/chat',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AdminLoginRoute = AdminLoginRouteImport.update({
+  id: '/admin/login',
+  path: '/admin/login',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -88,6 +94,7 @@ export interface FileRoutesByFullPath {
   '/polling': typeof PollingRoute
   '/priorities': typeof PrioritiesRoute
   '/stories': typeof StoriesRoute
+  '/admin/login': typeof AdminLoginRoute
   '/api/chat': typeof ApiChatRoute
 }
 export interface FileRoutesByTo {
@@ -101,6 +108,7 @@ export interface FileRoutesByTo {
   '/polling': typeof PollingRoute
   '/priorities': typeof PrioritiesRoute
   '/stories': typeof StoriesRoute
+  '/admin/login': typeof AdminLoginRoute
   '/api/chat': typeof ApiChatRoute
 }
 export interface FileRoutesById {
@@ -115,6 +123,7 @@ export interface FileRoutesById {
   '/polling': typeof PollingRoute
   '/priorities': typeof PrioritiesRoute
   '/stories': typeof StoriesRoute
+  '/admin/login': typeof AdminLoginRoute
   '/api/chat': typeof ApiChatRoute
 }
 export interface FileRouteTypes {
@@ -130,6 +139,7 @@ export interface FileRouteTypes {
     | '/polling'
     | '/priorities'
     | '/stories'
+    | '/admin/login'
     | '/api/chat'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -143,6 +153,7 @@ export interface FileRouteTypes {
     | '/polling'
     | '/priorities'
     | '/stories'
+    | '/admin/login'
     | '/api/chat'
   id:
     | '__root__'
@@ -156,6 +167,7 @@ export interface FileRouteTypes {
     | '/polling'
     | '/priorities'
     | '/stories'
+    | '/admin/login'
     | '/api/chat'
   fileRoutesById: FileRoutesById
 }
@@ -170,6 +182,7 @@ export interface RootRouteChildren {
   PollingRoute: typeof PollingRoute
   PrioritiesRoute: typeof PrioritiesRoute
   StoriesRoute: typeof StoriesRoute
+  AdminLoginRoute: typeof AdminLoginRoute
   ApiChatRoute: typeof ApiChatRoute
 }
 
@@ -252,6 +265,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiChatRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/admin/login': {
+      id: '/admin/login'
+      path: '/admin/login'
+      fullPath: '/admin/login'
+      preLoaderRoute: typeof AdminLoginRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -266,6 +286,7 @@ const rootRouteChildren: RootRouteChildren = {
   PollingRoute: PollingRoute,
   PrioritiesRoute: PrioritiesRoute,
   StoriesRoute: StoriesRoute,
+  AdminLoginRoute: AdminLoginRoute,
   ApiChatRoute: ApiChatRoute,
 }
 export const routeTree = rootRouteImport
