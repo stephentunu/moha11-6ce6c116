@@ -286,11 +286,10 @@ function HomePage() {
           >
             <Quote className="h-12 w-12 text-gold mb-6" />
             <p className="text-3xl md:text-4xl font-display font-bold leading-tight text-balance">
-              "Mathare raised me. Now it's my turn to raise Mathare. We don't need
-              promises — we need <span className="text-gold">delivery.</span>"
+              "{content.homeQuote}"
             </p>
             <p className="mt-6 text-sm font-semibold tracking-widest uppercase text-gold">
-              — Moha
+              — {content.homeQuoteAuthor}
             </p>
             <div className="mt-10 flex flex-wrap gap-4">
               <Button asChild variant="hero" size="lg">
