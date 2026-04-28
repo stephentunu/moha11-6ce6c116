@@ -101,81 +101,6 @@ type Business = {
   imageUrl: string;
 };
 
-const SEED: Business[] = [
-  {
-    id: "seed-1",
-    ownerName: "Mama Njeri",
-    businessName: "Mama Njeri's Groceries",
-    category: "Groceries & Mboga",
-    ward: "Mabatini",
-    location: "Opposite Mabatini Primary",
-    phone: "+254712345678",
-    description: "Fresh sukuma, tomatoes, onions and household basics daily.",
-    imageUrl:
-      "https://images.unsplash.com/photo-1488459716781-31db52582fe9?w=800&q=80",
-  },
-  {
-    id: "seed-2",
-    ownerName: "Brian Otieno",
-    businessName: "Bro B Barbershop",
-    category: "Salon & Barber",
-    ward: "Huruma",
-    location: "Huruma Stage, 1st floor",
-    phone: "+254723456789",
-    description: "Modern cuts, line-ups and beard grooming. Walk-ins welcome.",
-    imageUrl:
-      "https://images.unsplash.com/photo-1503951914875-452162b0f3f1?w=800&q=80",
-  },
-  {
-    id: "seed-3",
-    ownerName: "Aisha Mohamed",
-    businessName: "Aisha Bites Kibanda",
-    category: "Food & Restaurant",
-    ward: "Kiamaiko",
-    location: "Kiamaiko Market, gate B",
-    phone: "+254734567890",
-    description: "Hot chapati, beans, pilau and fresh juice from 6am.",
-    imageUrl:
-      "https://images.unsplash.com/photo-1565299624946-b28f40a0ae38?w=800&q=80",
-  },
-  {
-    id: "seed-4",
-    ownerName: "Joseph Kariuki",
-    businessName: "JK Hardware",
-    category: "Hardware & Repair",
-    ward: "Mlango Kubwa",
-    location: "Mlango Kubwa main road",
-    phone: "+254745678901",
-    description: "Cement, paint, plumbing and electrical supplies. Fair prices.",
-    imageUrl:
-      "https://images.unsplash.com/photo-1581094794329-c8112a89af12?w=800&q=80",
-  },
-  {
-    id: "seed-5",
-    ownerName: "Grace Wambui",
-    businessName: "Grace Tailoring",
-    category: "Tailoring & Fashion",
-    ward: "Ngei",
-    location: "Ngei Phase 2",
-    phone: "+254756789012",
-    description: "School uniforms, dresses and quick alterations done with care.",
-    imageUrl:
-      "https://images.unsplash.com/photo-1558769132-cb1aea458c5e?w=800&q=80",
-  },
-  {
-    id: "seed-6",
-    ownerName: "Daktari Omondi",
-    businessName: "Afya Bora Pharmacy",
-    category: "Health & Pharmacy",
-    ward: "Hospital",
-    location: "Near Mathare North Health Centre",
-    phone: "+254767890123",
-    description: "Affordable medication, BP checks and trusted health advice.",
-    imageUrl:
-      "https://images.unsplash.com/photo-1576602976047-174e57a47881?w=800&q=80",
-  },
-];
-
 function categoryIcon(name: string) {
   const found = CATEGORIES.find((c) => c.value === name);
   return found ? found.icon : Store;
@@ -220,7 +145,7 @@ const EMPTY_FORM: FormState = {
 };
 
 function AdvertisePage() {
-  const [businesses, setBusinesses] = useState<Business[]>(SEED);
+  const [businesses, setBusinesses] = useState<Business[]>([]);
   const [search, setSearch] = useState("");
   const [wardFilter, setWardFilter] = useState<string>("all");
   const [categoryFilter, setCategoryFilter] = useState<string>("all");
