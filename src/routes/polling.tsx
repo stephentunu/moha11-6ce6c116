@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { Toaster } from "@/components/ui/sonner";
+import { usePolls, votePoll } from "@/lib/admin-store";
 
 export const Route = createFileRoute("/polling")({
   head: () => ({
