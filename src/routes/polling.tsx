@@ -51,7 +51,6 @@ function PollingPage() {
         <div className="container mx-auto px-4 lg:px-8 max-w-4xl">
           <div className="space-y-8">
             {polls.map((poll, i) => {
-              const total = poll.options.reduce((s, o) => s + o.votes, 0);
               const userVote = voted[poll.id];
 
               return (
@@ -73,55 +72,44 @@ function PollingPage() {
                       </h3>
                       <p className="text-xs text-muted-foreground mt-1 flex items-center gap-1">
                         <TrendingUp className="h-3 w-3" />
-                        {total.toLocaleString()} votes
+                        Results are kept private and shared with Moha's team only.
                       </p>
                     </div>
                   </div>
 
                   <div className="space-y-3">
                     {poll.options.map((opt) => {
-                      const pct = total > 0 ? (opt.votes / total) * 100 : 0;
                       const isUserChoice = userVote === opt.id;
-                      const showResults = !!userVote;
+                      const voteCast = !!userVote;
                       return (
                         <button
                           key={opt.id}
                           onClick={() => handleVote(poll.id, opt.id)}
-                          disabled={showResults}
+                          disabled={voteCast}
                           className={cn(
                             "w-full text-left relative rounded-xl border-2 transition-all overflow-hidden",
-                            showResults
-                              ? "border-border cursor-default"
+                            voteCast
+                              ? "border-border cursor-default opacity-90"
                               : "border-border hover:border-primary hover:bg-primary/5 cursor-pointer",
                             isUserChoice && "border-gold bg-gold/5"
                           )}
                         >
-                          {showResults && (
-                            <div
-                              className={cn(
-                                "absolute inset-y-0 left-0 transition-all duration-700",
-                                isUserChoice ? "bg-gold/20" : "bg-primary/10"
-                              )}
-                              style={{ width: `${pct}%` }}
-                            />
-                          )}
                           <div className="relative px-5 py-4 flex items-center justify-between gap-3">
                             <span className="flex items-center gap-2 font-semibold text-foreground">
                               {isUserChoice && <CheckCircle2 className="h-4 w-4 text-gold" />}
                               {opt.label}
                             </span>
-                            {showResults && (
-                              <span className="text-sm font-bold text-foreground">
-                                {pct.toFixed(1)}%
-                              </span>
-                            )}
                           </div>
                         </button>
                       );
                     })}
                   </div>
 
-                  {!userVote && (
+                  {userVote ? (
+                    <p className="mt-4 text-xs font-semibold text-gold">
+                      ✓ Asante! Your vote has been recorded privately.
+                    </p>
+                  ) : (
                     <p className="mt-4 text-xs text-muted-foreground">
                       Tap an option to cast your vote.
                     </p>
