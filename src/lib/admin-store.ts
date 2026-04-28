@@ -205,12 +205,9 @@ export function addMessage(m: Omit<Message, "id" | "read" | "createdAt">) {
   const full: Message = { ...m, id: `m-${Date.now()}`, read: false, createdAt: Date.now() };
   write(KEYS.messages, [full, ...list]);
 }
-export function markMessageRead(id: string, read = true) {
-  const list = read_messages();
-  write(KEYS.messages, list.map((m) => (m.id === id ? { ...m, read } : m)));
-}
-function read_messages() {
-  return read<Message[]>(KEYS.messages, []);
+export function markMessageRead(id: string, value = true) {
+  const list = read<Message[]>(KEYS.messages, []);
+  write(KEYS.messages, list.map((m) => (m.id === id ? { ...m, read: value } : m)));
 }
 export function deleteMessage(id: string) {
   const list = read<Message[]>(KEYS.messages, []);
