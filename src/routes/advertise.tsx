@@ -90,17 +90,7 @@ const CATEGORIES = [
   { value: "General Shop", icon: Store },
 ] as const;
 
-type Business = {
-  id: string;
-  ownerName: string;
-  businessName: string;
-  category: string;
-  ward: string;
-  location: string;
-  phone: string;
-  description: string;
-  imageUrl: string;
-};
+type Business = StoreBusiness;
 
 function categoryIcon(name: string) {
   const found = CATEGORIES.find((c) => c.value === name);
