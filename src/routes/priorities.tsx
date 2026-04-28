@@ -4,6 +4,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { GraduationCap, HeartPulse, Briefcase, Leaf, Check } from "lucide-react";
 import { PageHero } from "@/components/PageHero";
 import { cn } from "@/lib/utils";
+import { useContent } from "@/lib/admin-store";
 import educationImg from "@/assets/moha/moha25.jpeg";
 import healthImg from "@/assets/moha/moha10.jpeg";
 import businessImg from "@/assets/moha/foundation5.jpeg";
@@ -94,13 +95,14 @@ const themes = [
 function PrioritiesPage() {
   const [active, setActive] = useState(themes[0].key);
   const current = themes.find((t) => t.key === active)!;
+  const [content] = useContent();
 
   return (
     <>
       <PageHero
         eyebrow="The Manifesto"
-        title="Four pillars. One Mathare."
-        subtitle="A focused, accountable plan grounded in the lived realities of our people. Click each pillar to see the deliverables."
+        title={content.prioritiesHeadline}
+        subtitle={content.prioritiesSubtitle}
         bgImage={educationImg}
       />
 
