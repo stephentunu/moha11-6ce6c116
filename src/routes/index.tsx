@@ -95,9 +95,8 @@ function HomePage() {
               transition={{ duration: 0.7, delay: 0.1 }}
               className="text-6xl md:text-7xl lg:text-8xl font-display font-black text-white leading-[0.95] text-balance"
             >
-              Moha{" "}
               <span className="bg-gradient-to-r from-gold to-yellow-300 bg-clip-text text-transparent">
-                Delivers.
+                {content.homeHeadline}
               </span>
             </motion.h1>
 
@@ -107,7 +106,7 @@ function HomePage() {
               transition={{ duration: 0.7, delay: 0.25 }}
               className="mt-6 text-2xl md:text-3xl font-display italic text-gold"
             >
-              "Kuna More na Moha!"
+              "{content.homeTagline}"
             </motion.p>
 
             <motion.p
