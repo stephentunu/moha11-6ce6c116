@@ -10,6 +10,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
 import { Toaster } from "@/components/ui/sonner";
+import { addMessage } from "@/lib/admin-store";
 
 export const Route = createFileRoute("/ask")({
   head: () => ({
@@ -57,10 +58,11 @@ function AskPage() {
     }
     setLoading(true);
     setTimeout(() => {
+      addMessage({ kind: "ask", name: data.name, contact: data.contact, body: data.question });
       setLoading(false);
       toast.success("Question received! Moha or his team will get back to you.");
       setData({ name: "", contact: "", question: "" });
-    }, 1200);
+    }, 800);
   };
 
   return (

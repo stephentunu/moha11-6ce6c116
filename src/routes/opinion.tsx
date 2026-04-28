@@ -9,6 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
 import { Toaster } from "@/components/ui/sonner";
+import { addMessage } from "@/lib/admin-store";
 
 export const Route = createFileRoute("/opinion")({
   head: () => ({
@@ -48,10 +49,11 @@ function OpinionPage() {
     }
     setLoading(true);
     setTimeout(() => {
+      addMessage({ kind: "opinion", name: data.name, contact: data.ward, body: data.message });
       setLoading(false);
       toast.success("Asante! Your message has reached Moha's team.");
       setData({ name: "", ward: "", message: "" });
-    }, 1200);
+    }, 800);
   };
 
   return (

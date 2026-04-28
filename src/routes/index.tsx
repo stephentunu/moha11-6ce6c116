@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { SectionHeader } from "@/components/SectionHeader";
+import { useContent } from "@/lib/admin-store";
 import heroImg from "@/assets/moha/moha-portrait.jpeg";
 import rallyImg from "@/assets/moha/foundation1.jpeg";
 import educationImg from "@/assets/moha/moha35.jpeg";
@@ -59,13 +60,15 @@ const stats = [
 ];
 
 function HomePage() {
+  const [content] = useContent();
+  const hero = content.heroImageUrl || heroImg;
   return (
     <>
       {/* HERO */}
       <section className="relative min-h-screen flex items-center overflow-hidden">
         <div className="absolute inset-0">
           <img
-            src={heroImg}
+            src={hero}
             alt="Moha standing tall in Mathare at golden hour"
             className="w-full h-full object-cover object-top md:object-[center_top]"
             width={1600}
@@ -92,9 +95,8 @@ function HomePage() {
               transition={{ duration: 0.7, delay: 0.1 }}
               className="text-6xl md:text-7xl lg:text-8xl font-display font-black text-white leading-[0.95] text-balance"
             >
-              Moha{" "}
               <span className="bg-gradient-to-r from-gold to-yellow-300 bg-clip-text text-transparent">
-                Delivers.
+                {content.homeHeadline}
               </span>
             </motion.h1>
 
@@ -104,7 +106,7 @@ function HomePage() {
               transition={{ duration: 0.7, delay: 0.25 }}
               className="mt-6 text-2xl md:text-3xl font-display italic text-gold"
             >
-              "Kuna More na Moha!"
+              "{content.homeTagline}"
             </motion.p>
 
             <motion.p
@@ -284,11 +286,10 @@ function HomePage() {
           >
             <Quote className="h-12 w-12 text-gold mb-6" />
             <p className="text-3xl md:text-4xl font-display font-bold leading-tight text-balance">
-              "Mathare raised me. Now it's my turn to raise Mathare. We don't need
-              promises — we need <span className="text-gold">delivery.</span>"
+              "{content.homeQuote}"
             </p>
             <p className="mt-6 text-sm font-semibold tracking-widest uppercase text-gold">
-              — Moha
+              — {content.homeQuoteAuthor}
             </p>
             <div className="mt-10 flex flex-wrap gap-4">
               <Button asChild variant="hero" size="lg">

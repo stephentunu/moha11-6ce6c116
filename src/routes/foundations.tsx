@@ -3,6 +3,7 @@ import { motion } from "framer-motion";
 import { HandHeart, GraduationCap, Accessibility, ArrowRight } from "lucide-react";
 import { PageHero } from "@/components/PageHero";
 import { Button } from "@/components/ui/button";
+import { useContent } from "@/lib/admin-store";
 import vulnerableImg from "@/assets/moha/donation3.jpeg";
 import bursaryImg from "@/assets/moha/bursary1.jpeg";
 import pwdImg from "@/assets/moha/moha30.jpeg";
@@ -72,12 +73,13 @@ const foundations = [
 ];
 
 function FoundationsPage() {
+  const [content] = useContent();
   return (
     <>
       <PageHero
         eyebrow="Service in Action"
-        title="The Moha Foundations"
-        subtitle="Long before politics, Moha has been on the ground — delivering for vulnerable groups, students, and people with disabilities. This is the work that doesn't wait for elections."
+        title={content.foundationsHeadline}
+        subtitle={content.foundationsSubtitle}
         bgImage={vulnerableImg}
       />
 
