@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { SectionHeader } from "@/components/SectionHeader";
+import { useContent } from "@/lib/admin-store";
 import heroImg from "@/assets/moha/moha-portrait.jpeg";
 import rallyImg from "@/assets/moha/foundation1.jpeg";
 import educationImg from "@/assets/moha/moha35.jpeg";
@@ -59,13 +60,15 @@ const stats = [
 ];
 
 function HomePage() {
+  const [content] = useContent();
+  const hero = content.heroImageUrl || heroImg;
   return (
     <>
       {/* HERO */}
       <section className="relative min-h-screen flex items-center overflow-hidden">
         <div className="absolute inset-0">
           <img
-            src={heroImg}
+            src={hero}
             alt="Moha standing tall in Mathare at golden hour"
             className="w-full h-full object-cover object-top md:object-[center_top]"
             width={1600}
