@@ -19,8 +19,13 @@ import { Route as DonateRouteImport } from './routes/donate'
 import { Route as AskRouteImport } from './routes/ask'
 import { Route as AdvertiseRouteImport } from './routes/advertise'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as AdminIndexRouteImport } from './routes/admin.index'
 import { Route as ApiChatRouteImport } from './routes/api.chat'
+import { Route as AdminPollsRouteImport } from './routes/admin.polls'
 import { Route as AdminLoginRouteImport } from './routes/admin.login'
+import { Route as AdminInboxRouteImport } from './routes/admin.inbox'
+import { Route as AdminContentRouteImport } from './routes/admin.content'
+import { Route as AdminBusinessesRouteImport } from './routes/admin.businesses'
 
 const StoriesRoute = StoriesRouteImport.update({
   id: '/stories',
@@ -72,14 +77,39 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AdminIndexRoute = AdminIndexRouteImport.update({
+  id: '/admin/',
+  path: '/admin/',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiChatRoute = ApiChatRouteImport.update({
   id: '/api/chat',
   path: '/api/chat',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AdminPollsRoute = AdminPollsRouteImport.update({
+  id: '/admin/polls',
+  path: '/admin/polls',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AdminLoginRoute = AdminLoginRouteImport.update({
   id: '/admin/login',
   path: '/admin/login',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AdminInboxRoute = AdminInboxRouteImport.update({
+  id: '/admin/inbox',
+  path: '/admin/inbox',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AdminContentRoute = AdminContentRouteImport.update({
+  id: '/admin/content',
+  path: '/admin/content',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AdminBusinessesRoute = AdminBusinessesRouteImport.update({
+  id: '/admin/businesses',
+  path: '/admin/businesses',
   getParentRoute: () => rootRouteImport,
 } as any)
 
@@ -94,8 +124,13 @@ export interface FileRoutesByFullPath {
   '/polling': typeof PollingRoute
   '/priorities': typeof PrioritiesRoute
   '/stories': typeof StoriesRoute
+  '/admin/businesses': typeof AdminBusinessesRoute
+  '/admin/content': typeof AdminContentRoute
+  '/admin/inbox': typeof AdminInboxRoute
   '/admin/login': typeof AdminLoginRoute
+  '/admin/polls': typeof AdminPollsRoute
   '/api/chat': typeof ApiChatRoute
+  '/admin/': typeof AdminIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -108,8 +143,13 @@ export interface FileRoutesByTo {
   '/polling': typeof PollingRoute
   '/priorities': typeof PrioritiesRoute
   '/stories': typeof StoriesRoute
+  '/admin/businesses': typeof AdminBusinessesRoute
+  '/admin/content': typeof AdminContentRoute
+  '/admin/inbox': typeof AdminInboxRoute
   '/admin/login': typeof AdminLoginRoute
+  '/admin/polls': typeof AdminPollsRoute
   '/api/chat': typeof ApiChatRoute
+  '/admin': typeof AdminIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -123,8 +163,13 @@ export interface FileRoutesById {
   '/polling': typeof PollingRoute
   '/priorities': typeof PrioritiesRoute
   '/stories': typeof StoriesRoute
+  '/admin/businesses': typeof AdminBusinessesRoute
+  '/admin/content': typeof AdminContentRoute
+  '/admin/inbox': typeof AdminInboxRoute
   '/admin/login': typeof AdminLoginRoute
+  '/admin/polls': typeof AdminPollsRoute
   '/api/chat': typeof ApiChatRoute
+  '/admin/': typeof AdminIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -139,8 +184,13 @@ export interface FileRouteTypes {
     | '/polling'
     | '/priorities'
     | '/stories'
+    | '/admin/businesses'
+    | '/admin/content'
+    | '/admin/inbox'
     | '/admin/login'
+    | '/admin/polls'
     | '/api/chat'
+    | '/admin/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -153,8 +203,13 @@ export interface FileRouteTypes {
     | '/polling'
     | '/priorities'
     | '/stories'
+    | '/admin/businesses'
+    | '/admin/content'
+    | '/admin/inbox'
     | '/admin/login'
+    | '/admin/polls'
     | '/api/chat'
+    | '/admin'
   id:
     | '__root__'
     | '/'
@@ -167,8 +222,13 @@ export interface FileRouteTypes {
     | '/polling'
     | '/priorities'
     | '/stories'
+    | '/admin/businesses'
+    | '/admin/content'
+    | '/admin/inbox'
     | '/admin/login'
+    | '/admin/polls'
     | '/api/chat'
+    | '/admin/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -182,8 +242,13 @@ export interface RootRouteChildren {
   PollingRoute: typeof PollingRoute
   PrioritiesRoute: typeof PrioritiesRoute
   StoriesRoute: typeof StoriesRoute
+  AdminBusinessesRoute: typeof AdminBusinessesRoute
+  AdminContentRoute: typeof AdminContentRoute
+  AdminInboxRoute: typeof AdminInboxRoute
   AdminLoginRoute: typeof AdminLoginRoute
+  AdminPollsRoute: typeof AdminPollsRoute
   ApiChatRoute: typeof ApiChatRoute
+  AdminIndexRoute: typeof AdminIndexRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -258,6 +323,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/admin/': {
+      id: '/admin/'
+      path: '/admin'
+      fullPath: '/admin/'
+      preLoaderRoute: typeof AdminIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/chat': {
       id: '/api/chat'
       path: '/api/chat'
@@ -265,11 +337,39 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiChatRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/admin/polls': {
+      id: '/admin/polls'
+      path: '/admin/polls'
+      fullPath: '/admin/polls'
+      preLoaderRoute: typeof AdminPollsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/admin/login': {
       id: '/admin/login'
       path: '/admin/login'
       fullPath: '/admin/login'
       preLoaderRoute: typeof AdminLoginRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/admin/inbox': {
+      id: '/admin/inbox'
+      path: '/admin/inbox'
+      fullPath: '/admin/inbox'
+      preLoaderRoute: typeof AdminInboxRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/admin/content': {
+      id: '/admin/content'
+      path: '/admin/content'
+      fullPath: '/admin/content'
+      preLoaderRoute: typeof AdminContentRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/admin/businesses': {
+      id: '/admin/businesses'
+      path: '/admin/businesses'
+      fullPath: '/admin/businesses'
+      preLoaderRoute: typeof AdminBusinessesRouteImport
       parentRoute: typeof rootRouteImport
     }
   }
@@ -286,8 +386,13 @@ const rootRouteChildren: RootRouteChildren = {
   PollingRoute: PollingRoute,
   PrioritiesRoute: PrioritiesRoute,
   StoriesRoute: StoriesRoute,
+  AdminBusinessesRoute: AdminBusinessesRoute,
+  AdminContentRoute: AdminContentRoute,
+  AdminInboxRoute: AdminInboxRoute,
   AdminLoginRoute: AdminLoginRoute,
+  AdminPollsRoute: AdminPollsRoute,
   ApiChatRoute: ApiChatRoute,
+  AdminIndexRoute: AdminIndexRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
