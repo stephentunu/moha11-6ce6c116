@@ -39,10 +39,10 @@ function TikTokIcon({ className }: { className?: string }) {
 }
 
 const socials = [
-  { href: "https://facebook.com", label: "Facebook", icon: FacebookIcon, brand: "#1877F2", hoverText: "text-white" },
+  { href: "https://www.facebook.com/share/1FrmdgYUgU/", label: "Facebook", icon: FacebookIcon, brand: "#1877F2", hoverText: "text-white" },
   { href: "https://x.com", label: "X", icon: XIcon, brand: "#000000", hoverText: "text-white" },
   { href: "https://youtube.com", label: "YouTube", icon: YouTubeIcon, brand: "#FF0000", hoverText: "text-white" },
-  { href: "https://tiktok.com", label: "TikTok", icon: TikTokIcon, brand: "#000000", hoverText: "text-white" },
+  { href: "https://www.tiktok.com/@mohaofficial25?_r=1&_t=ZS-95vCdekmowU", label: "TikTok", icon: TikTokIcon, brand: "#000000", hoverText: "text-white" },
 ];
 
 const values = [
