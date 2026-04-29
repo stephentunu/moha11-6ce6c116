@@ -456,7 +456,9 @@ function RegistrationDialog({
   const update = <K extends keyof FormState>(key: K, value: FormState[K]) =>
     setForm((f) => ({ ...f, [key]: value }));
 
-  const handleFile = (e: ChangeEvent<HTMLInputElement>) => {
+  const [uploading, setUploading] = useState(false);
+
+  const handleFile = async (e: ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
     if (file.size > 5 * 1024 * 1024) {
@@ -465,9 +467,24 @@ function RegistrationDialog({
       });
       return;
     }
-    const reader = new FileReader();
-    reader.onload = () => update("imageUrl", String(reader.result));
-    reader.readAsDataURL(file);
+    setUploading(true);
+    try {
+      const ext = file.name.split(".").pop()?.toLowerCase() || "jpg";
+      const path = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`;
+      const { error: upErr } = await supabase.storage
+        .from("business-images")
+        .upload(path, file, { contentType: file.type, upsert: false });
+      if (upErr) throw upErr;
+      const { data } = supabase.storage.from("business-images").getPublicUrl(path);
+      update("imageUrl", data.publicUrl);
+    } catch (err) {
+      console.error(err);
+      toast.error("Could not upload image", {
+        description: "Please try again.",
+      });
+    } finally {
+      setUploading(false);
+    }
   };
 
   const validateStep = (s: number): string | null => {
