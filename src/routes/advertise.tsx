@@ -136,7 +136,12 @@ const EMPTY_FORM: FormState = {
 };
 
 function AdvertisePage() {
-  const [businesses, setBusinesses] = useState<Business[]>([]);
+  const [allBusinesses] = useBusinesses();
+  // Public marketplace only shows active listings
+  const businesses = useMemo(
+    () => allBusinesses.filter((b) => b.status === "active"),
+    [allBusinesses]
+  );
   const [search, setSearch] = useState("");
   const [wardFilter, setWardFilter] = useState<string>("all");
   const [categoryFilter, setCategoryFilter] = useState<string>("all");
@@ -157,11 +162,18 @@ function AdvertisePage() {
     });
   }, [businesses, search, wardFilter, categoryFilter]);
 
-  const handleAdd = (b: Business) => {
-    setBusinesses((prev) => [b, ...prev]);
-    toast.success("Your business is now live on the hub!", {
-      description: "Residents can now find and contact you on WhatsApp.",
-    });
+  const handleAdd = async (b: Business) => {
+    try {
+      await addBusiness(b);
+      toast.success("Your business is now live on the hub!", {
+        description: "Residents can now find and contact you on WhatsApp.",
+      });
+    } catch (err) {
+      console.error(err);
+      toast.error("Could not save your listing", {
+        description: "Please check your connection and try again.",
+      });
+    }
   };
 
   return (
