@@ -151,26 +151,115 @@ function useStore<T>(key: string, fallback: T): [T, (v: T | ((p: T) => T)) => vo
   return [value, update];
 }
 
-// ===== Businesses =====
-export function useBusinesses() {
-  return useStore<Business[]>(KEYS.businesses, []);
-}
-export function addBusiness(b: Omit<Business, "status" | "createdAt"> & Partial<Pick<Business, "status" | "createdAt">>) {
-  const list = read<Business[]>(KEYS.businesses, []);
-  const full: Business = {
-    status: "active",
-    createdAt: Date.now(),
-    ...b,
+// ===== Businesses (backed by Supabase) =====
+import { supabase } from "@/integrations/supabase/client";
+
+type BusinessRow = {
+  id: string;
+  owner_name: string;
+  business_name: string;
+  category: string;
+  ward: string;
+  location: string;
+  phone: string;
+  description: string;
+  image_url: string;
+  status: string;
+  created_at: string;
+};
+
+function rowToBusiness(r: BusinessRow): Business {
+  return {
+    id: r.id,
+    ownerName: r.owner_name,
+    businessName: r.business_name,
+    category: r.category,
+    ward: r.ward,
+    location: r.location,
+    phone: r.phone,
+    description: r.description,
+    imageUrl: r.image_url,
+    status: (r.status === "suspended" ? "suspended" : "active") as Business["status"],
+    createdAt: new Date(r.created_at).getTime(),
   };
-  write(KEYS.businesses, [full, ...list]);
 }
-export function deleteBusiness(id: string) {
-  const list = read<Business[]>(KEYS.businesses, []);
-  write(KEYS.businesses, list.filter((b) => b.id !== id));
+
+const BUSINESS_EVENT = "moha-businesses";
+
+function emitBusinessChange() {
+  if (!isBrowser()) return;
+  window.dispatchEvent(new CustomEvent(BUSINESS_EVENT));
 }
-export function setBusinessStatus(id: string, status: Business["status"]) {
-  const list = read<Business[]>(KEYS.businesses, []);
-  write(KEYS.businesses, list.map((b) => (b.id === id ? { ...b, status } : b)));
+
+export function useBusinesses(): [Business[], (v: Business[]) => void] {
+  const [list, setList] = useState<Business[]>([]);
+
+  useEffect(() => {
+    let cancelled = false;
+    const load = async () => {
+      const { data, error } = await supabase
+        .from("businesses" as never)
+        .select("*")
+        .order("created_at", { ascending: false });
+      if (!cancelled && !error && data) {
+        setList((data as unknown as BusinessRow[]).map(rowToBusiness));
+      }
+    };
+    load();
+    const handler = () => load();
+    window.addEventListener(BUSINESS_EVENT, handler);
+
+    // Realtime sync across devices
+    const channel = supabase
+      .channel("businesses-changes")
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "businesses" },
+        () => load()
+      )
+      .subscribe();
+
+    return () => {
+      cancelled = true;
+      window.removeEventListener(BUSINESS_EVENT, handler);
+      supabase.removeChannel(channel);
+    };
+  }, []);
+
+  return [list, setList];
+}
+
+export async function addBusiness(
+  b: Omit<Business, "status" | "createdAt"> & Partial<Pick<Business, "status" | "createdAt">>
+) {
+  const { error } = await supabase.from("businesses" as never).insert({
+    owner_name: b.ownerName,
+    business_name: b.businessName,
+    category: b.category,
+    ward: b.ward,
+    location: b.location,
+    phone: b.phone,
+    description: b.description ?? "",
+    image_url: b.imageUrl ?? "",
+    status: b.status ?? "active",
+  } as never);
+  if (error) throw error;
+  emitBusinessChange();
+}
+
+export async function deleteBusiness(id: string) {
+  const { error } = await supabase.from("businesses" as never).delete().eq("id", id);
+  if (error) throw error;
+  emitBusinessChange();
+}
+
+export async function setBusinessStatus(id: string, status: Business["status"]) {
+  const { error } = await supabase
+    .from("businesses" as never)
+    .update({ status } as never)
+    .eq("id", id);
+  if (error) throw error;
+  emitBusinessChange();
 }
 
 // ===== Polls =====

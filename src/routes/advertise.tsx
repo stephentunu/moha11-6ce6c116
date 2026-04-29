@@ -45,6 +45,7 @@ import {
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { useBusinesses, addBusiness, type Business as StoreBusiness } from "@/lib/admin-store";
+import { supabase } from "@/integrations/supabase/client";
 
 export const Route = createFileRoute("/advertise")({
   head: () => ({
@@ -136,7 +137,12 @@ const EMPTY_FORM: FormState = {
 };
 
 function AdvertisePage() {
-  const [businesses, setBusinesses] = useState<Business[]>([]);
+  const [allBusinesses] = useBusinesses();
+  // Public marketplace only shows active listings
+  const businesses = useMemo(
+    () => allBusinesses.filter((b) => b.status === "active"),
+    [allBusinesses]
+  );
   const [search, setSearch] = useState("");
   const [wardFilter, setWardFilter] = useState<string>("all");
   const [categoryFilter, setCategoryFilter] = useState<string>("all");
@@ -157,11 +163,18 @@ function AdvertisePage() {
     });
   }, [businesses, search, wardFilter, categoryFilter]);
 
-  const handleAdd = (b: Business) => {
-    setBusinesses((prev) => [b, ...prev]);
-    toast.success("Your business is now live on the hub!", {
-      description: "Residents can now find and contact you on WhatsApp.",
-    });
+  const handleAdd = async (b: Business) => {
+    try {
+      await addBusiness(b);
+      toast.success("Your business is now live on the hub!", {
+        description: "Residents can now find and contact you on WhatsApp.",
+      });
+    } catch (err) {
+      console.error(err);
+      toast.error("Could not save your listing", {
+        description: "Please check your connection and try again.",
+      });
+    }
   };
 
   return (
@@ -443,7 +456,9 @@ function RegistrationDialog({
   const update = <K extends keyof FormState>(key: K, value: FormState[K]) =>
     setForm((f) => ({ ...f, [key]: value }));
 
-  const handleFile = (e: ChangeEvent<HTMLInputElement>) => {
+  const [uploading, setUploading] = useState(false);
+
+  const handleFile = async (e: ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
     if (file.size > 5 * 1024 * 1024) {
@@ -452,9 +467,24 @@ function RegistrationDialog({
       });
       return;
     }
-    const reader = new FileReader();
-    reader.onload = () => update("imageUrl", String(reader.result));
-    reader.readAsDataURL(file);
+    setUploading(true);
+    try {
+      const ext = file.name.split(".").pop()?.toLowerCase() || "jpg";
+      const path = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`;
+      const { error: upErr } = await supabase.storage
+        .from("business-images")
+        .upload(path, file, { contentType: file.type, upsert: false });
+      if (upErr) throw upErr;
+      const { data } = supabase.storage.from("business-images").getPublicUrl(path);
+      update("imageUrl", data.publicUrl);
+    } catch (err) {
+      console.error(err);
+      toast.error("Could not upload image", {
+        description: "Please try again.",
+      });
+    } finally {
+      setUploading(false);
+    }
   };
 
   const validateStep = (s: number): string | null => {
@@ -719,10 +749,13 @@ function RegistrationDialog({
                     <button
                       type="button"
                       onClick={() => fileRef.current?.click()}
-                      className="w-full aspect-[4/3] rounded-xl border-2 border-dashed border-border hover:border-primary hover:bg-primary/5 transition-colors flex flex-col items-center justify-center gap-2 text-muted-foreground hover:text-primary"
+                      disabled={uploading}
+                      className="w-full aspect-[4/3] rounded-xl border-2 border-dashed border-border hover:border-primary hover:bg-primary/5 transition-colors flex flex-col items-center justify-center gap-2 text-muted-foreground hover:text-primary disabled:opacity-60 disabled:cursor-wait"
                     >
                       <Upload className="h-8 w-8" />
-                      <span className="font-semibold">Click to upload photo</span>
+                      <span className="font-semibold">
+                        {uploading ? "Uploading…" : "Click to upload photo"}
+                      </span>
                       <span className="text-xs">JPG or PNG, up to 5MB</span>
                     </button>
                   )}
