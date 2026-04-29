@@ -45,6 +45,7 @@ import {
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { useBusinesses, addBusiness, type Business as StoreBusiness } from "@/lib/admin-store";
+import { supabase } from "@/integrations/supabase/client";
 
 export const Route = createFileRoute("/advertise")({
   head: () => ({
