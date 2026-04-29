@@ -749,10 +749,13 @@ function RegistrationDialog({
                     <button
                       type="button"
                       onClick={() => fileRef.current?.click()}
-                      className="w-full aspect-[4/3] rounded-xl border-2 border-dashed border-border hover:border-primary hover:bg-primary/5 transition-colors flex flex-col items-center justify-center gap-2 text-muted-foreground hover:text-primary"
+                      disabled={uploading}
+                      className="w-full aspect-[4/3] rounded-xl border-2 border-dashed border-border hover:border-primary hover:bg-primary/5 transition-colors flex flex-col items-center justify-center gap-2 text-muted-foreground hover:text-primary disabled:opacity-60 disabled:cursor-wait"
                     >
                       <Upload className="h-8 w-8" />
-                      <span className="font-semibold">Click to upload photo</span>
+                      <span className="font-semibold">
+                        {uploading ? "Uploading…" : "Click to upload photo"}
+                      </span>
                       <span className="text-xs">JPG or PNG, up to 5MB</span>
                     </button>
                   )}
