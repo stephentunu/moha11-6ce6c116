@@ -14,6 +14,7 @@ const links = [
   { to: "/polling", label: "Polling" },
   { to: "/advertise", label: "Advertise With Us" },
   { to: "/ask", label: "Ask Me" },
+  { to: "/admin/login", label: "Admin" },
 ] as const;
 
 export function Navbar() {
