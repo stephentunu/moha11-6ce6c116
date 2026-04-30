@@ -44,11 +44,20 @@ export type SiteContent = {
 
 const KEYS = {
   businesses: "moha.businesses.v1",
-  polls: "moha.polls.v1",
+  polls: "moha.polls.v2",
   messages: "moha.messages.v1",
   content: "moha.content.v1",
   auth: "moha.admin.session.v1",
 } as const;
+
+export const MATHARE_WARDS = [
+  "Mabatini",
+  "Huruma",
+  "Hospital",
+  "Kiamaiko",
+  "Ngei",
+  "Mlango Kubwa",
+] as const;
 
 export const ADMIN_EMAIL = "admin2027@gmail.com";
 export const ADMIN_PASSWORD = "moha2027";
