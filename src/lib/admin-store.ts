@@ -297,14 +297,22 @@ export async function setBusinessStatus(id: string, status: Business["status"]) 
 export function usePolls() {
   return useStore<Poll[]>(KEYS.polls, DEFAULT_POLLS);
 }
-export function votePoll(pollId: string, optionId: string) {
+export function votePoll(pollId: string, optionId: string, ward?: string) {
   const list = read<Poll[]>(KEYS.polls, DEFAULT_POLLS);
   write(
     KEYS.polls,
     list.map((p) =>
       p.id !== pollId
         ? p
-        : { ...p, options: p.options.map((o) => (o.id === optionId ? { ...o, votes: o.votes + 1 } : o)) }
+        : {
+            ...p,
+            options: p.options.map((o) => {
+              if (o.id !== optionId) return o;
+              const byWard = { ...(o.votesByWard ?? {}) };
+              if (ward) byWard[ward] = (byWard[ward] ?? 0) + 1;
+              return { ...o, votes: o.votes + 1, votesByWard: byWard };
+            }),
+          }
     )
   );
 }
@@ -312,7 +320,11 @@ export function resetPoll(pollId: string) {
   const list = read<Poll[]>(KEYS.polls, DEFAULT_POLLS);
   write(
     KEYS.polls,
-    list.map((p) => (p.id !== pollId ? p : { ...p, options: p.options.map((o) => ({ ...o, votes: 0 })) }))
+    list.map((p) =>
+      p.id !== pollId
+        ? p
+        : { ...p, options: p.options.map((o) => ({ ...o, votes: 0, votesByWard: {} })) }
+    )
   );
 }
 
