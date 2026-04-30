@@ -115,6 +115,12 @@ export function AdminLayout({ children, title }: { children: ReactNode; title: s
                 <span className="hidden sm:inline text-xs text-muted-foreground">
                   Signed in as <span className="font-semibold text-foreground">admin2027</span>
                 </span>
+                <Button asChild variant="outline" size="sm">
+                  <Link to="/">
+                    <Home className="h-4 w-4" />
+                    <span className="hidden sm:inline ml-1">Home</span>
+                  </Link>
+                </Button>
                 <Button variant="outline" size="sm" onClick={handleLogout} className="lg:hidden">
                   <LogOut className="h-4 w-4" />
                 </Button>
