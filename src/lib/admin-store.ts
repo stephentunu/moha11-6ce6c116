@@ -93,6 +93,28 @@ const DEFAULT_POLLS: Poll[] = [
       { id: "d", label: "Adult literacy classes", votes: 0 },
     ],
   },
+  {
+    id: "p4",
+    question: "How strongly do you agree with Moha's initiatives & projects in Mathare?",
+    options: [
+      { id: "a", label: "Strongly agree", votes: 0 },
+      { id: "b", label: "Agree", votes: 0 },
+      { id: "c", label: "Neutral", votes: 0 },
+      { id: "d", label: "Disagree", votes: 0 },
+      { id: "e", label: "Strongly disagree", votes: 0 },
+    ],
+  },
+  {
+    id: "p5",
+    question: "Is Moha the best candidate for Mathare MP in 2027?",
+    options: [
+      { id: "a", label: "Yes — he's the best option", votes: 0 },
+      { id: "b", label: "Likely yes", votes: 0 },
+      { id: "c", label: "Undecided", votes: 0 },
+      { id: "d", label: "Likely no", votes: 0 },
+      { id: "e", label: "No", votes: 0 },
+    ],
+  },
 ];
 
 const DEFAULT_CONTENT: SiteContent = {
