@@ -90,7 +90,13 @@ export function AdminLayout({ children, title }: { children: ReactNode; title: s
               );
             })}
           </nav>
-          <div className="p-3 border-t border-primary-foreground/10">
+          <div className="p-3 border-t border-primary-foreground/10 space-y-1">
+            <Link
+              to="/"
+              className="w-full flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm font-semibold text-primary-foreground/80 hover:bg-primary-foreground/10 hover:text-primary-foreground transition-colors"
+            >
+              <Home className="h-4 w-4" /> Back to site
+            </Link>
             <button
               onClick={handleLogout}
               className="w-full flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm font-semibold text-primary-foreground/80 hover:bg-primary-foreground/10 hover:text-primary-foreground transition-colors"
