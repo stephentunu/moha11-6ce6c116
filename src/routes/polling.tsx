@@ -1,13 +1,20 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
 import { motion } from "framer-motion";
-import { Vote, TrendingUp, CheckCircle2 } from "lucide-react";
+import { Vote, TrendingUp, CheckCircle2, MapPin } from "lucide-react";
 import { PageHero } from "@/components/PageHero";
 import { Button } from "@/components/ui/button";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { Toaster } from "@/components/ui/sonner";
-import { usePolls, votePoll } from "@/lib/admin-store";
+import { usePolls, votePoll, MATHARE_WARDS } from "@/lib/admin-store";
 
 export const Route = createFileRoute("/polling")({
   head: () => ({
@@ -15,12 +22,13 @@ export const Route = createFileRoute("/polling")({
       { title: "Community Polling — Moha for Mathare" },
       {
         name: "description",
-        content: "Vote on the issues that matter most to Mathare. Your voice shapes the manifesto.",
+        content:
+          "Select your Mathare ward and vote on Moha's initiatives, projects and 2027 MP candidacy. Your voice shapes the manifesto.",
       },
       { property: "og:title", content: "Community Polling — Moha for Mathare" },
       {
         property: "og:description",
-        content: "Vote on Mathare's biggest issues — your voice counts.",
+        content: "Pick your ward and cast your vote — every voice from Mathare counts.",
       },
     ],
   }),
@@ -29,13 +37,18 @@ export const Route = createFileRoute("/polling")({
 
 function PollingPage() {
   const [polls] = usePolls();
+  const [ward, setWard] = useState<string>("");
   const [voted, setVoted] = useState<Record<string, string>>({});
 
   const handleVote = (pollId: string, optionId: string) => {
+    if (!ward) {
+      toast.error("Please select your ward before voting.");
+      return;
+    }
     if (voted[pollId]) return;
-    votePoll(pollId, optionId);
+    votePoll(pollId, optionId, ward);
     setVoted((v) => ({ ...v, [pollId]: optionId }));
-    toast.success("Asante! Your vote has been recorded.");
+    toast.success(`Asante! Your vote from ${ward} ward has been recorded.`);
   };
 
   return (
@@ -44,14 +57,49 @@ function PollingPage() {
       <PageHero
         eyebrow="Your Voice"
         title="Vote on what matters"
-        subtitle="Real-time community polls. Tell Moha what to prioritize next — every vote shapes the action plan."
+        subtitle="Pick your Mathare ward, then tell Moha where you stand on his initiatives, projects and 2027 MP bid. Every vote shapes the action plan."
       />
 
       <section className="py-20 bg-background">
         <div className="container mx-auto px-4 lg:px-8 max-w-4xl">
+          {/* Ward selector */}
+          <div className="bg-card border-2 border-primary/20 rounded-2xl p-6 md:p-8 mb-10 shadow-elegant">
+            <div className="flex items-start gap-4">
+              <div className="h-11 w-11 rounded-xl bg-gold/15 flex items-center justify-center shrink-0">
+                <MapPin className="h-5 w-5 text-gold" />
+              </div>
+              <div className="flex-1">
+                <h2 className="text-lg md:text-xl font-display font-bold text-foreground">
+                  Step 1 — Select your ward
+                </h2>
+                <p className="text-sm text-muted-foreground mt-1 mb-4">
+                  We use this only to break results down by ward. One vote per question per device.
+                </p>
+                <Select value={ward} onValueChange={setWard}>
+                  <SelectTrigger className="w-full md:max-w-sm">
+                    <SelectValue placeholder="Choose your Mathare ward" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {MATHARE_WARDS.map((w) => (
+                      <SelectItem key={w} value={w}>
+                        {w}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                {ward && (
+                  <p className="mt-3 text-xs font-semibold text-gold">
+                    ✓ Voting as a resident of {ward} ward
+                  </p>
+                )}
+              </div>
+            </div>
+          </div>
+
           <div className="space-y-8">
             {polls.map((poll, i) => {
               const userVote = voted[poll.id];
+              const locked = !ward;
 
               return (
                 <motion.div
@@ -81,17 +129,18 @@ function PollingPage() {
                     {poll.options.map((opt) => {
                       const isUserChoice = userVote === opt.id;
                       const voteCast = !!userVote;
+                      const disabled = locked || voteCast;
                       return (
                         <button
                           key={opt.id}
                           onClick={() => handleVote(poll.id, opt.id)}
-                          disabled={voteCast}
+                          disabled={disabled}
                           className={cn(
                             "w-full text-left relative rounded-xl border-2 transition-all overflow-hidden",
-                            voteCast
-                              ? "border-border cursor-default opacity-90"
+                            disabled && !isUserChoice
+                              ? "border-border cursor-not-allowed opacity-60"
                               : "border-border hover:border-primary hover:bg-primary/5 cursor-pointer",
-                            isUserChoice && "border-gold bg-gold/5"
+                            isUserChoice && "border-gold bg-gold/5 opacity-100"
                           )}
                         >
                           <div className="relative px-5 py-4 flex items-center justify-between gap-3">
@@ -107,7 +156,11 @@ function PollingPage() {
 
                   {userVote ? (
                     <p className="mt-4 text-xs font-semibold text-gold">
-                      ✓ Asante! Your vote has been recorded privately.
+                      ✓ Asante! Your vote from {ward} ward has been recorded privately.
+                    </p>
+                  ) : locked ? (
+                    <p className="mt-4 text-xs text-muted-foreground">
+                      Select your ward above to unlock voting.
                     </p>
                   ) : (
                     <p className="mt-4 text-xs text-muted-foreground">
