@@ -8,6 +8,7 @@ import {
   Inbox,
   LogOut,
   ShieldCheck,
+  Home,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -89,7 +90,13 @@ export function AdminLayout({ children, title }: { children: ReactNode; title: s
               );
             })}
           </nav>
-          <div className="p-3 border-t border-primary-foreground/10">
+          <div className="p-3 border-t border-primary-foreground/10 space-y-1">
+            <Link
+              to="/"
+              className="w-full flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm font-semibold text-primary-foreground/80 hover:bg-primary-foreground/10 hover:text-primary-foreground transition-colors"
+            >
+              <Home className="h-4 w-4" /> Back to site
+            </Link>
             <button
               onClick={handleLogout}
               className="w-full flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm font-semibold text-primary-foreground/80 hover:bg-primary-foreground/10 hover:text-primary-foreground transition-colors"
@@ -108,6 +115,12 @@ export function AdminLayout({ children, title }: { children: ReactNode; title: s
                 <span className="hidden sm:inline text-xs text-muted-foreground">
                   Signed in as <span className="font-semibold text-foreground">admin2027</span>
                 </span>
+                <Button asChild variant="outline" size="sm">
+                  <Link to="/">
+                    <Home className="h-4 w-4" />
+                    <span className="hidden sm:inline ml-1">Home</span>
+                  </Link>
+                </Button>
                 <Button variant="outline" size="sm" onClick={handleLogout} className="lg:hidden">
                   <LogOut className="h-4 w-4" />
                 </Button>
