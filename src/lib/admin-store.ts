@@ -45,10 +45,19 @@ export type SiteContent = {
 const KEYS = {
   businesses: "moha.businesses.v1",
   polls: "moha.polls.v2",
+  pollVotes: "moha.pollVotes.v1",
   messages: "moha.messages.v1",
   content: "moha.content.v1",
   auth: "moha.admin.session.v1",
 } as const;
+
+export type PollVote = {
+  id: string;
+  pollId: string;
+  optionId: string;
+  ward?: string;
+  createdAt: number;
+};
 
 export const MATHARE_WARDS = [
   "Mabatini",
