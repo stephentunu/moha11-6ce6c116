@@ -17,7 +17,7 @@ export type Business = {
   createdAt: number;
 };
 
-export type PollOption = { id: string; label: string; votes: number };
+export type PollOption = { id: string; label: string; votes: number; votesByWard?: Record<string, number> };
 export type Poll = { id: string; question: string; options: PollOption[] };
 
 export type Message = {
@@ -44,11 +44,20 @@ export type SiteContent = {
 
 const KEYS = {
   businesses: "moha.businesses.v1",
-  polls: "moha.polls.v1",
+  polls: "moha.polls.v2",
   messages: "moha.messages.v1",
   content: "moha.content.v1",
   auth: "moha.admin.session.v1",
 } as const;
+
+export const MATHARE_WARDS = [
+  "Mabatini",
+  "Huruma",
+  "Hospital",
+  "Kiamaiko",
+  "Ngei",
+  "Mlango Kubwa",
+] as const;
 
 export const ADMIN_EMAIL = "admin2027@gmail.com";
 export const ADMIN_PASSWORD = "moha2027";
@@ -82,6 +91,28 @@ const DEFAULT_POLLS: Poll[] = [
       { id: "b", label: "Digital learning labs", votes: 0 },
       { id: "c", label: "TVET scholarships", votes: 0 },
       { id: "d", label: "Adult literacy classes", votes: 0 },
+    ],
+  },
+  {
+    id: "p4",
+    question: "How strongly do you agree with Moha's initiatives & projects in Mathare?",
+    options: [
+      { id: "a", label: "Strongly agree", votes: 0 },
+      { id: "b", label: "Agree", votes: 0 },
+      { id: "c", label: "Neutral", votes: 0 },
+      { id: "d", label: "Disagree", votes: 0 },
+      { id: "e", label: "Strongly disagree", votes: 0 },
+    ],
+  },
+  {
+    id: "p5",
+    question: "Is Moha the best candidate for Mathare MP in 2027?",
+    options: [
+      { id: "a", label: "Yes — he's the best option", votes: 0 },
+      { id: "b", label: "Likely yes", votes: 0 },
+      { id: "c", label: "Undecided", votes: 0 },
+      { id: "d", label: "Likely no", votes: 0 },
+      { id: "e", label: "No", votes: 0 },
     ],
   },
 ];
@@ -266,14 +297,22 @@ export async function setBusinessStatus(id: string, status: Business["status"]) 
 export function usePolls() {
   return useStore<Poll[]>(KEYS.polls, DEFAULT_POLLS);
 }
-export function votePoll(pollId: string, optionId: string) {
+export function votePoll(pollId: string, optionId: string, ward?: string) {
   const list = read<Poll[]>(KEYS.polls, DEFAULT_POLLS);
   write(
     KEYS.polls,
     list.map((p) =>
       p.id !== pollId
         ? p
-        : { ...p, options: p.options.map((o) => (o.id === optionId ? { ...o, votes: o.votes + 1 } : o)) }
+        : {
+            ...p,
+            options: p.options.map((o) => {
+              if (o.id !== optionId) return o;
+              const byWard = { ...(o.votesByWard ?? {}) };
+              if (ward) byWard[ward] = (byWard[ward] ?? 0) + 1;
+              return { ...o, votes: o.votes + 1, votesByWard: byWard };
+            }),
+          }
     )
   );
 }
@@ -281,7 +320,11 @@ export function resetPoll(pollId: string) {
   const list = read<Poll[]>(KEYS.polls, DEFAULT_POLLS);
   write(
     KEYS.polls,
-    list.map((p) => (p.id !== pollId ? p : { ...p, options: p.options.map((o) => ({ ...o, votes: 0 })) }))
+    list.map((p) =>
+      p.id !== pollId
+        ? p
+        : { ...p, options: p.options.map((o) => ({ ...o, votes: 0, votesByWard: {} })) }
+    )
   );
 }
 
