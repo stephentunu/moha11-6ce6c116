@@ -351,17 +351,6 @@ export function resetPoll(pollId: string) {
   const log = read<PollVote[]>(KEYS.pollVotes, []);
   write(KEYS.pollVotes, log.filter((v) => v.pollId !== pollId));
 }
-export function resetPoll(pollId: string) {
-  const list = read<Poll[]>(KEYS.polls, DEFAULT_POLLS);
-  write(
-    KEYS.polls,
-    list.map((p) =>
-      p.id !== pollId
-        ? p
-        : { ...p, options: p.options.map((o) => ({ ...o, votes: 0, votesByWard: {} })) }
-    )
-  );
-}
 
 // ===== Messages =====
 export function useMessages() {
