@@ -1,12 +1,90 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { motion } from "framer-motion";
-import { HandHeart, GraduationCap, Accessibility, ArrowRight } from "lucide-react";
+import {
+  HandHeart,
+  GraduationCap,
+  Accessibility,
+  ArrowRight,
+  Trophy,
+  Sparkles,
+  BookOpen,
+  Store,
+  Baby,
+  Users,
+} from "lucide-react";
 import { PageHero } from "@/components/PageHero";
 import { Button } from "@/components/ui/button";
 import { useContent } from "@/lib/admin-store";
 import vulnerableImg from "@/assets/moha/donation3.jpeg";
 import bursaryImg from "@/assets/moha/bursary1.jpeg";
 import pwdImg from "@/assets/moha/moha30.jpeg";
+
+// Youth Empowerment
+import youth from "@/assets/moha/gallery/youth.jpeg";
+import youth1 from "@/assets/moha/gallery/youth1.jpeg";
+import empowerment from "@/assets/moha/gallery/empowerment.jpeg";
+import teamMoha from "@/assets/moha/gallery/team-moha.jpeg";
+import teamMoha1 from "@/assets/moha/gallery/team-moha1.jpeg";
+import teamMoha2 from "@/assets/moha/gallery/team-moha2.jpeg";
+import teamMohah from "@/assets/moha/gallery/team-mohah.jpeg";
+import teamMoh from "@/assets/moha/gallery/team-moh.jpeg";
+import team1 from "@/assets/moha/gallery/team1.jpeg";
+import activities from "@/assets/moha/gallery/activities.jpeg";
+import gifts from "@/assets/moha/gallery/gifts.jpeg";
+import five from "@/assets/moha/gallery/five.jpeg";
+import five1 from "@/assets/moha/gallery/five1.jpeg";
+import five2 from "@/assets/moha/gallery/five2.jpeg";
+
+// Sports & Talent
+import soccer from "@/assets/moha/gallery/soccer.jpeg";
+import soccer1 from "@/assets/moha/gallery/soccer1.jpeg";
+import soccer2 from "@/assets/moha/gallery/soccer2.jpeg";
+import soccer3 from "@/assets/moha/gallery/soccer3.jpeg";
+import football from "@/assets/moha/gallery/football.jpeg";
+import football1 from "@/assets/moha/gallery/football1.jpeg";
+import football2 from "@/assets/moha/gallery/football2.jpeg";
+import match from "@/assets/moha/gallery/match.jpeg";
+import medals from "@/assets/moha/gallery/medals.jpeg";
+import prizes from "@/assets/moha/gallery/prizes.jpeg";
+import fans from "@/assets/moha/gallery/fans.jpeg";
+import fans1 from "@/assets/moha/gallery/fans1.jpeg";
+import fans2 from "@/assets/moha/gallery/fans2.jpeg";
+import fans3 from "@/assets/moha/gallery/fans3.jpeg";
+import talent from "@/assets/moha/gallery/talent.jpeg";
+import talents from "@/assets/moha/gallery/talents.jpeg";
+import talents1 from "@/assets/moha/gallery/talents1.jpeg";
+import talents2 from "@/assets/moha/gallery/talents2.jpeg";
+import talentedKids from "@/assets/moha/gallery/talented-kids.jpeg";
+import talentedKids1 from "@/assets/moha/gallery/talented-kids1.jpeg";
+
+// Education supplies
+import books from "@/assets/moha/gallery/books.jpeg";
+import books1 from "@/assets/moha/gallery/books1.jpeg";
+import books3 from "@/assets/moha/gallery/books3.jpeg";
+import books4 from "@/assets/moha/gallery/books4.jpeg";
+import books5 from "@/assets/moha/gallery/books5.jpeg";
+import books7 from "@/assets/moha/gallery/books7.jpeg";
+import books8 from "@/assets/moha/gallery/books8.jpeg";
+import books9 from "@/assets/moha/gallery/books9.jpeg";
+import book2 from "@/assets/moha/gallery/book2.jpeg";
+import stationery from "@/assets/moha/gallery/stationery.jpeg";
+import stationery1 from "@/assets/moha/gallery/stationery1.jpeg";
+import stationery2 from "@/assets/moha/gallery/stationery2.jpeg";
+import stationery3 from "@/assets/moha/gallery/stationery3.jpeg";
+import stationery4 from "@/assets/moha/gallery/stationery4.jpeg";
+import school1 from "@/assets/moha/gallery/school1.jpeg";
+import students from "@/assets/moha/gallery/students.jpeg";
+import students1 from "@/assets/moha/gallery/students1.jpeg";
+import education3 from "@/assets/moha/gallery/education3.jpeg";
+
+// Local business support
+import businessesImg from "@/assets/moha/gallery/businesses.jpeg";
+
+// ECD / children
+import ecd from "@/assets/moha/gallery/ecd.jpeg";
+import ecd1 from "@/assets/moha/gallery/ecd1.jpeg";
+import ecd2 from "@/assets/moha/gallery/ecd2.jpeg";
+import children from "@/assets/moha/gallery/children.jpeg";
 
 export const Route = createFileRoute("/foundations")({
   head: () => ({
@@ -15,19 +93,30 @@ export const Route = createFileRoute("/foundations")({
       {
         name: "description",
         content:
-          "Moha's foundations supporting vulnerable groups, bursaries, and people with disabilities in Mathare.",
+          "Moha's foundations: vulnerable groups, bursaries, PWDs, youth empowerment, sports & talent, school supplies, business support, and early childhood care in Mathare.",
       },
       { property: "og:title", content: "Foundations — Moha for Mathare" },
       {
         property: "og:description",
-        content: "Vulnerable groups, bursaries, PWDs — service in action.",
+        content: "Service in action across Mathare — youth, sports, education, business and care.",
       },
     ],
   }),
   component: FoundationsPage,
 });
 
-const foundations = [
+type Foundation = {
+  icon: typeof HandHeart;
+  title: string;
+  pill: string;
+  desc: string;
+  impact: string;
+  img: string;
+  points: string[];
+  gallery: string[];
+};
+
+const foundations: Foundation[] = [
   {
     icon: HandHeart,
     title: "Vulnerable Groups",
@@ -41,6 +130,7 @@ const foundations = [
       "Mental health & trauma counseling",
       "Legal aid for GBV survivors",
     ],
+    gallery: [vulnerableImg, gifts, activities],
   },
   {
     icon: GraduationCap,
@@ -55,6 +145,7 @@ const foundations = [
       "School uniforms & textbooks",
       "Boarding & transport stipends",
     ],
+    gallery: [bursaryImg, students, students1, school1, education3],
   },
   {
     icon: Accessibility,
@@ -69,6 +160,92 @@ const foundations = [
       "Accessible public spaces & ramps",
       "Sign-language interpreters at events",
     ],
+    gallery: [pwdImg],
+  },
+  {
+    icon: Sparkles,
+    title: "Youth Empowerment",
+    pill: "Team Moha on the Ground",
+    desc: "Mentorship circles, skills bootcamps, and community drives that put Mathare's youth at the centre of every action — because the future is already here.",
+    impact: "5,000+ youth mobilised",
+    img: empowerment,
+    points: [
+      "Door-to-door community mobilisation",
+      "Leadership & mentorship circles",
+      "Civic education and voter awareness",
+      "Volunteer & internship pipeline",
+    ],
+    gallery: [
+      youth, youth1, empowerment, teamMoha, teamMoha1, teamMoha2,
+      teamMohah, teamMoh, team1, activities, five, five1, five2,
+    ],
+  },
+  {
+    icon: Trophy,
+    title: "Sports & Talent",
+    pill: "Mathare Plays",
+    desc: "From dusty pitches to medal podiums — Moha sponsors tournaments, kits, prizes, and cheers loudest when Mathare's talented kids take the stage.",
+    impact: "40+ tournaments backed",
+    img: soccer,
+    points: [
+      "Community football leagues & tournaments",
+      "Boots, jerseys & training equipment",
+      "Trophies, medals and cash prizes",
+      "Talent scouting and academy linkages",
+    ],
+    gallery: [
+      soccer, soccer1, soccer2, soccer3, football, football1, football2,
+      match, medals, prizes, fans, fans1, fans2, fans3,
+      talent, talents, talents1, talents2, talentedKids, talentedKids1,
+    ],
+  },
+  {
+    icon: BookOpen,
+    title: "School Supplies",
+    pill: "Books, Pens & More",
+    desc: "Textbooks, exercise books, pens, rulers and full stationery kits delivered straight to learners — so the only thing standing between a child and class is their dream.",
+    impact: "20,000+ supplies distributed",
+    img: books,
+    points: [
+      "Textbooks for primary & secondary learners",
+      "Exercise books, pens, pencils & rulers",
+      "Full back-to-school stationery kits",
+      "School-wide library top-ups",
+    ],
+    gallery: [
+      books, books1, books3, books4, books5, books7, books8, books9, book2,
+      stationery, stationery1, stationery2, stationery3, stationery4,
+    ],
+  },
+  {
+    icon: Store,
+    title: "Local Business Support",
+    pill: "Hustlers First",
+    desc: "Moha's team walks the markets — from mama mbogas to boda riders — backing the small businesses that keep Mathare moving.",
+    impact: "1,800+ hustlers supported",
+    img: businessesImg,
+    points: [
+      "Capital boosts for mama mbogas & kiosks",
+      "Equipment & stock support",
+      "Visibility on the Mathare Business Hub",
+      "Mentorship for youth-led startups",
+    ],
+    gallery: [businessesImg],
+  },
+  {
+    icon: Baby,
+    title: "Early Childhood Care",
+    pill: "ECD & Kids",
+    desc: "Safe, nurturing learning spaces for our youngest — because the journey to a transformed Mathare begins in the ECD classroom.",
+    impact: "30+ ECD centres reached",
+    img: ecd,
+    points: [
+      "ECD classroom upgrades & supplies",
+      "Learning materials and play kits",
+      "Caregiver & teacher support",
+      "Nutrition support for young learners",
+    ],
+    gallery: [ecd, ecd1, ecd2, children],
   },
 ];
 
@@ -84,7 +261,7 @@ function FoundationsPage() {
       />
 
       <section className="py-20 bg-background">
-        <div className="container mx-auto px-4 lg:px-8 space-y-16">
+        <div className="container mx-auto px-4 lg:px-8 space-y-24">
           {foundations.map((f, i) => (
             <motion.div
               key={f.title}
@@ -124,9 +301,7 @@ function FoundationsPage() {
                 <h2 className="text-4xl md:text-5xl font-display font-bold text-foreground text-balance">
                   {f.title}
                 </h2>
-                <p className="mt-4 text-lg text-muted-foreground leading-relaxed">
-                  {f.desc}
-                </p>
+                <p className="mt-4 text-lg text-muted-foreground leading-relaxed">{f.desc}</p>
                 <ul className="mt-6 grid sm:grid-cols-2 gap-3">
                   {f.points.map((p) => (
                     <li
@@ -139,6 +314,32 @@ function FoundationsPage() {
                   ))}
                 </ul>
               </div>
+
+              {/* Gallery strip — full width below the row */}
+              {f.gallery.length > 1 && (
+                <div className="lg:col-span-12 mt-2">
+                  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3">
+                    {f.gallery.map((img, idx) => (
+                      <motion.div
+                        key={idx}
+                        initial={{ opacity: 0, scale: 0.95 }}
+                        whileInView={{ opacity: 1, scale: 1 }}
+                        viewport={{ once: true, margin: "-50px" }}
+                        transition={{ duration: 0.4, delay: idx * 0.04 }}
+                        className="group relative aspect-square overflow-hidden rounded-xl shadow-elegant"
+                      >
+                        <img
+                          src={img}
+                          alt={`${f.title} ${idx + 1}`}
+                          loading="lazy"
+                          className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700"
+                        />
+                        <div className="absolute inset-0 bg-gradient-to-t from-primary/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+                      </motion.div>
+                    ))}
+                  </div>
+                </div>
+              )}
             </motion.div>
           ))}
 
@@ -148,6 +349,37 @@ function FoundationsPage() {
                 Power the Foundations <ArrowRight className="h-5 w-5" />
               </Link>
             </Button>
+          </div>
+        </div>
+      </section>
+
+      {/* Team Moha mosaic */}
+      <section className="py-20 bg-muted/30">
+        <div className="container mx-auto px-4 lg:px-8">
+          <div className="max-w-3xl mx-auto text-center mb-12">
+            <span className="inline-block px-4 py-1.5 mb-4 text-xs font-bold tracking-widest uppercase text-primary bg-primary/10 rounded-full border border-primary/20">
+              <Users className="inline h-3.5 w-3.5 mr-1" /> Team Moha
+            </span>
+            <h2 className="text-4xl md:text-5xl font-display font-bold text-foreground">
+              The hands behind every delivery
+            </h2>
+            <p className="mt-4 text-muted-foreground">
+              Volunteers, organisers and friends of Mathare — showing up week after week.
+            </p>
+          </div>
+          <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-3">
+            {[teamMoha, teamMoha1, teamMoha2, teamMohah, teamMoh, team1, activities, gifts, five, five1, five2, empowerment].map((img, i) => (
+              <motion.div
+                key={i}
+                initial={{ opacity: 0, scale: 0.95 }}
+                whileInView={{ opacity: 1, scale: 1 }}
+                viewport={{ once: true }}
+                transition={{ duration: 0.4, delay: i * 0.03 }}
+                className="group relative aspect-square overflow-hidden rounded-xl shadow-elegant"
+              >
+                <img src={img} alt={`Team Moha ${i + 1}`} loading="lazy" className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" />
+              </motion.div>
+            ))}
           </div>
         </div>
       </section>
