@@ -17,7 +17,7 @@ export type Business = {
   createdAt: number;
 };
 
-export type PollOption = { id: string; label: string; votes: number };
+export type PollOption = { id: string; label: string; votes: number; votesByWard?: Record<string, number> };
 export type Poll = { id: string; question: string; options: PollOption[] };
 
 export type Message = {
