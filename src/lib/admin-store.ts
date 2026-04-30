@@ -306,6 +306,9 @@ export async function setBusinessStatus(id: string, status: Business["status"]) 
 export function usePolls() {
   return useStore<Poll[]>(KEYS.polls, DEFAULT_POLLS);
 }
+export function usePollVotes() {
+  return useStore<PollVote[]>(KEYS.pollVotes, []);
+}
 export function votePoll(pollId: string, optionId: string, ward?: string) {
   const list = read<Poll[]>(KEYS.polls, DEFAULT_POLLS);
   write(
@@ -324,6 +327,29 @@ export function votePoll(pollId: string, optionId: string, ward?: string) {
           }
     )
   );
+  // Append vote log entry with timestamp
+  const log = read<PollVote[]>(KEYS.pollVotes, []);
+  const entry: PollVote = {
+    id: `v-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+    pollId,
+    optionId,
+    ward,
+    createdAt: Date.now(),
+  };
+  write(KEYS.pollVotes, [entry, ...log].slice(0, 1000));
+}
+export function resetPoll(pollId: string) {
+  const list = read<Poll[]>(KEYS.polls, DEFAULT_POLLS);
+  write(
+    KEYS.polls,
+    list.map((p) =>
+      p.id !== pollId
+        ? p
+        : { ...p, options: p.options.map((o) => ({ ...o, votes: 0, votesByWard: {} })) }
+    )
+  );
+  const log = read<PollVote[]>(KEYS.pollVotes, []);
+  write(KEYS.pollVotes, log.filter((v) => v.pollId !== pollId));
 }
 export function resetPoll(pollId: string) {
   const list = read<Poll[]>(KEYS.polls, DEFAULT_POLLS);
