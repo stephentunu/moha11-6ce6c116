@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useMemo } from "react";
-import { RotateCcw, Vote, TrendingUp } from "lucide-react";
+import { RotateCcw, Vote, TrendingUp, Clock } from "lucide-react";
 import {
   ResponsiveContainer,
   BarChart,
@@ -14,7 +14,7 @@ import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { Toaster } from "@/components/ui/sonner";
 import { AdminLayout } from "@/components/AdminLayout";
-import { usePolls, resetPoll } from "@/lib/admin-store";
+import { usePolls, usePollVotes, resetPoll } from "@/lib/admin-store";
 
 export const Route = createFileRoute("/admin/polls")({
   head: () => ({
