@@ -18,6 +18,10 @@ import { useContent } from "@/lib/admin-store";
 import vulnerableImg from "@/assets/moha/donation3.jpeg";
 import bursaryImg from "@/assets/moha/bursary1.jpeg";
 import pwdImg from "@/assets/moha/moha30.jpeg";
+import pwd1 from "@/assets/moha/gallery/pwd1.jpeg";
+import pwd2 from "@/assets/moha/gallery/pwd2.jpeg";
+import pwd3 from "@/assets/moha/gallery/pwd3.jpeg";
+import pwd4 from "@/assets/moha/gallery/pwd4.jpeg";
 
 // Youth Empowerment
 import youth from "@/assets/moha/gallery/youth.jpeg";
@@ -160,7 +164,7 @@ const foundations: Foundation[] = [
       "Accessible public spaces & ramps",
       "Sign-language interpreters at events",
     ],
-    gallery: [pwdImg],
+    gallery: [pwdImg, pwd1, pwd2, pwd3, pwd4],
   },
   {
     icon: Sparkles,
