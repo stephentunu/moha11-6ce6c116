@@ -9,6 +9,7 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as UnsubscribeRouteImport } from './routes/unsubscribe'
 import { Route as StoriesRouteImport } from './routes/stories'
 import { Route as PrioritiesRouteImport } from './routes/priorities'
 import { Route as PollingRouteImport } from './routes/polling'
@@ -29,6 +30,11 @@ import { Route as AdminInboxRouteImport } from './routes/admin.inbox'
 import { Route as AdminContentRouteImport } from './routes/admin.content'
 import { Route as AdminBusinessesRouteImport } from './routes/admin.businesses'
 
+const UnsubscribeRoute = UnsubscribeRouteImport.update({
+  id: '/unsubscribe',
+  path: '/unsubscribe',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const StoriesRoute = StoriesRouteImport.update({
   id: '/stories',
   path: '/stories',
@@ -136,6 +142,7 @@ export interface FileRoutesByFullPath {
   '/polling': typeof PollingRoute
   '/priorities': typeof PrioritiesRoute
   '/stories': typeof StoriesRoute
+  '/unsubscribe': typeof UnsubscribeRoute
   '/admin/businesses': typeof AdminBusinessesRoute
   '/admin/content': typeof AdminContentRoute
   '/admin/inbox': typeof AdminInboxRoute
@@ -157,6 +164,7 @@ export interface FileRoutesByTo {
   '/polling': typeof PollingRoute
   '/priorities': typeof PrioritiesRoute
   '/stories': typeof StoriesRoute
+  '/unsubscribe': typeof UnsubscribeRoute
   '/admin/businesses': typeof AdminBusinessesRoute
   '/admin/content': typeof AdminContentRoute
   '/admin/inbox': typeof AdminInboxRoute
@@ -179,6 +187,7 @@ export interface FileRoutesById {
   '/polling': typeof PollingRoute
   '/priorities': typeof PrioritiesRoute
   '/stories': typeof StoriesRoute
+  '/unsubscribe': typeof UnsubscribeRoute
   '/admin/businesses': typeof AdminBusinessesRoute
   '/admin/content': typeof AdminContentRoute
   '/admin/inbox': typeof AdminInboxRoute
@@ -202,6 +211,7 @@ export interface FileRouteTypes {
     | '/polling'
     | '/priorities'
     | '/stories'
+    | '/unsubscribe'
     | '/admin/businesses'
     | '/admin/content'
     | '/admin/inbox'
@@ -223,6 +233,7 @@ export interface FileRouteTypes {
     | '/polling'
     | '/priorities'
     | '/stories'
+    | '/unsubscribe'
     | '/admin/businesses'
     | '/admin/content'
     | '/admin/inbox'
@@ -244,6 +255,7 @@ export interface FileRouteTypes {
     | '/polling'
     | '/priorities'
     | '/stories'
+    | '/unsubscribe'
     | '/admin/businesses'
     | '/admin/content'
     | '/admin/inbox'
@@ -266,6 +278,7 @@ export interface RootRouteChildren {
   PollingRoute: typeof PollingRoute
   PrioritiesRoute: typeof PrioritiesRoute
   StoriesRoute: typeof StoriesRoute
+  UnsubscribeRoute: typeof UnsubscribeRoute
   AdminBusinessesRoute: typeof AdminBusinessesRoute
   AdminContentRoute: typeof AdminContentRoute
   AdminInboxRoute: typeof AdminInboxRoute
@@ -279,6 +292,13 @@ export interface RootRouteChildren {
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/unsubscribe': {
+      id: '/unsubscribe'
+      path: '/unsubscribe'
+      fullPath: '/unsubscribe'
+      preLoaderRoute: typeof UnsubscribeRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/stories': {
       id: '/stories'
       path: '/stories'
@@ -426,6 +446,7 @@ const rootRouteChildren: RootRouteChildren = {
   PollingRoute: PollingRoute,
   PrioritiesRoute: PrioritiesRoute,
   StoriesRoute: StoriesRoute,
+  UnsubscribeRoute: UnsubscribeRoute,
   AdminBusinessesRoute: AdminBusinessesRoute,
   AdminContentRoute: AdminContentRoute,
   AdminInboxRoute: AdminInboxRoute,
