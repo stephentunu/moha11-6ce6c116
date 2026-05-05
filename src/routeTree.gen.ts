@@ -9,6 +9,7 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as UnsubscribeRouteImport } from './routes/unsubscribe'
 import { Route as StoriesRouteImport } from './routes/stories'
 import { Route as PrioritiesRouteImport } from './routes/priorities'
 import { Route as PollingRouteImport } from './routes/polling'
@@ -21,12 +22,19 @@ import { Route as AdvertiseRouteImport } from './routes/advertise'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AdminIndexRouteImport } from './routes/admin.index'
 import { Route as ApiChatRouteImport } from './routes/api.chat'
+import { Route as AdminSupportersRouteImport } from './routes/admin.supporters'
+import { Route as AdminSmsRouteImport } from './routes/admin.sms'
 import { Route as AdminPollsRouteImport } from './routes/admin.polls'
 import { Route as AdminLoginRouteImport } from './routes/admin.login'
 import { Route as AdminInboxRouteImport } from './routes/admin.inbox'
 import { Route as AdminContentRouteImport } from './routes/admin.content'
 import { Route as AdminBusinessesRouteImport } from './routes/admin.businesses'
 
+const UnsubscribeRoute = UnsubscribeRouteImport.update({
+  id: '/unsubscribe',
+  path: '/unsubscribe',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const StoriesRoute = StoriesRouteImport.update({
   id: '/stories',
   path: '/stories',
@@ -87,6 +95,16 @@ const ApiChatRoute = ApiChatRouteImport.update({
   path: '/api/chat',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AdminSupportersRoute = AdminSupportersRouteImport.update({
+  id: '/admin/supporters',
+  path: '/admin/supporters',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AdminSmsRoute = AdminSmsRouteImport.update({
+  id: '/admin/sms',
+  path: '/admin/sms',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AdminPollsRoute = AdminPollsRouteImport.update({
   id: '/admin/polls',
   path: '/admin/polls',
@@ -124,11 +142,14 @@ export interface FileRoutesByFullPath {
   '/polling': typeof PollingRoute
   '/priorities': typeof PrioritiesRoute
   '/stories': typeof StoriesRoute
+  '/unsubscribe': typeof UnsubscribeRoute
   '/admin/businesses': typeof AdminBusinessesRoute
   '/admin/content': typeof AdminContentRoute
   '/admin/inbox': typeof AdminInboxRoute
   '/admin/login': typeof AdminLoginRoute
   '/admin/polls': typeof AdminPollsRoute
+  '/admin/sms': typeof AdminSmsRoute
+  '/admin/supporters': typeof AdminSupportersRoute
   '/api/chat': typeof ApiChatRoute
   '/admin/': typeof AdminIndexRoute
 }
@@ -143,11 +164,14 @@ export interface FileRoutesByTo {
   '/polling': typeof PollingRoute
   '/priorities': typeof PrioritiesRoute
   '/stories': typeof StoriesRoute
+  '/unsubscribe': typeof UnsubscribeRoute
   '/admin/businesses': typeof AdminBusinessesRoute
   '/admin/content': typeof AdminContentRoute
   '/admin/inbox': typeof AdminInboxRoute
   '/admin/login': typeof AdminLoginRoute
   '/admin/polls': typeof AdminPollsRoute
+  '/admin/sms': typeof AdminSmsRoute
+  '/admin/supporters': typeof AdminSupportersRoute
   '/api/chat': typeof ApiChatRoute
   '/admin': typeof AdminIndexRoute
 }
@@ -163,11 +187,14 @@ export interface FileRoutesById {
   '/polling': typeof PollingRoute
   '/priorities': typeof PrioritiesRoute
   '/stories': typeof StoriesRoute
+  '/unsubscribe': typeof UnsubscribeRoute
   '/admin/businesses': typeof AdminBusinessesRoute
   '/admin/content': typeof AdminContentRoute
   '/admin/inbox': typeof AdminInboxRoute
   '/admin/login': typeof AdminLoginRoute
   '/admin/polls': typeof AdminPollsRoute
+  '/admin/sms': typeof AdminSmsRoute
+  '/admin/supporters': typeof AdminSupportersRoute
   '/api/chat': typeof ApiChatRoute
   '/admin/': typeof AdminIndexRoute
 }
@@ -184,11 +211,14 @@ export interface FileRouteTypes {
     | '/polling'
     | '/priorities'
     | '/stories'
+    | '/unsubscribe'
     | '/admin/businesses'
     | '/admin/content'
     | '/admin/inbox'
     | '/admin/login'
     | '/admin/polls'
+    | '/admin/sms'
+    | '/admin/supporters'
     | '/api/chat'
     | '/admin/'
   fileRoutesByTo: FileRoutesByTo
@@ -203,11 +233,14 @@ export interface FileRouteTypes {
     | '/polling'
     | '/priorities'
     | '/stories'
+    | '/unsubscribe'
     | '/admin/businesses'
     | '/admin/content'
     | '/admin/inbox'
     | '/admin/login'
     | '/admin/polls'
+    | '/admin/sms'
+    | '/admin/supporters'
     | '/api/chat'
     | '/admin'
   id:
@@ -222,11 +255,14 @@ export interface FileRouteTypes {
     | '/polling'
     | '/priorities'
     | '/stories'
+    | '/unsubscribe'
     | '/admin/businesses'
     | '/admin/content'
     | '/admin/inbox'
     | '/admin/login'
     | '/admin/polls'
+    | '/admin/sms'
+    | '/admin/supporters'
     | '/api/chat'
     | '/admin/'
   fileRoutesById: FileRoutesById
@@ -242,17 +278,27 @@ export interface RootRouteChildren {
   PollingRoute: typeof PollingRoute
   PrioritiesRoute: typeof PrioritiesRoute
   StoriesRoute: typeof StoriesRoute
+  UnsubscribeRoute: typeof UnsubscribeRoute
   AdminBusinessesRoute: typeof AdminBusinessesRoute
   AdminContentRoute: typeof AdminContentRoute
   AdminInboxRoute: typeof AdminInboxRoute
   AdminLoginRoute: typeof AdminLoginRoute
   AdminPollsRoute: typeof AdminPollsRoute
+  AdminSmsRoute: typeof AdminSmsRoute
+  AdminSupportersRoute: typeof AdminSupportersRoute
   ApiChatRoute: typeof ApiChatRoute
   AdminIndexRoute: typeof AdminIndexRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/unsubscribe': {
+      id: '/unsubscribe'
+      path: '/unsubscribe'
+      fullPath: '/unsubscribe'
+      preLoaderRoute: typeof UnsubscribeRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/stories': {
       id: '/stories'
       path: '/stories'
@@ -337,6 +383,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiChatRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/admin/supporters': {
+      id: '/admin/supporters'
+      path: '/admin/supporters'
+      fullPath: '/admin/supporters'
+      preLoaderRoute: typeof AdminSupportersRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/admin/sms': {
+      id: '/admin/sms'
+      path: '/admin/sms'
+      fullPath: '/admin/sms'
+      preLoaderRoute: typeof AdminSmsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/admin/polls': {
       id: '/admin/polls'
       path: '/admin/polls'
@@ -386,11 +446,14 @@ const rootRouteChildren: RootRouteChildren = {
   PollingRoute: PollingRoute,
   PrioritiesRoute: PrioritiesRoute,
   StoriesRoute: StoriesRoute,
+  UnsubscribeRoute: UnsubscribeRoute,
   AdminBusinessesRoute: AdminBusinessesRoute,
   AdminContentRoute: AdminContentRoute,
   AdminInboxRoute: AdminInboxRoute,
   AdminLoginRoute: AdminLoginRoute,
   AdminPollsRoute: AdminPollsRoute,
+  AdminSmsRoute: AdminSmsRoute,
+  AdminSupportersRoute: AdminSupportersRoute,
   ApiChatRoute: ApiChatRoute,
   AdminIndexRoute: AdminIndexRoute,
 }

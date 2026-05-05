@@ -9,6 +9,8 @@ import {
   LogOut,
   ShieldCheck,
   Home,
+  Users,
+  MessageSquare,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -19,6 +21,8 @@ const NAV: { to: string; label: string; icon: typeof LayoutDashboard; exact?: bo
   { to: "/admin/businesses", label: "Business Moderation", icon: Store },
   { to: "/admin/content", label: "Content Manager", icon: FileText },
   { to: "/admin/polls", label: "Poll Analytics", icon: BarChart3 },
+  { to: "/admin/supporters", label: "Supporters", icon: Users },
+  { to: "/admin/sms", label: "Bulk SMS", icon: MessageSquare },
   { to: "/admin/inbox", label: "Message Inbox", icon: Inbox },
 ];
 
