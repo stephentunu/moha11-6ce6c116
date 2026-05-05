@@ -14,6 +14,90 @@ export type Database = {
   }
   public: {
     Tables: {
+      bulk_message_recipients: {
+        Row: {
+          bulk_message_id: string
+          created_at: string
+          id: string
+          phone: string
+          provider_response: string | null
+          status: string
+          supporter_id: string | null
+        }
+        Insert: {
+          bulk_message_id: string
+          created_at?: string
+          id?: string
+          phone: string
+          provider_response?: string | null
+          status?: string
+          supporter_id?: string | null
+        }
+        Update: {
+          bulk_message_id?: string
+          created_at?: string
+          id?: string
+          phone?: string
+          provider_response?: string | null
+          status?: string
+          supporter_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bulk_message_recipients_bulk_message_id_fkey"
+            columns: ["bulk_message_id"]
+            isOneToOne: false
+            referencedRelation: "bulk_messages"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bulk_message_recipients_supporter_id_fkey"
+            columns: ["supporter_id"]
+            isOneToOne: false
+            referencedRelation: "supporters"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      bulk_messages: {
+        Row: {
+          audience_ward: string | null
+          created_at: string
+          failed_count: number
+          id: string
+          message: string
+          provider: string
+          sent_count: number
+          skipped_count: number
+          status: string
+          total_recipients: number
+        }
+        Insert: {
+          audience_ward?: string | null
+          created_at?: string
+          failed_count?: number
+          id?: string
+          message: string
+          provider?: string
+          sent_count?: number
+          skipped_count?: number
+          status?: string
+          total_recipients?: number
+        }
+        Update: {
+          audience_ward?: string | null
+          created_at?: string
+          failed_count?: number
+          id?: string
+          message?: string
+          provider?: string
+          sent_count?: number
+          skipped_count?: number
+          status?: string
+          total_recipients?: number
+        }
+        Relationships: []
+      }
       businesses: {
         Row: {
           business_name: string
@@ -56,6 +140,45 @@ export type Database = {
           status?: string
           updated_at?: string
           ward?: string
+        }
+        Relationships: []
+      }
+      supporters: {
+        Row: {
+          created_at: string
+          id: string
+          id_number: string
+          name: string
+          notes: string | null
+          opt_out_token: string
+          opted_out: boolean
+          phone: string
+          updated_at: string
+          ward: string | null
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          id_number: string
+          name: string
+          notes?: string | null
+          opt_out_token?: string
+          opted_out?: boolean
+          phone: string
+          updated_at?: string
+          ward?: string | null
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          id_number?: string
+          name?: string
+          notes?: string | null
+          opt_out_token?: string
+          opted_out?: boolean
+          phone?: string
+          updated_at?: string
+          ward?: string | null
         }
         Relationships: []
       }
