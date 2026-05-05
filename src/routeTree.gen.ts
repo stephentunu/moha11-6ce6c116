@@ -21,6 +21,8 @@ import { Route as AdvertiseRouteImport } from './routes/advertise'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AdminIndexRouteImport } from './routes/admin.index'
 import { Route as ApiChatRouteImport } from './routes/api.chat'
+import { Route as AdminSupportersRouteImport } from './routes/admin.supporters'
+import { Route as AdminSmsRouteImport } from './routes/admin.sms'
 import { Route as AdminPollsRouteImport } from './routes/admin.polls'
 import { Route as AdminLoginRouteImport } from './routes/admin.login'
 import { Route as AdminInboxRouteImport } from './routes/admin.inbox'
@@ -87,6 +89,16 @@ const ApiChatRoute = ApiChatRouteImport.update({
   path: '/api/chat',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AdminSupportersRoute = AdminSupportersRouteImport.update({
+  id: '/admin/supporters',
+  path: '/admin/supporters',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AdminSmsRoute = AdminSmsRouteImport.update({
+  id: '/admin/sms',
+  path: '/admin/sms',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AdminPollsRoute = AdminPollsRouteImport.update({
   id: '/admin/polls',
   path: '/admin/polls',
@@ -129,6 +141,8 @@ export interface FileRoutesByFullPath {
   '/admin/inbox': typeof AdminInboxRoute
   '/admin/login': typeof AdminLoginRoute
   '/admin/polls': typeof AdminPollsRoute
+  '/admin/sms': typeof AdminSmsRoute
+  '/admin/supporters': typeof AdminSupportersRoute
   '/api/chat': typeof ApiChatRoute
   '/admin/': typeof AdminIndexRoute
 }
@@ -148,6 +162,8 @@ export interface FileRoutesByTo {
   '/admin/inbox': typeof AdminInboxRoute
   '/admin/login': typeof AdminLoginRoute
   '/admin/polls': typeof AdminPollsRoute
+  '/admin/sms': typeof AdminSmsRoute
+  '/admin/supporters': typeof AdminSupportersRoute
   '/api/chat': typeof ApiChatRoute
   '/admin': typeof AdminIndexRoute
 }
@@ -168,6 +184,8 @@ export interface FileRoutesById {
   '/admin/inbox': typeof AdminInboxRoute
   '/admin/login': typeof AdminLoginRoute
   '/admin/polls': typeof AdminPollsRoute
+  '/admin/sms': typeof AdminSmsRoute
+  '/admin/supporters': typeof AdminSupportersRoute
   '/api/chat': typeof ApiChatRoute
   '/admin/': typeof AdminIndexRoute
 }
@@ -189,6 +207,8 @@ export interface FileRouteTypes {
     | '/admin/inbox'
     | '/admin/login'
     | '/admin/polls'
+    | '/admin/sms'
+    | '/admin/supporters'
     | '/api/chat'
     | '/admin/'
   fileRoutesByTo: FileRoutesByTo
@@ -208,6 +228,8 @@ export interface FileRouteTypes {
     | '/admin/inbox'
     | '/admin/login'
     | '/admin/polls'
+    | '/admin/sms'
+    | '/admin/supporters'
     | '/api/chat'
     | '/admin'
   id:
@@ -227,6 +249,8 @@ export interface FileRouteTypes {
     | '/admin/inbox'
     | '/admin/login'
     | '/admin/polls'
+    | '/admin/sms'
+    | '/admin/supporters'
     | '/api/chat'
     | '/admin/'
   fileRoutesById: FileRoutesById
@@ -247,6 +271,8 @@ export interface RootRouteChildren {
   AdminInboxRoute: typeof AdminInboxRoute
   AdminLoginRoute: typeof AdminLoginRoute
   AdminPollsRoute: typeof AdminPollsRoute
+  AdminSmsRoute: typeof AdminSmsRoute
+  AdminSupportersRoute: typeof AdminSupportersRoute
   ApiChatRoute: typeof ApiChatRoute
   AdminIndexRoute: typeof AdminIndexRoute
 }
@@ -337,6 +363,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiChatRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/admin/supporters': {
+      id: '/admin/supporters'
+      path: '/admin/supporters'
+      fullPath: '/admin/supporters'
+      preLoaderRoute: typeof AdminSupportersRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/admin/sms': {
+      id: '/admin/sms'
+      path: '/admin/sms'
+      fullPath: '/admin/sms'
+      preLoaderRoute: typeof AdminSmsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/admin/polls': {
       id: '/admin/polls'
       path: '/admin/polls'
@@ -391,9 +431,20 @@ const rootRouteChildren: RootRouteChildren = {
   AdminInboxRoute: AdminInboxRoute,
   AdminLoginRoute: AdminLoginRoute,
   AdminPollsRoute: AdminPollsRoute,
+  AdminSmsRoute: AdminSmsRoute,
+  AdminSupportersRoute: AdminSupportersRoute,
   ApiChatRoute: ApiChatRoute,
   AdminIndexRoute: AdminIndexRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { createStart } from '@tanstack/react-start'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+  }
+}
