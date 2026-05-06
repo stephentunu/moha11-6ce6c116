@@ -86,10 +86,12 @@ const DEFAULT_POLLS: Poll[] = [
     id: "p2",
     question: "Where should the next youth hub be built?",
     options: [
-      { id: "a", label: "Mathare 4A", votes: 0 },
+      { id: "a", label: "Mabatini", votes: 0 },
       { id: "b", label: "Huruma", votes: 0 },
-      { id: "c", label: "Mlango Kubwa", votes: 0 },
-      { id: "d", label: "Hospital Ward", votes: 0 },
+      { id: "c", label: "Ngei", votes: 0 },
+      { id: "d", label: "Mlango Kubwa", votes: 0 },
+      { id: "e", label: "Kiamaiko", votes: 0 },
+      { id: "f", label: "Hospital", votes: 0 },
     ],
   },
   {
