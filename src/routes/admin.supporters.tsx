@@ -1,6 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useEffect, useMemo, useState } from "react";
-import { Search, Trash2, UserPlus, BellOff, BellRing, Upload } from "lucide-react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import * as XLSX from "xlsx";
+import { Search, Trash2, UserPlus, BellOff, BellRing, Upload, FileSpreadsheet, Download } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -39,6 +40,33 @@ type Supporter = {
   created_at: string;
 };
 
+type ParsedRow = { name: string; phone: string; id_number: string; ward: string | null; notes?: string };
+
+const BATCH_SIZE = 300;
+
+// Normalize a Kenyan-style phone: keep digits, accept 07.., 7.., +2547.., 2547..
+function normalizePhone(raw: unknown): string {
+  if (raw === null || raw === undefined) return "";
+  const digits = String(raw).replace(/[^\d+]/g, "");
+  if (!digits) return "";
+  if (digits.startsWith("+")) return digits;
+  if (digits.startsWith("254")) return "+" + digits;
+  if (digits.startsWith("0") && digits.length === 10) return "+254" + digits.slice(1);
+  if (digits.length === 9 && digits.startsWith("7")) return "+254" + digits;
+  return digits;
+}
+
+function pick(obj: Record<string, unknown>, keys: string[]): string {
+  for (const k of keys) {
+    const found = Object.keys(obj).find((kk) => kk.trim().toLowerCase() === k);
+    if (found) {
+      const v = obj[found];
+      if (v !== null && v !== undefined && String(v).trim() !== "") return String(v).trim();
+    }
+  }
+  return "";
+}
+
 function AdminSupportersPage() {
   const [list, setList] = useState<Supporter[]>([]);
   const [q, setQ] = useState("");
@@ -46,6 +74,9 @@ function AdminSupportersPage() {
   const [form, setForm] = useState({ name: "", phone: "", id_number: "", ward: "", notes: "" });
   const [bulkPaste, setBulkPaste] = useState("");
   const [busy, setBusy] = useState(false);
+  const [importing, setImporting] = useState(false);
+  const [progress, setProgress] = useState<{ done: number; total: number } | null>(null);
+  const fileRef = useRef<HTMLInputElement>(null);
 
   const load = async () => {
     const { data, error } = await supabase
@@ -93,21 +124,50 @@ function AdminSupportersPage() {
       toast.error("Name, phone and ID number are required");
       return;
     }
+    const phone = normalizePhone(form.phone);
+    if (!phone) {
+      toast.error("Invalid phone number");
+      return;
+    }
     setBusy(true);
-    const { error } = await supabase.from("supporters" as never).insert({
-      name: form.name.trim(),
-      phone: form.phone.trim(),
-      id_number: form.id_number.trim(),
-      ward: form.ward || null,
-      notes: form.notes.trim(),
-    } as never);
+    const { error } = await supabase.from("supporters" as never).upsert(
+      {
+        name: form.name.trim(),
+        phone,
+        id_number: form.id_number.trim(),
+        ward: form.ward || null,
+        notes: form.notes.trim(),
+      } as never,
+      { onConflict: "phone" } as never
+    );
     setBusy(false);
     if (error) {
       toast.error(error.message);
       return;
     }
     setForm({ name: "", phone: "", id_number: "", ward: "", notes: "" });
-    toast.success("Supporter added");
+    toast.success("Supporter saved");
+    load();
+  };
+
+  const upsertBatch = async (rows: ParsedRow[]) => {
+    let inserted = 0;
+    let failed = 0;
+    setProgress({ done: 0, total: rows.length });
+    for (let i = 0; i < rows.length; i += BATCH_SIZE) {
+      const batch = rows.slice(i, i + BATCH_SIZE);
+      const { error } = await supabase
+        .from("supporters" as never)
+        .upsert(batch as never, { onConflict: "phone" } as never);
+      if (error) {
+        failed += batch.length;
+        console.error("Batch upsert error:", error);
+      } else {
+        inserted += batch.length;
+      }
+      setProgress({ done: Math.min(i + BATCH_SIZE, rows.length), total: rows.length });
+    }
+    return { inserted, failed };
   };
 
   const importBulk = async () => {
@@ -115,25 +175,90 @@ function AdminSupportersPage() {
       .split(/\r?\n/)
       .map((l) => l.trim())
       .filter(Boolean);
-    if (!lines.length) return;
-    const rows: Array<{ name: string; phone: string; id_number: string; ward: string | null }> = [];
+    if (!lines.length) {
+      toast.error("Paste at least one line");
+      return;
+    }
+    const rows: ParsedRow[] = [];
+    const skipped: string[] = [];
     for (const line of lines) {
       const parts = line.split(/[,;\t]/).map((p) => p.trim());
-      const [name, phone, id_number, ward] = parts;
-      if (name && phone && id_number) rows.push({ name, phone, id_number, ward: ward || null });
+      const [name, phoneRaw, id_number, ward] = parts;
+      const phone = normalizePhone(phoneRaw);
+      if (name && phone && id_number) {
+        rows.push({ name, phone, id_number, ward: ward || null });
+      } else {
+        skipped.push(line);
+      }
     }
     if (!rows.length) {
       toast.error("No valid rows. Format per line: Name, Phone, ID, Ward");
       return;
     }
-    setBusy(true);
-    const { error } = await supabase.from("supporters" as never).insert(rows as never);
-    setBusy(false);
-    if (error) toast.error(error.message);
-    else {
-      toast.success(`Imported ${rows.length} supporters`);
-      setBulkPaste("");
+    setImporting(true);
+    const { inserted, failed } = await upsertBatch(rows);
+    setImporting(false);
+    setProgress(null);
+    if (failed) toast.error(`${failed} rows failed`);
+    toast.success(`Imported ${inserted} supporters${skipped.length ? ` · skipped ${skipped.length} invalid` : ""}`);
+    setBulkPaste("");
+    load();
+  };
+
+  const onFilePicked = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file) return;
+    setImporting(true);
+    try {
+      const buf = await file.arrayBuffer();
+      const wb = XLSX.read(buf, { type: "array" });
+      const sheetName = wb.SheetNames[0];
+      const ws = wb.Sheets[sheetName];
+      const json = XLSX.utils.sheet_to_json<Record<string, unknown>>(ws, { defval: "" });
+      const rows: ParsedRow[] = [];
+      const skipped: number[] = [];
+      json.forEach((r, idx) => {
+        const name = pick(r, ["name", "full name", "fullname", "supporter", "supporter name"]);
+        const phoneRaw = pick(r, ["phone", "phone number", "mobile", "msisdn", "tel", "telephone", "contact"]);
+        const id_number = pick(r, ["id", "id number", "id no", "id_number", "national id", "idno"]);
+        const ward = pick(r, ["ward", "location"]);
+        const notes = pick(r, ["notes", "note", "remark", "remarks"]);
+        const phone = normalizePhone(phoneRaw);
+        if (name && phone && id_number) {
+          rows.push({ name, phone, id_number, ward: ward || null, notes });
+        } else {
+          skipped.push(idx + 2);
+        }
+      });
+      if (!rows.length) {
+        toast.error("No valid rows found. Required columns: name, phone, id");
+        setImporting(false);
+        return;
+      }
+      const { inserted, failed } = await upsertBatch(rows);
+      if (failed) toast.error(`${failed} rows failed`);
+      toast.success(
+        `Imported ${inserted} from ${file.name}${skipped.length ? ` · skipped ${skipped.length} invalid` : ""}`
+      );
+      load();
+    } catch (err) {
+      console.error(err);
+      toast.error("Could not read file. Use .xlsx, .xls or .csv");
+    } finally {
+      setImporting(false);
+      setProgress(null);
     }
+  };
+
+  const downloadTemplate = () => {
+    const ws = XLSX.utils.json_to_sheet([
+      { name: "Jane Doe", phone: "0712345678", id: "32145678", ward: "Mabatini", notes: "" },
+      { name: "John Kamau", phone: "0723000111", id: "11223344", ward: "Huruma", notes: "" },
+    ]);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Supporters");
+    XLSX.writeFile(wb, "supporters-template.xlsx");
   };
 
   const toggleOpt = async (s: Supporter) => {
@@ -199,26 +324,67 @@ function AdminSupportersPage() {
             />
           </div>
           <Button className="mt-4 w-full" onClick={addOne} disabled={busy}>
-            Add supporter
+            {busy ? "Saving…" : "Add supporter"}
           </Button>
         </div>
 
-        <div className="bg-card rounded-xl border p-5">
-          <h3 className="font-display font-bold mb-4 flex items-center gap-2">
-            <Upload className="h-4 w-4" /> Bulk import
-          </h3>
-          <p className="text-xs text-muted-foreground mb-2">
-            One per line — format: <code>Name, Phone, ID, Ward</code> (Ward optional)
-          </p>
-          <Textarea
-            rows={8}
-            placeholder={`Jane Doe, 0712345678, 32145678, Mabatini\nJohn Kamau, 0723000111, 11223344, Huruma`}
-            value={bulkPaste}
-            onChange={(e) => setBulkPaste(e.target.value)}
-          />
-          <Button className="mt-4 w-full" variant="secondary" onClick={importBulk} disabled={busy}>
-            Import list
-          </Button>
+        <div className="bg-card rounded-xl border p-5 space-y-5">
+          <div>
+            <h3 className="font-display font-bold mb-2 flex items-center gap-2">
+              <FileSpreadsheet className="h-4 w-4" /> Import from Excel / CSV
+            </h3>
+            <p className="text-xs text-muted-foreground mb-3">
+              Pick an <code>.xlsx</code>, <code>.xls</code> or <code>.csv</code> file. Required columns:
+              <code> name</code>, <code>phone</code>, <code>id</code>. Optional: <code>ward</code>, <code>notes</code>.
+              Existing supporters (matched by phone) will be updated.
+            </p>
+            <input
+              ref={fileRef}
+              type="file"
+              accept=".xlsx,.xls,.csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel,text/csv"
+              className="hidden"
+              onChange={onFilePicked}
+            />
+            <div className="flex gap-2">
+              <Button
+                className="flex-1"
+                onClick={() => fileRef.current?.click()}
+                disabled={importing}
+              >
+                <Upload className="h-4 w-4 mr-2" />
+                {importing ? "Importing…" : "Choose file"}
+              </Button>
+              <Button variant="outline" onClick={downloadTemplate} disabled={importing}>
+                <Download className="h-4 w-4 mr-2" /> Template
+              </Button>
+            </div>
+            {progress && (
+              <p className="text-xs text-muted-foreground mt-2">
+                Processed {progress.done} / {progress.total}
+              </p>
+            )}
+          </div>
+
+          <div className="border-t pt-4">
+            <h4 className="text-sm font-semibold mb-2">Or paste rows</h4>
+            <p className="text-xs text-muted-foreground mb-2">
+              One per line — format: <code>Name, Phone, ID, Ward</code>
+            </p>
+            <Textarea
+              rows={5}
+              placeholder={`Jane Doe, 0712345678, 32145678, Mabatini\nJohn Kamau, 0723000111, 11223344, Huruma`}
+              value={bulkPaste}
+              onChange={(e) => setBulkPaste(e.target.value)}
+            />
+            <Button
+              className="mt-3 w-full"
+              variant="secondary"
+              onClick={importBulk}
+              disabled={importing || !bulkPaste.trim()}
+            >
+              {importing ? "Importing…" : "Import pasted rows"}
+            </Button>
+          </div>
         </div>
       </div>
 
