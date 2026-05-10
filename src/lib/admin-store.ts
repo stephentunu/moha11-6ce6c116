@@ -49,7 +49,18 @@ const KEYS = {
   messages: "moha.messages.v1",
   content: "moha.content.v1",
   auth: "moha.admin.session.v1",
+  activities: "moha.activities.v1",
 } as const;
+
+export type Activity = {
+  id: string;
+  title: string;
+  description: string;
+  date: string; // YYYY-MM-DD
+  time?: string; // optional HH:MM
+  location?: string;
+  ward?: string;
+};
 
 export type PollVote = {
   id: string;
