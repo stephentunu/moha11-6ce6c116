@@ -5,14 +5,17 @@ import {
   GraduationCap,
   HeartPulse,
   Briefcase,
-  Leaf,
+  ShieldCheck,
   Users,
   Sparkles,
   Quote,
+  Calendar,
+  Clock,
+  MapPin,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { SectionHeader } from "@/components/SectionHeader";
-import { useContent } from "@/lib/admin-store";
+import { useContent, useActivities, filterUpcoming } from "@/lib/admin-store";
 import heroImg from "@/assets/moha/moha-portrait.jpeg";
 import rallyImg from "@/assets/moha/foundation1.jpeg";
 import educationImg from "@/assets/moha/moha35.jpeg";
