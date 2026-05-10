@@ -5,14 +5,17 @@ import {
   GraduationCap,
   HeartPulse,
   Briefcase,
-  Leaf,
+  ShieldCheck,
   Users,
   Sparkles,
   Quote,
+  Calendar,
+  Clock,
+  MapPin,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { SectionHeader } from "@/components/SectionHeader";
-import { useContent } from "@/lib/admin-store";
+import { useContent, useActivities, filterUpcoming } from "@/lib/admin-store";
 import heroImg from "@/assets/moha/moha-portrait.jpeg";
 import rallyImg from "@/assets/moha/foundation1.jpeg";
 import educationImg from "@/assets/moha/moha35.jpeg";
@@ -46,14 +49,14 @@ export const Route = createFileRoute("/")({
 });
 
 const priorities = [
-  { icon: GraduationCap, title: "Education", img: educationImg, desc: "Bursaries, libraries & digital learning hubs for every Mathare child.", to: "/priorities" },
-  { icon: HeartPulse, title: "Health", img: healthImg, desc: "Accessible clinics, mama care, and community wellness programs.", to: "/priorities" },
-  { icon: Briefcase, title: "Businesses", img: businessImg, desc: "Empowering hustlers, mama mbogas, and youth-led enterprises.", to: "/priorities" },
-  { icon: Leaf, title: "Environment", img: environmentImg, desc: "Clean rivers, green spaces, and a sustainable Mathare.", to: "/priorities" },
+  { icon: GraduationCap, title: "Education", img: educationImg, desc: "Bursaries, sponsorships & digital learning for every Mathare child.", to: "/priorities" },
+  { icon: HeartPulse, title: "Health & Environment", img: healthImg, desc: "SHA registration, clean rivers, dignified care close to home.", to: "/priorities" },
+  { icon: Briefcase, title: "Businesses", img: businessImg, desc: "Capital, infrastructure & security for hustlers and mama mbogas.", to: "/priorities" },
+  { icon: ShieldCheck, title: "Security & Safety", img: environmentImg, desc: "Safer streets, lit estates, and protection for every household.", to: "/priorities" },
 ];
 
 const stats = [
-  { value: "12K+", label: "Bursaries Issued" },
+  { value: "600+", label: "Bursaries Issued" },
   { value: "85+", label: "Community Projects" },
   { value: "30K+", label: "Lives Touched" },
   { value: "100%", label: "Mathare First" },
@@ -61,6 +64,8 @@ const stats = [
 
 function HomePage() {
   const [content] = useContent();
+  const [activitiesAll] = useActivities();
+  const upcoming = filterUpcoming(activitiesAll).slice(0, 6);
   const hero = content.heroImageUrl || heroImg;
   return (
     <>
@@ -225,6 +230,64 @@ function HomePage() {
               </motion.div>
             ))}
           </div>
+        </div>
+      </section>
+
+      {/* DAILY ACTIVITIES */}
+      <section className="py-24 bg-gradient-card">
+        <div className="container mx-auto px-4 lg:px-8">
+          <SectionHeader
+            eyebrow="Today & Tomorrow"
+            title="Daily Campaign Activities"
+            subtitle="Where Moha and the team will be on the ground. Activities disappear automatically after the event date."
+          />
+          {upcoming.length === 0 ? (
+            <div className="max-w-xl mx-auto text-center bg-card border border-border rounded-2xl p-10 shadow-elegant">
+              <Calendar className="h-10 w-10 text-primary mx-auto mb-3" />
+              <p className="font-display text-xl font-bold">No public activities scheduled right now</p>
+              <p className="mt-2 text-muted-foreground text-sm">
+                Check back soon — we update this calendar daily.
+              </p>
+            </div>
+          ) : (
+            <div className="grid gap-5 md:grid-cols-2 lg:grid-cols-3">
+              {upcoming.map((a, i) => (
+                <motion.article
+                  key={a.id}
+                  initial={{ opacity: 0, y: 20 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  viewport={{ once: true, margin: "-50px" }}
+                  transition={{ delay: i * 0.06, duration: 0.5 }}
+                  className="bg-card border border-border rounded-2xl p-6 shadow-elegant hover:shadow-glow hover:-translate-y-1 transition-all"
+                >
+                  <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-primary mb-3">
+                    <Calendar className="h-3.5 w-3.5" />
+                    {new Date(a.date).toLocaleDateString("en-KE", {
+                      weekday: "short",
+                      day: "numeric",
+                      month: "short",
+                    })}
+                    {a.time && (
+                      <>
+                        <Clock className="h-3.5 w-3.5 ml-2" />
+                        {a.time}
+                      </>
+                    )}
+                  </div>
+                  <h3 className="font-display text-xl font-bold text-foreground">{a.title}</h3>
+                  {a.description && (
+                    <p className="mt-2 text-sm text-muted-foreground leading-relaxed">{a.description}</p>
+                  )}
+                  {(a.location || a.ward) && (
+                    <p className="mt-4 inline-flex items-center gap-1 text-xs font-semibold text-foreground/70">
+                      <MapPin className="h-3.5 w-3.5 text-gold" />
+                      {[a.location, a.ward].filter(Boolean).join(" • ")}
+                    </p>
+                  )}
+                </motion.article>
+              ))}
+            </div>
+          )}
         </div>
       </section>
 

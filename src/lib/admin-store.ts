@@ -49,7 +49,18 @@ const KEYS = {
   messages: "moha.messages.v1",
   content: "moha.content.v1",
   auth: "moha.admin.session.v1",
+  activities: "moha.activities.v1",
 } as const;
+
+export type Activity = {
+  id: string;
+  title: string;
+  description: string;
+  date: string; // YYYY-MM-DD
+  time?: string; // optional HH:MM
+  location?: string;
+  ward?: string;
+};
 
 export type PollVote = {
   id: string;
@@ -379,6 +390,36 @@ export function useContent() {
 export function updateContent(patch: Partial<SiteContent>) {
   const cur = read<SiteContent>(KEYS.content, DEFAULT_CONTENT);
   write(KEYS.content, { ...cur, ...patch });
+}
+
+// ===== Activities =====
+export function useActivities() {
+  return useStore<Activity[]>(KEYS.activities, []);
+}
+export function addActivity(a: Omit<Activity, "id">) {
+  const list = read<Activity[]>(KEYS.activities, []);
+  const full: Activity = { ...a, id: `act-${Date.now()}-${Math.random().toString(36).slice(2, 6)}` };
+  write(KEYS.activities, [full, ...list]);
+}
+export function updateActivity(id: string, patch: Partial<Activity>) {
+  const list = read<Activity[]>(KEYS.activities, []);
+  write(KEYS.activities, list.map((a) => (a.id === id ? { ...a, ...patch } : a)));
+}
+export function deleteActivity(id: string) {
+  const list = read<Activity[]>(KEYS.activities, []);
+  write(KEYS.activities, list.filter((a) => a.id !== id));
+}
+/** Returns activities whose date is today or in the future, sorted by date asc. */
+export function filterUpcoming(list: Activity[]): Activity[] {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  return list
+    .filter((a) => {
+      const d = new Date(a.date);
+      d.setHours(0, 0, 0, 0);
+      return d.getTime() >= today.getTime();
+    })
+    .sort((a, b) => a.date.localeCompare(b.date));
 }
 
 // ===== Auth =====

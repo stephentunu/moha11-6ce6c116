@@ -29,6 +29,7 @@ import { Route as AdminLoginRouteImport } from './routes/admin.login'
 import { Route as AdminInboxRouteImport } from './routes/admin.inbox'
 import { Route as AdminContentRouteImport } from './routes/admin.content'
 import { Route as AdminBusinessesRouteImport } from './routes/admin.businesses'
+import { Route as AdminActivitiesRouteImport } from './routes/admin.activities'
 
 const UnsubscribeRoute = UnsubscribeRouteImport.update({
   id: '/unsubscribe',
@@ -130,6 +131,11 @@ const AdminBusinessesRoute = AdminBusinessesRouteImport.update({
   path: '/admin/businesses',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AdminActivitiesRoute = AdminActivitiesRouteImport.update({
+  id: '/admin/activities',
+  path: '/admin/activities',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -143,6 +149,7 @@ export interface FileRoutesByFullPath {
   '/priorities': typeof PrioritiesRoute
   '/stories': typeof StoriesRoute
   '/unsubscribe': typeof UnsubscribeRoute
+  '/admin/activities': typeof AdminActivitiesRoute
   '/admin/businesses': typeof AdminBusinessesRoute
   '/admin/content': typeof AdminContentRoute
   '/admin/inbox': typeof AdminInboxRoute
@@ -165,6 +172,7 @@ export interface FileRoutesByTo {
   '/priorities': typeof PrioritiesRoute
   '/stories': typeof StoriesRoute
   '/unsubscribe': typeof UnsubscribeRoute
+  '/admin/activities': typeof AdminActivitiesRoute
   '/admin/businesses': typeof AdminBusinessesRoute
   '/admin/content': typeof AdminContentRoute
   '/admin/inbox': typeof AdminInboxRoute
@@ -188,6 +196,7 @@ export interface FileRoutesById {
   '/priorities': typeof PrioritiesRoute
   '/stories': typeof StoriesRoute
   '/unsubscribe': typeof UnsubscribeRoute
+  '/admin/activities': typeof AdminActivitiesRoute
   '/admin/businesses': typeof AdminBusinessesRoute
   '/admin/content': typeof AdminContentRoute
   '/admin/inbox': typeof AdminInboxRoute
@@ -212,6 +221,7 @@ export interface FileRouteTypes {
     | '/priorities'
     | '/stories'
     | '/unsubscribe'
+    | '/admin/activities'
     | '/admin/businesses'
     | '/admin/content'
     | '/admin/inbox'
@@ -234,6 +244,7 @@ export interface FileRouteTypes {
     | '/priorities'
     | '/stories'
     | '/unsubscribe'
+    | '/admin/activities'
     | '/admin/businesses'
     | '/admin/content'
     | '/admin/inbox'
@@ -256,6 +267,7 @@ export interface FileRouteTypes {
     | '/priorities'
     | '/stories'
     | '/unsubscribe'
+    | '/admin/activities'
     | '/admin/businesses'
     | '/admin/content'
     | '/admin/inbox'
@@ -279,6 +291,7 @@ export interface RootRouteChildren {
   PrioritiesRoute: typeof PrioritiesRoute
   StoriesRoute: typeof StoriesRoute
   UnsubscribeRoute: typeof UnsubscribeRoute
+  AdminActivitiesRoute: typeof AdminActivitiesRoute
   AdminBusinessesRoute: typeof AdminBusinessesRoute
   AdminContentRoute: typeof AdminContentRoute
   AdminInboxRoute: typeof AdminInboxRoute
@@ -432,6 +445,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminBusinessesRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/admin/activities': {
+      id: '/admin/activities'
+      path: '/admin/activities'
+      fullPath: '/admin/activities'
+      preLoaderRoute: typeof AdminActivitiesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -447,6 +467,7 @@ const rootRouteChildren: RootRouteChildren = {
   PrioritiesRoute: PrioritiesRoute,
   StoriesRoute: StoriesRoute,
   UnsubscribeRoute: UnsubscribeRoute,
+  AdminActivitiesRoute: AdminActivitiesRoute,
   AdminBusinessesRoute: AdminBusinessesRoute,
   AdminContentRoute: AdminContentRoute,
   AdminInboxRoute: AdminInboxRoute,
