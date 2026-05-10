@@ -392,6 +392,36 @@ export function updateContent(patch: Partial<SiteContent>) {
   write(KEYS.content, { ...cur, ...patch });
 }
 
+// ===== Activities =====
+export function useActivities() {
+  return useStore<Activity[]>(KEYS.activities, []);
+}
+export function addActivity(a: Omit<Activity, "id">) {
+  const list = read<Activity[]>(KEYS.activities, []);
+  const full: Activity = { ...a, id: `act-${Date.now()}-${Math.random().toString(36).slice(2, 6)}` };
+  write(KEYS.activities, [full, ...list]);
+}
+export function updateActivity(id: string, patch: Partial<Activity>) {
+  const list = read<Activity[]>(KEYS.activities, []);
+  write(KEYS.activities, list.map((a) => (a.id === id ? { ...a, ...patch } : a)));
+}
+export function deleteActivity(id: string) {
+  const list = read<Activity[]>(KEYS.activities, []);
+  write(KEYS.activities, list.filter((a) => a.id !== id));
+}
+/** Returns activities whose date is today or in the future, sorted by date asc. */
+export function filterUpcoming(list: Activity[]): Activity[] {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  return list
+    .filter((a) => {
+      const d = new Date(a.date);
+      d.setHours(0, 0, 0, 0);
+      return d.getTime() >= today.getTime();
+    })
+    .sort((a, b) => a.date.localeCompare(b.date));
+}
+
 // ===== Auth =====
 export function isAdminAuthed(): boolean {
   if (!isBrowser()) return false;
