@@ -64,6 +64,8 @@ const stats = [
 
 function HomePage() {
   const [content] = useContent();
+  const [activitiesAll] = useActivities();
+  const upcoming = filterUpcoming(activitiesAll).slice(0, 6);
   const hero = content.heroImageUrl || heroImg;
   return (
     <>
