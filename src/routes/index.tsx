@@ -233,6 +233,64 @@ function HomePage() {
         </div>
       </section>
 
+      {/* DAILY ACTIVITIES */}
+      <section className="py-24 bg-gradient-card">
+        <div className="container mx-auto px-4 lg:px-8">
+          <SectionHeader
+            eyebrow="Today & Tomorrow"
+            title="Daily Campaign Activities"
+            subtitle="Where Moha and the team will be on the ground. Activities disappear automatically after the event date."
+          />
+          {upcoming.length === 0 ? (
+            <div className="max-w-xl mx-auto text-center bg-card border border-border rounded-2xl p-10 shadow-elegant">
+              <Calendar className="h-10 w-10 text-primary mx-auto mb-3" />
+              <p className="font-display text-xl font-bold">No public activities scheduled right now</p>
+              <p className="mt-2 text-muted-foreground text-sm">
+                Check back soon — we update this calendar daily.
+              </p>
+            </div>
+          ) : (
+            <div className="grid gap-5 md:grid-cols-2 lg:grid-cols-3">
+              {upcoming.map((a, i) => (
+                <motion.article
+                  key={a.id}
+                  initial={{ opacity: 0, y: 20 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  viewport={{ once: true, margin: "-50px" }}
+                  transition={{ delay: i * 0.06, duration: 0.5 }}
+                  className="bg-card border border-border rounded-2xl p-6 shadow-elegant hover:shadow-glow hover:-translate-y-1 transition-all"
+                >
+                  <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-primary mb-3">
+                    <Calendar className="h-3.5 w-3.5" />
+                    {new Date(a.date).toLocaleDateString("en-KE", {
+                      weekday: "short",
+                      day: "numeric",
+                      month: "short",
+                    })}
+                    {a.time && (
+                      <>
+                        <Clock className="h-3.5 w-3.5 ml-2" />
+                        {a.time}
+                      </>
+                    )}
+                  </div>
+                  <h3 className="font-display text-xl font-bold text-foreground">{a.title}</h3>
+                  {a.description && (
+                    <p className="mt-2 text-sm text-muted-foreground leading-relaxed">{a.description}</p>
+                  )}
+                  {(a.location || a.ward) && (
+                    <p className="mt-4 inline-flex items-center gap-1 text-xs font-semibold text-foreground/70">
+                      <MapPin className="h-3.5 w-3.5 text-gold" />
+                      {[a.location, a.ward].filter(Boolean).join(" • ")}
+                    </p>
+                  )}
+                </motion.article>
+              ))}
+            </div>
+          )}
+        </div>
+      </section>
+
       {/* GALLERY — ON THE GROUND */}
       <section className="py-24 bg-muted/30">
         <div className="container mx-auto px-4 lg:px-8">
