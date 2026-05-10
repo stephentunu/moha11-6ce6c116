@@ -49,14 +49,14 @@ export const Route = createFileRoute("/")({
 });
 
 const priorities = [
-  { icon: GraduationCap, title: "Education", img: educationImg, desc: "Bursaries, libraries & digital learning hubs for every Mathare child.", to: "/priorities" },
-  { icon: HeartPulse, title: "Health", img: healthImg, desc: "Accessible clinics, mama care, and community wellness programs.", to: "/priorities" },
-  { icon: Briefcase, title: "Businesses", img: businessImg, desc: "Empowering hustlers, mama mbogas, and youth-led enterprises.", to: "/priorities" },
-  { icon: Leaf, title: "Environment", img: environmentImg, desc: "Clean rivers, green spaces, and a sustainable Mathare.", to: "/priorities" },
+  { icon: GraduationCap, title: "Education", img: educationImg, desc: "Bursaries, sponsorships & digital learning for every Mathare child.", to: "/priorities" },
+  { icon: HeartPulse, title: "Health & Environment", img: healthImg, desc: "SHA registration, clean rivers, dignified care close to home.", to: "/priorities" },
+  { icon: Briefcase, title: "Businesses", img: businessImg, desc: "Capital, infrastructure & security for hustlers and mama mbogas.", to: "/priorities" },
+  { icon: ShieldCheck, title: "Security & Safety", img: environmentImg, desc: "Safer streets, lit estates, and protection for every household.", to: "/priorities" },
 ];
 
 const stats = [
-  { value: "12K+", label: "Bursaries Issued" },
+  { value: "600+", label: "Bursaries Issued" },
   { value: "85+", label: "Community Projects" },
   { value: "30K+", label: "Lives Touched" },
   { value: "100%", label: "Mathare First" },
