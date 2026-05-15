@@ -6,9 +6,11 @@ import {
   HeartPulse,
   Briefcase,
   ShieldCheck,
+  HeartHandshake,
   AlertTriangle,
   CheckCircle2,
   Rocket,
+  Clock,
 } from "lucide-react";
 import { PageHero } from "@/components/PageHero";
 import { cn } from "@/lib/utils";
