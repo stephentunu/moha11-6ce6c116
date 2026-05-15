@@ -19,6 +19,7 @@ import educationImg from "@/assets/moha/moha25.jpeg";
 import healthImg from "@/assets/moha/moha10.jpeg";
 import businessImg from "@/assets/moha/foundation5.jpeg";
 import securityImg from "@/assets/moha/moha16.jpeg";
+import otherImg from "@/assets/moha/donation3.jpeg";
 
 export const Route = createFileRoute("/priorities")({
   head: () => ({
