@@ -287,29 +287,48 @@ function PrioritiesPage() {
               </div>
 
               {/* Three columns: Challenges / Initiatives / Future */}
-              <div className="grid gap-6 lg:grid-cols-3">
-                <PillarColumn
-                  icon={AlertTriangle}
-                  iconClass="text-rose-600 bg-rose-100 dark:bg-rose-900/30"
-                  title="Challenges"
-                  subtitle="What Mathare faces today"
-                  items={current.challenges}
-                />
-                <PillarColumn
-                  icon={CheckCircle2}
-                  iconClass="text-emerald-600 bg-emerald-100 dark:bg-emerald-900/30"
-                  title="Initiatives"
-                  subtitle="What Moha is already delivering"
-                  items={current.initiatives}
-                />
-                <PillarColumn
-                  icon={Rocket}
-                  iconClass="text-amber-600 bg-amber-100 dark:bg-amber-900/30"
-                  title="Future Plans"
-                  subtitle="What we will deliver next"
-                  items={current.future}
-                />
-              </div>
+              {current.key === "other" ? (
+                <div className="grid gap-6 lg:grid-cols-2">
+                  <PillarColumn
+                    icon={CheckCircle2}
+                    iconClass="text-emerald-600 bg-emerald-100 dark:bg-emerald-900/30"
+                    title="Initiatives"
+                    subtitle="Support programs already running"
+                    items={current.initiatives}
+                  />
+                  <PillarColumn
+                    icon={Clock}
+                    iconClass="text-violet-600 bg-violet-100 dark:bg-violet-900/30"
+                    title="Coming Soon"
+                    subtitle="New opportunities on the way"
+                    items={current.future}
+                  />
+                </div>
+              ) : (
+                <div className="grid gap-6 lg:grid-cols-3">
+                  <PillarColumn
+                    icon={AlertTriangle}
+                    iconClass="text-rose-600 bg-rose-100 dark:bg-rose-900/30"
+                    title="Challenges"
+                    subtitle="What Mathare faces today"
+                    items={current.challenges}
+                  />
+                  <PillarColumn
+                    icon={CheckCircle2}
+                    iconClass="text-emerald-600 bg-emerald-100 dark:bg-emerald-900/30"
+                    title="Initiatives"
+                    subtitle="What Moha is already delivering"
+                    items={current.initiatives}
+                  />
+                  <PillarColumn
+                    icon={Rocket}
+                    iconClass="text-amber-600 bg-amber-100 dark:bg-amber-900/30"
+                    title="Future Plans"
+                    subtitle="What we will deliver next"
+                    items={current.future}
+                  />
+                </div>
+              )}
             </motion.div>
           </AnimatePresence>
         </div>
