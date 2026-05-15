@@ -197,6 +197,30 @@ const themes: Theme[] = [
       "Initiate close police and communication partnership",
     ],
   },
+  {
+    key: "other",
+    icon: HeartHandshake,
+    title: "Other Initiatives",
+    tagline: "Leaving no one behind. Support that reaches every corner.",
+    img: otherImg,
+    color: "from-violet-600/80 to-primary/90",
+    challenges: [
+      "Vulnerable groups without targeted support",
+      "Food insecurity in households",
+      "Limited access to health insurance registration",
+      "PWDs lack assistive devices and essential amenities",
+    ],
+    initiatives: [
+      "Support to the vulnerable groups",
+      "Food distribution",
+      "SHA registration",
+      "Free Electronic Assistive devices",
+    ],
+    future: [
+      "Recruitment and industrial attachment opportunities",
+      "Overseas and International Scholarship",
+    ],
+  },
 ];
 
 function PrioritiesPage() {
