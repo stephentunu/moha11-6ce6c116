@@ -28,7 +28,7 @@ export const Route = createFileRoute("/priorities")({
       {
         name: "description",
         content:
-          "Education, Health & Environment, Businesses, Security & Safety — Moha's four-pillar manifesto for Mathare 2027.",
+          "Education, Health & Environment, Businesses, Security & Safety, Other Initiatives — Moha's five-pillar manifesto for Mathare 2027.",
       },
       { property: "og:title", content: "Priorities — Moha Delivers" },
       {
