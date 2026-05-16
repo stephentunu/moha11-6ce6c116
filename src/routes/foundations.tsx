@@ -126,7 +126,7 @@ const foundations: Foundation[] = [
     title: "Vulnerable Groups",
     pill: "Mama & Mzee Care",
     desc: "Monthly food parcels, dignity packs, and emergency support for widows, orphans, and elderly residents across all 5 wards of Mathare.",
-    impact: "8,500+ households reached",
+    impact: "500+ households reached",
     img: vulnerableImg,
     points: [
       "Monthly food & sanitary support drives",
@@ -141,7 +141,7 @@ const foundations: Foundation[] = [
     title: "Bursaries",
     pill: "Education Fund",
     desc: "From primary school fees to university tuition — Moha's bursary program ensures no Mathare child is locked out of class because of money.",
-    impact: "12,000+ bursaries issued",
+    impact: "600+ bursaries issued",
     img: bursaryImg,
     points: [
       "100% KCSE candidate fee coverage",
@@ -156,7 +156,7 @@ const foundations: Foundation[] = [
     title: "People with Disabilities",
     pill: "PWD Inclusion",
     desc: "Accessible Mathare is our promise — wheelchairs, sign-language services, ramps, and economic empowerment for our brothers and sisters living with disabilities.",
-    impact: "1,200+ PWDs empowered",
+    impact: "350+ PWDs empowered",
     img: pwdImg,
     points: [
       "Free assistive devices (wheelchairs, white canes)",
@@ -192,10 +192,10 @@ const foundations: Foundation[] = [
     impact: "40+ tournaments backed",
     img: soccer,
     points: [
-      "Community football leagues & tournaments",
-      "Boots, jerseys & training equipment",
-      "Trophies, medals and cash prizes",
-      "Talent scouting and academy linkages",
+      "Back To school tournaments",
+      "Ladies tournaments",
+      "Trophies and medal",
+      "Adults' fun day",
     ],
     gallery: [
       soccer, soccer1, soccer2, soccer3, football, football1, football2,
@@ -208,7 +208,7 @@ const foundations: Foundation[] = [
     title: "School Supplies",
     pill: "Books, Pens & More",
     desc: "Textbooks, exercise books, pens, rulers and full stationery kits delivered straight to learners — so the only thing standing between a child and class is their dream.",
-    impact: "20,000+ supplies distributed",
+    impact: "1,000+ supplies distributed",
     img: books,
     points: [
       "Textbooks for primary & secondary learners",
@@ -244,7 +244,7 @@ const foundations: Foundation[] = [
     impact: "30+ ECD centres reached",
     img: ecd,
     points: [
-      "ECD classroom upgrades & supplies",
+      "Mentorship programs",
       "Learning materials and play kits",
       "Caregiver & teacher support",
       "Nutrition support for young learners",
