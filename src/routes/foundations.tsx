@@ -359,6 +359,28 @@ function FoundationsPage() {
                     </li>
                   ))}
                 </ul>
+
+                {f.comingSoon.length > 0 && (
+                  <div className="mt-6 rounded-2xl border border-accent/20 bg-accent/5 p-5">
+                    <div className="flex items-center gap-2 mb-3">
+                      <Clock className="h-4 w-4 text-accent" />
+                      <span className="text-xs font-bold tracking-widest uppercase text-accent">
+                        Coming Soon
+                      </span>
+                    </div>
+                    <ul className="grid sm:grid-cols-2 gap-2">
+                      {f.comingSoon.map((c) => (
+                        <li
+                          key={c}
+                          className="flex items-start gap-2 text-sm text-foreground"
+                        >
+                          <span className="mt-1.5 h-1.5 w-1.5 rounded-full bg-accent flex-shrink-0" />
+                          {c}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
               </div>
 
               {/* Gallery strip — full width below the row */}
