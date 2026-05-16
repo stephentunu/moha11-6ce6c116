@@ -119,6 +119,7 @@ type Foundation = {
   img: string;
   points: string[];
   gallery: string[];
+  comingSoon: string[];
 };
 
 const foundations: Foundation[] = [
@@ -136,6 +137,11 @@ const foundations: Foundation[] = [
       "Legal aid for GBV survivors",
     ],
     gallery: [vulnerableImg, gifts, activities],
+    comingSoon: [
+      "Permanent Mama & Mzee resource centre",
+      "Monthly stipend program for elderly residents",
+      "24/7 GBV rescue & safe-house network",
+    ],
   },
   {
     icon: GraduationCap,
@@ -151,6 +157,11 @@ const foundations: Foundation[] = [
       "Boarding & transport stipends",
     ],
     gallery: [bursaryImg, students, students1, school1, education3],
+    comingSoon: [
+      "Overseas & international scholarship pipeline",
+      "Mathare alumni mentorship network",
+      "Digital learning labs in every ward",
+    ],
   },
   {
     icon: Accessibility,
@@ -166,6 +177,11 @@ const foundations: Foundation[] = [
       "Sign-language interpreters at events",
     ],
     gallery: [pwdImg, pwd1, pwd2, pwd3, pwd4],
+    comingSoon: [
+      "Free electronic assistive devices rollout",
+      "PWD-friendly vocational training centre",
+      "Inclusive sports league for PWDs",
+    ],
   },
   {
     icon: Sparkles,
@@ -183,6 +199,11 @@ const foundations: Foundation[] = [
     gallery: [
       youth, youth1, empowerment, teamMoha, teamMoha1, teamMoha2,
       teamMohah, teamMoh, team1, activities, five, five1, five2,
+    ],
+    comingSoon: [
+      "Recruitment & industrial attachment opportunities",
+      "Youth innovation hub with free Wi-Fi",
+      "Annual Mathare youth leadership summit",
     ],
   },
   {
@@ -203,6 +224,11 @@ const foundations: Foundation[] = [
       match, medals, prizes, fans, fans1, fans2, fans3,
       talent, talents, talents1, talents2, talentedKids, talentedKids1,
     ],
+    comingSoon: [
+      "Mathare premier league with cash prizes",
+      "Talent academy for music, dance & arts",
+      "Modern community sports complex",
+    ],
   },
   {
     icon: BookOpen,
@@ -221,6 +247,11 @@ const foundations: Foundation[] = [
       books, books1, books3, books4, books5, books7, books8, books9, book2,
       stationery, stationery1, stationery2, stationery3, stationery4,
     ],
+    comingSoon: [
+      "Free school laptops & tablets program",
+      "Community library in every ward",
+      "Termly stationery restock drives",
+    ],
   },
   {
     icon: Store,
@@ -236,6 +267,11 @@ const foundations: Foundation[] = [
       "Mentorship for youth-led startups",
     ],
     gallery: [businessesImg],
+    comingSoon: [
+      "Low-interest revolving credit fund",
+      "Modern market stalls & cold storage",
+      "Business skills bootcamps for hustlers",
+    ],
   },
   {
     icon: Baby,
@@ -251,6 +287,11 @@ const foundations: Foundation[] = [
       "Nutrition support for young learners",
     ],
     gallery: [ecd, ecd1, ecd2, children],
+    comingSoon: [
+      "Free daily porridge program in ECD centres",
+      "Upgraded ECD classrooms & playgrounds",
+      "Caregiver training & certification",
+    ],
   },
 ];
 
