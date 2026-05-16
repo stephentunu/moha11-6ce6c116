@@ -87,10 +87,13 @@ const DEFAULT_POLLS: Poll[] = [
     id: "p1",
     question: "What is the #1 issue Mathare needs solved first?",
     options: [
-      { id: "a", label: "Youth unemployment", votes: 0 },
-      { id: "b", label: "Drainage & flooding", votes: 0 },
-      { id: "c", label: "Insecurity at night", votes: 0 },
-      { id: "d", label: "Affordable healthcare", votes: 0 },
+      { id: "a", label: "Education funding", votes: 0 },
+      { id: "b", label: "Pollution and waste management", votes: 0 },
+      { id: "c", label: "Drainage and flooding", votes: 0 },
+      { id: "d", label: "Insecurity and safety", votes: 0 },
+      { id: "e", label: "Financial constraints and credits inaccessibility", votes: 0 },
+      { id: "f", label: "Crime, rape and GBV", votes: 0 },
+      { id: "g", label: "Youth unemployment", votes: 0 },
     ],
   },
   {
