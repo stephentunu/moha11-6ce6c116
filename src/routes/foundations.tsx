@@ -11,6 +11,7 @@ import {
   Store,
   Baby,
   Users,
+  Clock,
 } from "lucide-react";
 import { PageHero } from "@/components/PageHero";
 import { Button } from "@/components/ui/button";
@@ -118,6 +119,7 @@ type Foundation = {
   img: string;
   points: string[];
   gallery: string[];
+  comingSoon: string[];
 };
 
 const foundations: Foundation[] = [
@@ -135,6 +137,11 @@ const foundations: Foundation[] = [
       "Legal aid for GBV survivors",
     ],
     gallery: [vulnerableImg, gifts, activities],
+    comingSoon: [
+      "Permanent Mama & Mzee resource centre",
+      "Monthly stipend program for elderly residents",
+      "24/7 GBV rescue & safe-house network",
+    ],
   },
   {
     icon: GraduationCap,
@@ -150,6 +157,11 @@ const foundations: Foundation[] = [
       "Boarding & transport stipends",
     ],
     gallery: [bursaryImg, students, students1, school1, education3],
+    comingSoon: [
+      "Overseas & international scholarship pipeline",
+      "Mathare alumni mentorship network",
+      "Digital learning labs in every ward",
+    ],
   },
   {
     icon: Accessibility,
@@ -165,6 +177,11 @@ const foundations: Foundation[] = [
       "Sign-language interpreters at events",
     ],
     gallery: [pwdImg, pwd1, pwd2, pwd3, pwd4],
+    comingSoon: [
+      "Free electronic assistive devices rollout",
+      "PWD-friendly vocational training centre",
+      "Inclusive sports league for PWDs",
+    ],
   },
   {
     icon: Sparkles,
@@ -182,6 +199,11 @@ const foundations: Foundation[] = [
     gallery: [
       youth, youth1, empowerment, teamMoha, teamMoha1, teamMoha2,
       teamMohah, teamMoh, team1, activities, five, five1, five2,
+    ],
+    comingSoon: [
+      "Recruitment & industrial attachment opportunities",
+      "Youth innovation hub with free Wi-Fi",
+      "Annual Mathare youth leadership summit",
     ],
   },
   {
@@ -202,6 +224,11 @@ const foundations: Foundation[] = [
       match, medals, prizes, fans, fans1, fans2, fans3,
       talent, talents, talents1, talents2, talentedKids, talentedKids1,
     ],
+    comingSoon: [
+      "Mathare premier league with cash prizes",
+      "Talent academy for music, dance & arts",
+      "Modern community sports complex",
+    ],
   },
   {
     icon: BookOpen,
@@ -220,6 +247,11 @@ const foundations: Foundation[] = [
       books, books1, books3, books4, books5, books7, books8, books9, book2,
       stationery, stationery1, stationery2, stationery3, stationery4,
     ],
+    comingSoon: [
+      "Free school laptops & tablets program",
+      "Community library in every ward",
+      "Termly stationery restock drives",
+    ],
   },
   {
     icon: Store,
@@ -235,6 +267,11 @@ const foundations: Foundation[] = [
       "Mentorship for youth-led startups",
     ],
     gallery: [businessesImg],
+    comingSoon: [
+      "Low-interest revolving credit fund",
+      "Modern market stalls & cold storage",
+      "Business skills bootcamps for hustlers",
+    ],
   },
   {
     icon: Baby,
@@ -250,6 +287,11 @@ const foundations: Foundation[] = [
       "Nutrition support for young learners",
     ],
     gallery: [ecd, ecd1, ecd2, children],
+    comingSoon: [
+      "Free daily porridge program in ECD centres",
+      "Upgraded ECD classrooms & playgrounds",
+      "Caregiver training & certification",
+    ],
   },
 ];
 
@@ -317,6 +359,28 @@ function FoundationsPage() {
                     </li>
                   ))}
                 </ul>
+
+                {f.comingSoon.length > 0 && (
+                  <div className="mt-6 rounded-2xl border border-accent/20 bg-accent/5 p-5">
+                    <div className="flex items-center gap-2 mb-3">
+                      <Clock className="h-4 w-4 text-accent" />
+                      <span className="text-xs font-bold tracking-widest uppercase text-accent">
+                        Coming Soon
+                      </span>
+                    </div>
+                    <ul className="grid sm:grid-cols-2 gap-2">
+                      {f.comingSoon.map((c) => (
+                        <li
+                          key={c}
+                          className="flex items-start gap-2 text-sm text-foreground"
+                        >
+                          <span className="mt-1.5 h-1.5 w-1.5 rounded-full bg-accent flex-shrink-0" />
+                          {c}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
               </div>
 
               {/* Gallery strip — full width below the row */}
