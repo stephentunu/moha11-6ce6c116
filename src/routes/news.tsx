@@ -31,7 +31,7 @@ const news = [
     img: rallyImg,
     tag: "Movement",
     date: "Apr 18, 2026",
-    title: "10,000 strong: Mathare rallies behind Moha at Huruma Grounds",
+    title: "Moha' Campaign: Mathare rallies behind Moha at Huruma Grounds",
     excerpt:
       "A historic turnout at the campaign launch as residents from all five wards came out to declare 'Kuna More na Moha!'",
     featured: true,
@@ -40,15 +40,15 @@ const news = [
     img: educationImg,
     tag: "Education",
     date: "Apr 5, 2026",
-    title: "1,200 Form Four students receive full bursary cheques",
-    excerpt: "The Moha Foundation closes its biggest bursary cycle yet — KSh 18M disbursed.",
+    title: "Received 600+ students got bursary cheques",
+    excerpt: "The Moha Foundation closes its biggest bursary cycle yet — KSh 3.6M disbursed.",
   },
   {
     img: healthImg,
     tag: "Health",
     date: "Mar 28, 2026",
-    title: "Free medical camp serves over 3,000 in Mathare 4A",
-    excerpt: "BP screening, eye care, and pediatric services delivered for two days straight.",
+    title: "Free legal and medical camps",
+    excerpt: "BP screening, eye care, and pediatric services delivered for two days straight.";
   },
   {
     img: environmentImg,
