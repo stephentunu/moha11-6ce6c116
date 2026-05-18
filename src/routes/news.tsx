@@ -31,7 +31,7 @@ const news = [
     img: rallyImg,
     tag: "Movement",
     date: "Apr 18, 2026",
-    title: "Moha' Campaign: Mathare rallies behind Moha at Huruma Grounds",
+    title: "Moha Campaign: Mathare rallies behind Moha at Huruma Grounds",
     excerpt:
       "A historic turnout at the campaign launch as residents from all five wards came out to declare 'Kuna More na Moha!'",
     featured: true,
@@ -48,7 +48,7 @@ const news = [
     tag: "Health",
     date: "Mar 28, 2026",
     title: "Free legal and medical camps",
-    excerpt: "BP screening, eye care, and pediatric services delivered for two days straight.";
+    excerpt: "BP screening, eye care, and pediatric services delivered for two days straight.",
   },
   {
     img: environmentImg,
