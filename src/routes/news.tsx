@@ -48,7 +48,7 @@ const news = [
     tag: "Health",
     date: "Mar 28, 2026",
     title: "Free legal and medical camps",
-    excerpt: "BP screening, eye care, and pediatric services delivered for two days straight.";
+    excerpt: "BP screening, eye care, and pediatric services delivered for two days straight.",
   },
   {
     img: environmentImg,
