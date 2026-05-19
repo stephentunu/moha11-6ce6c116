@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useMemo, useRef, useState } from "react";
-import * as XLSX from "xlsx";
+import * as XLSX from "@e965/xlsx";
 import { Search, Trash2, UserPlus, BellOff, BellRing, Upload, FileSpreadsheet, Download } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
