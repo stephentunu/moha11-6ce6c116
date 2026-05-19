@@ -51,7 +51,6 @@ export const sendBulkSms = createServerFn({ method: "POST" })
 
     const list = (supporters as unknown as Array<{ id: string; phone: string }>) || [];
 
-    // mark sending
     await supabaseAdmin
       .from("bulk_messages" as never)
       .update({ status: "sending", total_recipients: list.length } as never)
@@ -66,7 +65,6 @@ export const sendBulkSms = createServerFn({ method: "POST" })
     }
 
     if (!AT_USERNAME || !AT_API_KEY) {
-      // Mark failed but record recipients as skipped so the admin sees clearly.
       const rows = list.map((s) => ({
         bulk_message_id: b.id,
         supporter_id: s.id,
@@ -84,7 +82,6 @@ export const sendBulkSms = createServerFn({ method: "POST" })
       );
     }
 
-    // Normalize and chunk (AT supports many recipients per call; chunk to 200)
     const normalized = list
       .map((s) => ({ ...s, phone: normalizeKePhone(s.phone) }))
       .filter((s): s is typeof s & { phone: string } => Boolean(s.phone));

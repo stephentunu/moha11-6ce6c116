@@ -16,7 +16,7 @@ import { Toaster } from "@/components/ui/sonner";
 import { AdminLayout } from "@/components/AdminLayout";
 import { MATHARE_WARDS } from "@/lib/admin-store";
 import { supabase } from "@/integrations/supabase/client";
-import { sendBulkSms } from "@/server/sms.functions";
+import { sendBulkSms } from "@/lib/sms.functions";
 
 export const Route = createFileRoute("/admin/sms")({
   head: () => ({
