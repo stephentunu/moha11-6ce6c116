@@ -98,48 +98,180 @@ export type Database = {
         }
         Relationships: []
       }
+      bursary_applications: {
+        Row: {
+          admin_notes: string | null
+          amount_requested: number | null
+          created_at: string
+          current_grade: string
+          dob: string | null
+          gender: string | null
+          guardian_name: string
+          guardian_phone: string
+          household_income_band: string | null
+          id: string
+          id_or_birth_cert_number: string | null
+          kcse_year: string | null
+          phone: string | null
+          reason: string | null
+          reference: string
+          residence_estate: string | null
+          school_name: string
+          siblings_in_school: number | null
+          sms_last_message: string | null
+          sms_last_sent_at: string | null
+          status: string
+          student_name: string
+          supporting_doc_url: string | null
+          updated_at: string
+          ward: string | null
+        }
+        Insert: {
+          admin_notes?: string | null
+          amount_requested?: number | null
+          created_at?: string
+          current_grade: string
+          dob?: string | null
+          gender?: string | null
+          guardian_name: string
+          guardian_phone: string
+          household_income_band?: string | null
+          id?: string
+          id_or_birth_cert_number?: string | null
+          kcse_year?: string | null
+          phone?: string | null
+          reason?: string | null
+          reference?: string
+          residence_estate?: string | null
+          school_name: string
+          siblings_in_school?: number | null
+          sms_last_message?: string | null
+          sms_last_sent_at?: string | null
+          status?: string
+          student_name: string
+          supporting_doc_url?: string | null
+          updated_at?: string
+          ward?: string | null
+        }
+        Update: {
+          admin_notes?: string | null
+          amount_requested?: number | null
+          created_at?: string
+          current_grade?: string
+          dob?: string | null
+          gender?: string | null
+          guardian_name?: string
+          guardian_phone?: string
+          household_income_band?: string | null
+          id?: string
+          id_or_birth_cert_number?: string | null
+          kcse_year?: string | null
+          phone?: string | null
+          reason?: string | null
+          reference?: string
+          residence_estate?: string | null
+          school_name?: string
+          siblings_in_school?: number | null
+          sms_last_message?: string | null
+          sms_last_sent_at?: string | null
+          status?: string
+          student_name?: string
+          supporting_doc_url?: string | null
+          updated_at?: string
+          ward?: string | null
+        }
+        Relationships: []
+      }
       businesses: {
         Row: {
           business_name: string
           category: string
+          contacts: string | null
           created_at: string
+          delivery_available: boolean
           description: string
           id: string
           image_url: string
+          image_urls: string[]
           location: string
+          nearest_transport: string | null
           owner_name: string
+          payment_methods: string[]
           phone: string
           status: string
+          street: string | null
+          till_paybill_number: string | null
           updated_at: string
           ward: string
+          website_url: string | null
         }
         Insert: {
           business_name: string
           category: string
+          contacts?: string | null
           created_at?: string
+          delivery_available?: boolean
           description?: string
           id?: string
           image_url?: string
+          image_urls?: string[]
           location: string
+          nearest_transport?: string | null
           owner_name: string
+          payment_methods?: string[]
           phone: string
           status?: string
+          street?: string | null
+          till_paybill_number?: string | null
           updated_at?: string
           ward: string
+          website_url?: string | null
         }
         Update: {
           business_name?: string
           category?: string
+          contacts?: string | null
           created_at?: string
+          delivery_available?: boolean
           description?: string
           id?: string
           image_url?: string
+          image_urls?: string[]
           location?: string
+          nearest_transport?: string | null
           owner_name?: string
+          payment_methods?: string[]
           phone?: string
           status?: string
+          street?: string | null
+          till_paybill_number?: string | null
           updated_at?: string
           ward?: string
+          website_url?: string | null
+        }
+        Relationships: []
+      }
+      service_ratings: {
+        Row: {
+          created_at: string
+          id: string
+          rating: string
+          service: string
+          ward: string | null
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          rating: string
+          service: string
+          ward?: string | null
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          rating?: string
+          service?: string
+          ward?: string | null
         }
         Relationships: []
       }
