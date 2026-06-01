@@ -3,6 +3,8 @@
 
 import { useEffect, useState } from "react";
 
+export type PaymentMethod = "send_money" | "pochi" | "till" | "paybill" | "cash";
+
 export type Business = {
   id: string;
   ownerName: string;
@@ -13,7 +15,42 @@ export type Business = {
   phone: string;
   description: string;
   imageUrl: string;
+  imageUrls: string[];
+  websiteUrl?: string;
+  street?: string;
+  contacts?: string;
+  paymentMethods: PaymentMethod[];
+  tillPaybillNumber?: string;
+  nearestTransport?: string;
+  deliveryAvailable: boolean;
   status: "active" | "suspended";
+  createdAt: number;
+};
+
+export type BursaryApplication = {
+  id: string;
+  reference: string;
+  studentName: string;
+  dob: string | null;
+  gender: string | null;
+  idOrBirthCertNumber: string | null;
+  phone: string | null;
+  schoolName: string;
+  currentGrade: string;
+  kcseYear: string | null;
+  guardianName: string;
+  guardianPhone: string;
+  ward: string | null;
+  residenceEstate: string | null;
+  householdIncomeBand: string | null;
+  siblingsInSchool: number;
+  amountRequested: number;
+  reason: string | null;
+  supportingDocUrl: string | null;
+  status: "pending" | "reviewing" | "approved" | "rejected";
+  adminNotes: string | null;
+  smsLastSentAt: string | null;
+  smsLastMessage: string | null;
   createdAt: number;
 };
 
