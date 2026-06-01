@@ -258,11 +258,20 @@ type BusinessRow = {
   phone: string;
   description: string;
   image_url: string;
+  image_urls: string[] | null;
+  website_url: string | null;
+  street: string | null;
+  contacts: string | null;
+  payment_methods: string[] | null;
+  till_paybill_number: string | null;
+  nearest_transport: string | null;
+  delivery_available: boolean | null;
   status: string;
   created_at: string;
 };
 
 function rowToBusiness(r: BusinessRow): Business {
+  const gallery = (r.image_urls && r.image_urls.length ? r.image_urls : r.image_url ? [r.image_url] : []).filter(Boolean);
   return {
     id: r.id,
     ownerName: r.owner_name,
@@ -272,7 +281,15 @@ function rowToBusiness(r: BusinessRow): Business {
     location: r.location,
     phone: r.phone,
     description: r.description,
-    imageUrl: r.image_url,
+    imageUrl: r.image_url || gallery[0] || "",
+    imageUrls: gallery,
+    websiteUrl: r.website_url ?? undefined,
+    street: r.street ?? undefined,
+    contacts: r.contacts ?? undefined,
+    paymentMethods: (r.payment_methods ?? []) as PaymentMethod[],
+    tillPaybillNumber: r.till_paybill_number ?? undefined,
+    nearestTransport: r.nearest_transport ?? undefined,
+    deliveryAvailable: Boolean(r.delivery_available),
     status: (r.status === "suspended" ? "suspended" : "active") as Business["status"],
     createdAt: new Date(r.created_at).getTime(),
   };
@@ -303,7 +320,6 @@ export function useBusinesses(): [Business[], (v: Business[]) => void] {
     const handler = () => load();
     window.addEventListener(BUSINESS_EVENT, handler);
 
-    // Realtime sync across devices
     const channel = supabase
       .channel("businesses-changes")
       .on(
@@ -334,7 +350,15 @@ export async function addBusiness(
     location: b.location,
     phone: b.phone,
     description: b.description ?? "",
-    image_url: b.imageUrl ?? "",
+    image_url: b.imageUrl ?? (b.imageUrls?.[0] ?? ""),
+    image_urls: b.imageUrls ?? [],
+    website_url: b.websiteUrl ?? null,
+    street: b.street ?? null,
+    contacts: b.contacts ?? null,
+    payment_methods: b.paymentMethods ?? [],
+    till_paybill_number: b.tillPaybillNumber ?? null,
+    nearest_transport: b.nearestTransport ?? null,
+    delivery_available: b.deliveryAvailable ?? false,
     status: b.status ?? "active",
   } as never);
   if (error) throw error;
