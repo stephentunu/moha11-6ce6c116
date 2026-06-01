@@ -133,18 +133,18 @@ const DEFAULT_POLLS: Poll[] = [
       { id: "g", label: "Youth unemployment", votes: 0 },
     ],
   },
-  {
-    id: "p2",
-    question: "Where should the next youth hub be built?",
-    options: [
-      { id: "a", label: "Mabatini", votes: 0 },
-      { id: "b", label: "Huruma", votes: 0 },
-      { id: "c", label: "Ngei", votes: 0 },
-      { id: "d", label: "Mlango Kubwa", votes: 0 },
-      { id: "e", label: "Kiamaiko", votes: 0 },
-      { id: "f", label: "Hospital", votes: 0 },
-    ],
-  },
+  // Service rating polls (Best / Fairly / Worst) — replaces the old Youth Hub poll.
+  ...(["Education", "Health", "Security", "Business Support", "All Services Overall", "Other (None of the above)"].map(
+    (svc, i) => ({
+      id: `p_svc_${i}`,
+      question: `How do you rate Moha's delivery on ${svc}?`,
+      options: [
+        { id: "best", label: "Best", votes: 0 },
+        { id: "fair", label: "Fairly", votes: 0 },
+        { id: "worst", label: "Worst", votes: 0 },
+      ],
+    }),
+  ) as Poll[]),
   {
     id: "p3",
     question: "Which education program should we expand next?",
@@ -153,6 +153,7 @@ const DEFAULT_POLLS: Poll[] = [
       { id: "b", label: "Digital learning labs", votes: 0 },
       { id: "c", label: "TVET scholarships", votes: 0 },
       { id: "d", label: "Adult literacy classes", votes: 0 },
+      { id: "e", label: "High school Bursaries and scholarships", votes: 0 },
     ],
   },
   {
