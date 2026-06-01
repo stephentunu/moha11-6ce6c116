@@ -1,7 +1,9 @@
 import { Outlet, Link, createRootRoute, HeadContent, Scripts, useRouterState } from "@tanstack/react-router";
+import { useEffect } from "react";
 import { Navbar } from "@/components/Navbar";
 import { Footer } from "@/components/Footer";
 import { ChatWidget } from "@/components/ChatWidget";
+import { bumpVisitOncePerSession } from "@/lib/loyalty";
 
 import appCss from "../styles.css?url";
 

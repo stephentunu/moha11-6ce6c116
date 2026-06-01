@@ -3,6 +3,8 @@
 
 import { useEffect, useState } from "react";
 
+export type PaymentMethod = "send_money" | "pochi" | "till" | "paybill" | "cash";
+
 export type Business = {
   id: string;
   ownerName: string;
@@ -13,7 +15,42 @@ export type Business = {
   phone: string;
   description: string;
   imageUrl: string;
+  imageUrls: string[];
+  websiteUrl?: string;
+  street?: string;
+  contacts?: string;
+  paymentMethods: PaymentMethod[];
+  tillPaybillNumber?: string;
+  nearestTransport?: string;
+  deliveryAvailable: boolean;
   status: "active" | "suspended";
+  createdAt: number;
+};
+
+export type BursaryApplication = {
+  id: string;
+  reference: string;
+  studentName: string;
+  dob: string | null;
+  gender: string | null;
+  idOrBirthCertNumber: string | null;
+  phone: string | null;
+  schoolName: string;
+  currentGrade: string;
+  kcseYear: string | null;
+  guardianName: string;
+  guardianPhone: string;
+  ward: string | null;
+  residenceEstate: string | null;
+  householdIncomeBand: string | null;
+  siblingsInSchool: number;
+  amountRequested: number;
+  reason: string | null;
+  supportingDocUrl: string | null;
+  status: "pending" | "reviewing" | "approved" | "rejected";
+  adminNotes: string | null;
+  smsLastSentAt: string | null;
+  smsLastMessage: string | null;
   createdAt: number;
 };
 
@@ -44,7 +81,7 @@ export type SiteContent = {
 
 const KEYS = {
   businesses: "moha.businesses.v1",
-  polls: "moha.polls.v2",
+  polls: "moha.polls.v3",
   pollVotes: "moha.pollVotes.v1",
   messages: "moha.messages.v1",
   content: "moha.content.v1",
@@ -96,18 +133,18 @@ const DEFAULT_POLLS: Poll[] = [
       { id: "g", label: "Youth unemployment", votes: 0 },
     ],
   },
-  {
-    id: "p2",
-    question: "Where should the next youth hub be built?",
-    options: [
-      { id: "a", label: "Mabatini", votes: 0 },
-      { id: "b", label: "Huruma", votes: 0 },
-      { id: "c", label: "Ngei", votes: 0 },
-      { id: "d", label: "Mlango Kubwa", votes: 0 },
-      { id: "e", label: "Kiamaiko", votes: 0 },
-      { id: "f", label: "Hospital", votes: 0 },
-    ],
-  },
+  // Service rating polls (Best / Fairly / Worst) — replaces the old Youth Hub poll.
+  ...(["Education", "Health", "Security", "Business Support", "All Services Overall", "Other (None of the above)"].map(
+    (svc, i) => ({
+      id: `p_svc_${i}`,
+      question: `How do you rate Moha's delivery on ${svc}?`,
+      options: [
+        { id: "best", label: "Best", votes: 0 },
+        { id: "fair", label: "Fairly", votes: 0 },
+        { id: "worst", label: "Worst", votes: 0 },
+      ],
+    }),
+  ) as Poll[]),
   {
     id: "p3",
     question: "Which education program should we expand next?",
@@ -116,6 +153,7 @@ const DEFAULT_POLLS: Poll[] = [
       { id: "b", label: "Digital learning labs", votes: 0 },
       { id: "c", label: "TVET scholarships", votes: 0 },
       { id: "d", label: "Adult literacy classes", votes: 0 },
+      { id: "e", label: "High school Bursaries and scholarships", votes: 0 },
     ],
   },
   {
@@ -220,11 +258,20 @@ type BusinessRow = {
   phone: string;
   description: string;
   image_url: string;
+  image_urls: string[] | null;
+  website_url: string | null;
+  street: string | null;
+  contacts: string | null;
+  payment_methods: string[] | null;
+  till_paybill_number: string | null;
+  nearest_transport: string | null;
+  delivery_available: boolean | null;
   status: string;
   created_at: string;
 };
 
 function rowToBusiness(r: BusinessRow): Business {
+  const gallery = (r.image_urls && r.image_urls.length ? r.image_urls : r.image_url ? [r.image_url] : []).filter(Boolean);
   return {
     id: r.id,
     ownerName: r.owner_name,
@@ -234,7 +281,15 @@ function rowToBusiness(r: BusinessRow): Business {
     location: r.location,
     phone: r.phone,
     description: r.description,
-    imageUrl: r.image_url,
+    imageUrl: r.image_url || gallery[0] || "",
+    imageUrls: gallery,
+    websiteUrl: r.website_url ?? undefined,
+    street: r.street ?? undefined,
+    contacts: r.contacts ?? undefined,
+    paymentMethods: (r.payment_methods ?? []) as PaymentMethod[],
+    tillPaybillNumber: r.till_paybill_number ?? undefined,
+    nearestTransport: r.nearest_transport ?? undefined,
+    deliveryAvailable: Boolean(r.delivery_available),
     status: (r.status === "suspended" ? "suspended" : "active") as Business["status"],
     createdAt: new Date(r.created_at).getTime(),
   };
@@ -265,7 +320,6 @@ export function useBusinesses(): [Business[], (v: Business[]) => void] {
     const handler = () => load();
     window.addEventListener(BUSINESS_EVENT, handler);
 
-    // Realtime sync across devices
     const channel = supabase
       .channel("businesses-changes")
       .on(
@@ -296,7 +350,15 @@ export async function addBusiness(
     location: b.location,
     phone: b.phone,
     description: b.description ?? "",
-    image_url: b.imageUrl ?? "",
+    image_url: b.imageUrl ?? (b.imageUrls?.[0] ?? ""),
+    image_urls: b.imageUrls ?? [],
+    website_url: b.websiteUrl ?? null,
+    street: b.street ?? null,
+    contacts: b.contacts ?? null,
+    payment_methods: b.paymentMethods ?? [],
+    till_paybill_number: b.tillPaybillNumber ?? null,
+    nearest_transport: b.nearestTransport ?? null,
+    delivery_available: b.deliveryAvailable ?? false,
     status: b.status ?? "active",
   } as never);
   if (error) throw error;
@@ -460,4 +522,157 @@ export function useAdminAuth() {
     };
   }, []);
   return { authed, ready };
+}
+
+// ===== Bursary Applications (Supabase-backed) =====
+type BursaryRow = {
+  id: string;
+  reference: string;
+  student_name: string;
+  dob: string | null;
+  gender: string | null;
+  id_or_birth_cert_number: string | null;
+  phone: string | null;
+  school_name: string;
+  current_grade: string;
+  kcse_year: string | null;
+  guardian_name: string;
+  guardian_phone: string;
+  ward: string | null;
+  residence_estate: string | null;
+  household_income_band: string | null;
+  siblings_in_school: number | null;
+  amount_requested: number | null;
+  reason: string | null;
+  supporting_doc_url: string | null;
+  status: string;
+  admin_notes: string | null;
+  sms_last_sent_at: string | null;
+  sms_last_message: string | null;
+  created_at: string;
+};
+
+function rowToBursary(r: BursaryRow): BursaryApplication {
+  return {
+    id: r.id,
+    reference: r.reference,
+    studentName: r.student_name,
+    dob: r.dob,
+    gender: r.gender,
+    idOrBirthCertNumber: r.id_or_birth_cert_number,
+    phone: r.phone,
+    schoolName: r.school_name,
+    currentGrade: r.current_grade,
+    kcseYear: r.kcse_year,
+    guardianName: r.guardian_name,
+    guardianPhone: r.guardian_phone,
+    ward: r.ward,
+    residenceEstate: r.residence_estate,
+    householdIncomeBand: r.household_income_band,
+    siblingsInSchool: r.siblings_in_school ?? 0,
+    amountRequested: Number(r.amount_requested ?? 0),
+    reason: r.reason,
+    supportingDocUrl: r.supporting_doc_url,
+    status: (["pending", "reviewing", "approved", "rejected"].includes(r.status)
+      ? r.status
+      : "pending") as BursaryApplication["status"],
+    adminNotes: r.admin_notes,
+    smsLastSentAt: r.sms_last_sent_at,
+    smsLastMessage: r.sms_last_message,
+    createdAt: new Date(r.created_at).getTime(),
+  };
+}
+
+const BURSARY_EVENT = "moha-bursaries";
+function emitBursaryChange() {
+  if (!isBrowser()) return;
+  window.dispatchEvent(new CustomEvent(BURSARY_EVENT));
+}
+
+export function useBursaryApplications(): [BursaryApplication[], () => void] {
+  const [list, setList] = useState<BursaryApplication[]>([]);
+  const reload = () => emitBursaryChange();
+  useEffect(() => {
+    let cancelled = false;
+    const load = async () => {
+      const { data, error } = await supabase
+        .from("bursary_applications" as never)
+        .select("*")
+        .order("created_at", { ascending: false });
+      if (!cancelled && !error && data) {
+        setList((data as unknown as BursaryRow[]).map(rowToBursary));
+      }
+    };
+    load();
+    const handler = () => load();
+    window.addEventListener(BURSARY_EVENT, handler);
+    const channel = supabase
+      .channel("bursaries-changes")
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "bursary_applications" },
+        () => load()
+      )
+      .subscribe();
+    return () => {
+      cancelled = true;
+      window.removeEventListener(BURSARY_EVENT, handler);
+      supabase.removeChannel(channel);
+    };
+  }, []);
+  return [list, reload];
+}
+
+export type BursaryInput = Omit<BursaryApplication, "id" | "reference" | "status" | "adminNotes" | "smsLastSentAt" | "smsLastMessage" | "createdAt">;
+
+export async function addBursaryApplication(b: BursaryInput): Promise<{ reference: string }> {
+  const { data, error } = await supabase
+    .from("bursary_applications" as never)
+    .insert({
+      student_name: b.studentName,
+      dob: b.dob || null,
+      gender: b.gender,
+      id_or_birth_cert_number: b.idOrBirthCertNumber,
+      phone: b.phone,
+      school_name: b.schoolName,
+      current_grade: b.currentGrade,
+      kcse_year: b.kcseYear,
+      guardian_name: b.guardianName,
+      guardian_phone: b.guardianPhone,
+      ward: b.ward,
+      residence_estate: b.residenceEstate,
+      household_income_band: b.householdIncomeBand,
+      siblings_in_school: b.siblingsInSchool,
+      amount_requested: b.amountRequested,
+      reason: b.reason,
+      supporting_doc_url: b.supportingDocUrl,
+    } as never)
+    .select("reference")
+    .single();
+  if (error) throw error;
+  emitBursaryChange();
+  return { reference: (data as unknown as { reference: string }).reference };
+}
+
+export async function setBursaryStatus(id: string, status: BursaryApplication["status"], notes?: string) {
+  const patch: Record<string, unknown> = { status };
+  if (notes !== undefined) patch.admin_notes = notes;
+  const { error } = await supabase.from("bursary_applications" as never).update(patch as never).eq("id", id);
+  if (error) throw error;
+  emitBursaryChange();
+}
+
+export async function logBursarySms(id: string, message: string) {
+  const { error } = await supabase
+    .from("bursary_applications" as never)
+    .update({ sms_last_sent_at: new Date().toISOString(), sms_last_message: message } as never)
+    .eq("id", id);
+  if (error) throw error;
+  emitBursaryChange();
+}
+
+export async function deleteBursaryApplication(id: string) {
+  const { error } = await supabase.from("bursary_applications" as never).delete().eq("id", id);
+  if (error) throw error;
+  emitBursaryChange();
 }
