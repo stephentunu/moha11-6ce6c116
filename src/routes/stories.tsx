@@ -38,7 +38,7 @@ const stories = [
   },
   {
     name: "Brian O.",
-    role: "KCSE 2023, A- Student",
+    role: "Grade 10, Student",
     quote:
       "I had given up on Form Four because of fees. Moha's bursary brought me back. I'm now in university studying Engineering.",
     img: brianImg,
