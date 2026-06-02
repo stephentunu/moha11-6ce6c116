@@ -38,7 +38,7 @@ const stories = [
   },
   {
     name: "Brian O.",
-    role: "Grade 10, Student",
+    role: "Grade 10 Student",
     quote:
       "I had given up on Grade 10 admission because of fees. Moha's bursary brought me back. I'm now in school studying.",
     img: brianImg,
@@ -65,10 +65,10 @@ const stories = [
     img: sarahImg,
   },
   {
-    name: "Coach Juma",
-    role: "Mathare Youth Football",
+    name: "Faith W.",
+    role: "Student Voice, Mathare",
     quote:
-      "He bought us full kits and pays for transport to tournaments. Our boys are now scouted by national teams.",
+      "Through Moha's bursary I went back to school, and his youth program gave me a place to dream again. He sees us — and he shows up.",
     img: jumaImg,
   },
 ];

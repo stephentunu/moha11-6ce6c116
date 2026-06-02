@@ -16,6 +16,7 @@ import {
 import { PageHero } from "@/components/PageHero";
 import { Button } from "@/components/ui/button";
 import { useContent } from "@/lib/admin-store";
+import { BursaryApplicationDialog } from "@/components/BursaryApplicationDialog";
 import vulnerableImg from "@/assets/moha/donation3.jpeg";
 import bursaryImg from "@/assets/moha/bursary1.jpeg";
 import pwdImg from "@/assets/moha/moha30.jpeg";
@@ -369,6 +370,21 @@ function FoundationsPage() {
                     </li>
                   ))}
                 </ul>
+
+                {f.title === "Bursaries" && (
+                  <div className="mt-6">
+                    <BursaryApplicationDialog
+                      trigger={
+                        <Button variant="hero" size="lg">
+                          Apply for a Bursary <ArrowRight className="h-5 w-5" />
+                        </Button>
+                      }
+                    />
+                    <p className="mt-2 text-xs text-muted-foreground">
+                      4-step application · You'll receive an SMS update on your application status.
+                    </p>
+                  </div>
+                )}
 
                 {f.comingSoon.length > 0 && (
                   <div className="mt-6 rounded-2xl border border-accent/20 bg-accent/5 p-5">

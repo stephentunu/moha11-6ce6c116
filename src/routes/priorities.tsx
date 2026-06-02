@@ -365,18 +365,21 @@ function PillarColumn({
         </div>
       </div>
       <ul className="space-y-3">
-        {items.map((item, i) => (
-          <motion.li
-            key={item}
-            initial={{ opacity: 0, x: -8 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ delay: i * 0.04 }}
-            className="flex items-start gap-2 text-sm text-foreground leading-relaxed"
-          >
-            <span className="mt-2 flex-shrink-0 h-1.5 w-1.5 rounded-full bg-gold" />
-            <span>{item}</span>
-          </motion.li>
-        ))}
+        {items.map((item, i) => {
+          const display = item.length ? item[0].toUpperCase() + item.slice(1) : item;
+          return (
+            <motion.li
+              key={item}
+              initial={{ opacity: 0, x: -8 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ delay: i * 0.04 }}
+              className="flex items-start gap-2 text-sm text-foreground leading-relaxed"
+            >
+              <span className="mt-2 flex-shrink-0 h-1.5 w-1.5 rounded-full bg-gold" />
+              <span>{display}</span>
+            </motion.li>
+          );
+        })}
       </ul>
     </div>
   );
