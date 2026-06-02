@@ -5,7 +5,7 @@ import { PageHero } from "@/components/PageHero";
 import rallyImg from "@/assets/moha/foundation1.jpeg";
 import educationImg from "@/assets/moha/bursary1.jpeg";
 import healthImg from "@/assets/moha/moha10.jpeg";
-import environmentImg from "@/assets/moha/moha16.jpeg";
+import environmentImg from "@/assets/moha/environment-cleanup.jpg";
 import businessImg from "@/assets/moha/foundation5.jpeg";
 
 export const Route = createFileRoute("/news")({
