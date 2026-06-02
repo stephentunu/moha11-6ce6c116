@@ -81,7 +81,7 @@ export type SiteContent = {
 
 const KEYS = {
   businesses: "moha.businesses.v1",
-  polls: "moha.polls.v3",
+  polls: "moha.polls.v4",
   pollVotes: "moha.pollVotes.v1",
   messages: "moha.messages.v1",
   content: "moha.content.v1",

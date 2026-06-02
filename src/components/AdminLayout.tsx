@@ -12,6 +12,7 @@ import {
   Users,
   MessageSquare,
   Calendar,
+  GraduationCap,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -20,6 +21,7 @@ import { useAdminAuth, adminLogout, useMessages } from "@/lib/admin-store";
 const NAV: { to: string; label: string; icon: typeof LayoutDashboard; exact?: boolean }[] = [
   { to: "/admin", label: "Overview", icon: LayoutDashboard, exact: true },
   { to: "/admin/businesses", label: "Business Moderation", icon: Store },
+  { to: "/admin/bursaries", label: "Bursary Applications", icon: GraduationCap },
   { to: "/admin/content", label: "Content Manager", icon: FileText },
   { to: "/admin/activities", label: "Daily Activities", icon: Calendar },
   { to: "/admin/polls", label: "Poll Analytics", icon: BarChart3 },
