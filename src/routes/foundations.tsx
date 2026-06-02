@@ -16,6 +16,7 @@ import {
 import { PageHero } from "@/components/PageHero";
 import { Button } from "@/components/ui/button";
 import { useContent } from "@/lib/admin-store";
+import { BursaryApplicationDialog } from "@/components/BursaryApplicationDialog";
 import vulnerableImg from "@/assets/moha/donation3.jpeg";
 import bursaryImg from "@/assets/moha/bursary1.jpeg";
 import pwdImg from "@/assets/moha/moha30.jpeg";
