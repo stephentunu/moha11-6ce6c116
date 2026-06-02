@@ -158,7 +158,7 @@ const themes: Theme[] = [
       "Equiping barber and salon shops",
       "Buying boxing equipment and materials to youth groups",
       "Providing umbrellas to businesses",
-      "Building stocks for businesses e.g omena and egss",
+      "Building stocks for businesses e.g omena and eggs",
 
      
     ],
