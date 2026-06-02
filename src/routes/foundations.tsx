@@ -127,7 +127,7 @@ const foundations: Foundation[] = [
     icon: HandHeart,
     title: "Vulnerable Groups",
     pill: "Mama & Mzee Care",
-    desc: "Monthly food parcels, dignity packs, and emergency support for widows, orphans, and elderly residents across all 5 wards of Mathare.",
+    desc: "Monthly food parcels, dignity packs, and emergency support for widows, orphans, and elderly residents across all 6 wards of Mathare.",
     impact: "500+ households reached",
     img: vulnerableImg,
     points: [
@@ -138,29 +138,33 @@ const foundations: Foundation[] = [
     ],
     gallery: [vulnerableImg, gifts, activities],
     comingSoon: [
-      "Permanent Mama & Mzee resource centre",
+      "Elderly Persons' Homes",
       "Monthly stipend program for elderly residents",
       "24/7 GBV rescue & safe-house network",
     ],
   },
   {
     icon: GraduationCap,
-    title: "Bursaries",
+    title: "Bursaries& Scholarships",
     pill: "Education Fund",
     desc: "From primary school fees to university tuition — Moha's bursary program ensures no Mathare child is locked out of class because of money.",
     impact: "600+ bursaries issued",
     img: bursaryImg,
     points: [
-      "100% KCSE candidate fee coverage",
-      "University & TVET tuition support",
-      "School uniforms & textbooks",
+      "600+ senior school students supported",
+      "60+ students fully sponsored",
+      "School uniforms & textbooks distributed",
       "Boarding & transport stipends",
+      "Mentorship programs sponsored",
+      "sanitary pads issued to girls",
     ],
     gallery: [bursaryImg, students, students1, school1, education3],
     comingSoon: [
       "Overseas & international scholarship pipeline",
       "Mathare alumni mentorship network",
       "Digital learning labs in every ward",
+      "University and TVET tuition support",
+      "Job recruitment and industrial attachment opportunities"
     ],
   },
   {
@@ -173,14 +177,15 @@ const foundations: Foundation[] = [
     points: [
       "Free assistive devices (wheelchairs, white canes)",
       "PWD entrepreneur grants",
-      "Accessible public spaces & ramps",
-      "Sign-language interpreters at events",
+      
+      
     ],
     gallery: [pwdImg, pwd1, pwd2, pwd3, pwd4],
     comingSoon: [
-      "Free electronic assistive devices rollout",
+      "Regular assistive devices rollout",
       "PWD-friendly vocational training centre",
       "Inclusive sports league for PWDs",
+      "Sign-language interpreters at events",
     ],
   },
   {
@@ -204,6 +209,7 @@ const foundations: Foundation[] = [
       "Recruitment & industrial attachment opportunities",
       "Youth innovation hub with free Wi-Fi",
       "Annual Mathare youth leadership summit",
+      "Expanding Moha's Biz Mtaani initiatives",
     ],
   },
   {
@@ -211,10 +217,10 @@ const foundations: Foundation[] = [
     title: "Sports & Talent",
     pill: "Mathare Plays",
     desc: "From dusty pitches to medal podiums — Moha sponsors tournaments, kits, prizes, and cheers loudest when Mathare's talented kids take the stage.",
-    impact: "40+ tournaments backed",
+    impact: "3+ tournaments backed",
     img: soccer,
     points: [
-      "Back To school tournaments",
+      "Back to school tournaments",
       "Ladies tournaments",
       "Trophies and medal",
       "Adults' fun day",
@@ -225,7 +231,7 @@ const foundations: Foundation[] = [
       talent, talents, talents1, talents2, talentedKids, talentedKids1,
     ],
     comingSoon: [
-      "Mathare premier league with cash prizes",
+      "More organized grassroot sports with cash prizes",
       "Talent academy for music, dance & arts",
       "Modern community sports complex",
     ],
@@ -238,19 +244,21 @@ const foundations: Foundation[] = [
     impact: "1,000+ supplies distributed",
     img: books,
     points: [
-      "Textbooks for primary & secondary learners",
+      
       "Exercise books, pens, pencils & rulers",
-      "Full back-to-school stationery kits",
-      "School-wide library top-ups",
+      "Full back-to-school textbooks and stationery kits",
+
+      
     ],
     gallery: [
       books, books1, books3, books4, books5, books7, books8, books9, book2,
       stationery, stationery1, stationery2, stationery3, stationery4,
     ],
     comingSoon: [
-      "Free school laptops & tablets program",
+      "Sponsorship from suppliers",
       "Community library in every ward",
       "Termly stationery restock drives",
+      "Job opportunities and industrial attachment from suppliers and publishers",
     ],
   },
   {
@@ -271,6 +279,7 @@ const foundations: Foundation[] = [
       "Low-interest revolving credit fund",
       "Modern market stalls & cold storage",
       "Business skills bootcamps for hustlers",
+      "Mentorship and market growth through adverts",
     ],
   },
   {
@@ -283,14 +292,15 @@ const foundations: Foundation[] = [
     points: [
       "Mentorship programs",
       "Learning materials and play kits",
-      "Caregiver & teacher support",
+      
       "Nutrition support for young learners",
     ],
     gallery: [ecd, ecd1, ecd2, children],
     comingSoon: [
-      "Free daily porridge program in ECD centres",
-      "Upgraded ECD classrooms & playgrounds",
+      "More learning materials and play kits",
+      "Upgraded playgrounds and pitches",
       "Caregiver training & certification",
+      "Caregiver & teacher support",
     ],
   },
 ];

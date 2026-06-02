@@ -40,7 +40,7 @@ const stories = [
     name: "Brian O.",
     role: "Grade 10, Student",
     quote:
-      "I had given up on Form Four because of fees. Moha's bursary brought me back. I'm now in university studying Engineering.",
+      "I had given up on Grade 10 admission because of fees. Moha's bursary brought me back. I'm now in school studying.",
     img: brianImg,
   },
   {

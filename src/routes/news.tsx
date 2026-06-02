@@ -1,3 +1,4 @@
+
 import { createFileRoute } from "@tanstack/react-router";
 import { motion } from "framer-motion";
 import { Calendar, ArrowRight } from "lucide-react";
@@ -54,15 +55,15 @@ const news = [
     img: environmentImg,
     tag: "Environment",
     date: "Mar 15, 2026",
-    title: "Mathare River cleanup: 12 tons of waste removed",
+    title: "Mathare cleanup: Tons of waste removed",
     excerpt: "Volunteers, youth groups, and Moha's team take to the river — a new beginning.",
   },
   {
     img: businessImg,
     tag: "Business",
     date: "Mar 2, 2026",
-    title: "Mama Mboga capital fund hits KSh 25M milestone",
-    excerpt: "Half-way to the 50M target — 600 mama mbogas already funded.",
+    title: "Mama Mboga capital fund hits a milestone",
+    excerpt: "Half-way to the target — 600+ mama mbogas already funded.",
   },
 ];
 
