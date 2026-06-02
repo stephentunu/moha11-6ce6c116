@@ -29,6 +29,7 @@ import { Route as AdminLoginRouteImport } from './routes/admin.login'
 import { Route as AdminInboxRouteImport } from './routes/admin.inbox'
 import { Route as AdminContentRouteImport } from './routes/admin.content'
 import { Route as AdminBusinessesRouteImport } from './routes/admin.businesses'
+import { Route as AdminBursariesRouteImport } from './routes/admin.bursaries'
 import { Route as AdminActivitiesRouteImport } from './routes/admin.activities'
 
 const UnsubscribeRoute = UnsubscribeRouteImport.update({
@@ -131,6 +132,11 @@ const AdminBusinessesRoute = AdminBusinessesRouteImport.update({
   path: '/admin/businesses',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AdminBursariesRoute = AdminBursariesRouteImport.update({
+  id: '/admin/bursaries',
+  path: '/admin/bursaries',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AdminActivitiesRoute = AdminActivitiesRouteImport.update({
   id: '/admin/activities',
   path: '/admin/activities',
@@ -150,6 +156,7 @@ export interface FileRoutesByFullPath {
   '/stories': typeof StoriesRoute
   '/unsubscribe': typeof UnsubscribeRoute
   '/admin/activities': typeof AdminActivitiesRoute
+  '/admin/bursaries': typeof AdminBursariesRoute
   '/admin/businesses': typeof AdminBusinessesRoute
   '/admin/content': typeof AdminContentRoute
   '/admin/inbox': typeof AdminInboxRoute
@@ -173,6 +180,7 @@ export interface FileRoutesByTo {
   '/stories': typeof StoriesRoute
   '/unsubscribe': typeof UnsubscribeRoute
   '/admin/activities': typeof AdminActivitiesRoute
+  '/admin/bursaries': typeof AdminBursariesRoute
   '/admin/businesses': typeof AdminBusinessesRoute
   '/admin/content': typeof AdminContentRoute
   '/admin/inbox': typeof AdminInboxRoute
@@ -197,6 +205,7 @@ export interface FileRoutesById {
   '/stories': typeof StoriesRoute
   '/unsubscribe': typeof UnsubscribeRoute
   '/admin/activities': typeof AdminActivitiesRoute
+  '/admin/bursaries': typeof AdminBursariesRoute
   '/admin/businesses': typeof AdminBusinessesRoute
   '/admin/content': typeof AdminContentRoute
   '/admin/inbox': typeof AdminInboxRoute
@@ -222,6 +231,7 @@ export interface FileRouteTypes {
     | '/stories'
     | '/unsubscribe'
     | '/admin/activities'
+    | '/admin/bursaries'
     | '/admin/businesses'
     | '/admin/content'
     | '/admin/inbox'
@@ -245,6 +255,7 @@ export interface FileRouteTypes {
     | '/stories'
     | '/unsubscribe'
     | '/admin/activities'
+    | '/admin/bursaries'
     | '/admin/businesses'
     | '/admin/content'
     | '/admin/inbox'
@@ -268,6 +279,7 @@ export interface FileRouteTypes {
     | '/stories'
     | '/unsubscribe'
     | '/admin/activities'
+    | '/admin/bursaries'
     | '/admin/businesses'
     | '/admin/content'
     | '/admin/inbox'
@@ -292,6 +304,7 @@ export interface RootRouteChildren {
   StoriesRoute: typeof StoriesRoute
   UnsubscribeRoute: typeof UnsubscribeRoute
   AdminActivitiesRoute: typeof AdminActivitiesRoute
+  AdminBursariesRoute: typeof AdminBursariesRoute
   AdminBusinessesRoute: typeof AdminBusinessesRoute
   AdminContentRoute: typeof AdminContentRoute
   AdminInboxRoute: typeof AdminInboxRoute
@@ -445,6 +458,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminBusinessesRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/admin/bursaries': {
+      id: '/admin/bursaries'
+      path: '/admin/bursaries'
+      fullPath: '/admin/bursaries'
+      preLoaderRoute: typeof AdminBursariesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/admin/activities': {
       id: '/admin/activities'
       path: '/admin/activities'
@@ -468,6 +488,7 @@ const rootRouteChildren: RootRouteChildren = {
   StoriesRoute: StoriesRoute,
   UnsubscribeRoute: UnsubscribeRoute,
   AdminActivitiesRoute: AdminActivitiesRoute,
+  AdminBursariesRoute: AdminBursariesRoute,
   AdminBusinessesRoute: AdminBusinessesRoute,
   AdminContentRoute: AdminContentRoute,
   AdminInboxRoute: AdminInboxRoute,
@@ -481,3 +502,12 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { createStart } from '@tanstack/react-start'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+  }
+}
