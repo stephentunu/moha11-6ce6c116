@@ -40,15 +40,16 @@ const news = [
     img: educationImg,
     tag: "Education",
     date: "Apr 5, 2026",
-    title: "Received 600+ students got bursary cheques",
-    excerpt: "The Moha Foundation closes its biggest bursary cycle yet — KSh 3.6M disbursed.",
+    title: "600+ students received bursary cheques — KSh 3.6M disbursed Term 1 2026",
+    excerpt: "The Moha Foundation closes its biggest bursary cycle yet — KSh 3.6M disbursed in Term 1 2026.",
   },
   {
     img: healthImg,
     tag: "Health",
     date: "Mar 28, 2026",
-    title: "Free legal and medical camps",
-    excerpt: "BP screening, eye care, and pediatric services delivered for two days straight.",
+    title: "Free legal, registration & medical camps reach thousands",
+    excerpt:
+      "ID & Passport registration, Voter registration, SHA registration, GBV desk support and free legal aid delivered alongside BP screening, eye care and pediatric services.",
   },
   {
     img: environmentImg,
