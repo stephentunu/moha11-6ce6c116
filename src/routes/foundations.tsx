@@ -361,6 +361,21 @@ function FoundationsPage() {
                   ))}
                 </ul>
 
+                {f.title === "Bursaries" && (
+                  <div className="mt-6">
+                    <BursaryApplicationDialog
+                      trigger={
+                        <Button variant="hero" size="lg">
+                          Apply for a Bursary <ArrowRight className="h-5 w-5" />
+                        </Button>
+                      }
+                    />
+                    <p className="mt-2 text-xs text-muted-foreground">
+                      4-step application · You'll receive an SMS update on your application status.
+                    </p>
+                  </div>
+                )}
+
                 {f.comingSoon.length > 0 && (
                   <div className="mt-6 rounded-2xl border border-accent/20 bg-accent/5 p-5">
                     <div className="flex items-center gap-2 mb-3">
