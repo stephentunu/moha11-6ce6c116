@@ -371,7 +371,7 @@ function FoundationsPage() {
                   ))}
                 </ul>
 
-                {f.title === "Bursaries" && (
+                {f.title.startsWith("Bursaries") && (
                   <div className="mt-6">
                     <BursaryApplicationDialog
                       trigger={
