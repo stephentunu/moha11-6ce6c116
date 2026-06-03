@@ -8,7 +8,6 @@ import {
   Upload,
   Plus,
   Store,
-  Scissors,
   UtensilsCrossed,
   ShoppingBasket,
   Wrench,
@@ -27,6 +26,14 @@ import {
   Share2,
   Globe,
   Banknote,
+  Briefcase,
+  HardHat,
+  Monitor,
+  Music,
+  Church,
+  Home,
+  Settings,
+  Sofa,
 } from "lucide-react";
 import { PageHero } from "@/components/PageHero";
 import { Button } from "@/components/ui/button";
@@ -90,15 +97,22 @@ export const Route = createFileRoute("/advertise")({
 const WARDS = ["Mabatini", "Huruma", "Hospital", "Kiamaiko", "Ngei", "Mlango Kubwa"] as const;
 
 const CATEGORIES = [
-  { value: "Groceries & Mboga", icon: ShoppingBasket },
-  { value: "Food & Restaurant", icon: UtensilsCrossed },
-  { value: "Salon & Barber", icon: Scissors },
-  { value: "Tailoring & Fashion", icon: Shirt },
-  { value: "Hardware & Repair", icon: Wrench },
-  { value: "Health & Pharmacy", icon: Stethoscope },
-  { value: "Education & Tutoring", icon: GraduationCap },
-  { value: "Beauty & Cosmetics", icon: Sparkles },
-  { value: "General Shop", icon: Store },
+  { value: "Beauty and Skincare- Cosmetics, Salons, Barbershops & Related", icon: Sparkles },
+  { value: "Building and Construction -Electrical, Plumbing & Hardware", icon: HardHat },
+  { value: "Clothing and Fashion -Uniforms, Shoes, Clothes & Related", icon: Shirt },
+  { value: "Consultancy, Job Offers and Seeking", icon: Briefcase },
+  { value: "Education and Training -Bookshops, Colleges, Teaching & Related", icon: GraduationCap },
+  { value: "Electronics – Phones, Computers, TVs & Related", icon: Monitor },
+  { value: "Entertainment – Pubs, Night Clubs, Video Shows & Related", icon: Music },
+  { value: "Evangelical, Crusades and Worship", icon: Church },
+  { value: "Food -Hotels, Water, Butcheries & Related", icon: UtensilsCrossed },
+  { value: "General Shops and Vending– Retail, Wholesale, Agrovets & Related", icon: Store },
+  { value: "Groceries and Fish -Fresh Farm Produce & Related", icon: ShoppingBasket },
+  { value: "Health -Pharmacies, Chemicals, Fitness Centres & Related", icon: Stethoscope },
+  { value: "Home Accessories – Juakali, Garden, Kitchen, Furniture & Related", icon: Sofa },
+  { value: "Machinery and Spare Shops – Cars, Motorbikes, Electronics & Related", icon: Settings },
+  { value: "Property and Houses to Rent, Sale or Lease", icon: Home },
+  { value: "Services – Repairs, Cleaning, Transport, Garage, Printing & Related", icon: Wrench },
 ] as const;
 
 const PAYMENT_OPTIONS: { value: PaymentMethod; label: string }[] = [
@@ -479,7 +493,7 @@ function BusinessCard({ business, index }: { business: Business; index: number }
         </div>
       </div>
       <div className="p-5 flex-1 flex flex-col">
-        <p className="text-xs font-semibold uppercase tracking-wider text-primary mb-1">{business.category}</p>
+        <p className="text-xs font-semibold uppercase tracking-wider text-primary mb-1 line-clamp-1">{business.category}</p>
         <h3 className="font-display text-xl font-bold mb-1 line-clamp-1">{business.businessName}</h3>
         <p className="text-sm text-muted-foreground mb-3 line-clamp-2 min-h-[2.5rem]">
           {business.description || `Run by ${business.ownerName}`}
