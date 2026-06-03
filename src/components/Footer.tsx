@@ -55,10 +55,8 @@ const values = [
 ];
 
 const partners = [
-  "Mathare Youth Sports Association",
-  "Mathare Foundation",
-  "Ghetto Foundation",
-  "Mathare Social Justice Centre",
+  "PARTNER WITH US",
+  
 ];
 
 export function Footer() {
