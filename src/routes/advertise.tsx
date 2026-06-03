@@ -8,7 +8,6 @@ import {
   Upload,
   Plus,
   Store,
-  Scissors,
   UtensilsCrossed,
   ShoppingBasket,
   Wrench,
@@ -27,6 +26,14 @@ import {
   Share2,
   Globe,
   Banknote,
+  Briefcase,
+  HardHat,
+  Monitor,
+  Music,
+  Church,
+  Home,
+  Settings,
+  Sofa,
 } from "lucide-react";
 import { PageHero } from "@/components/PageHero";
 import { Button } from "@/components/ui/button";
