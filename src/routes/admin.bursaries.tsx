@@ -171,7 +171,8 @@ function AdminBursariesPage() {
           ))}
         </div>
 
-        <div className="bg-card border border-border rounded-2xl overflow-hidden">
+        {/* Desktop table */}
+        <div className="hidden md:block bg-card border border-border rounded-2xl overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead className="bg-muted/50 text-xs uppercase tracking-wider text-muted-foreground">
@@ -239,6 +240,69 @@ function AdminBursariesPage() {
               </tbody>
             </table>
           </div>
+        </div>
+
+        {/* Mobile cards */}
+        <div className="md:hidden space-y-3">
+          {filtered.length === 0 ? (
+            <div className="bg-card border border-border rounded-2xl p-8 text-center text-muted-foreground">
+              <GraduationCap className="h-8 w-8 mx-auto mb-2 opacity-50" />
+              No applications yet.
+            </div>
+          ) : (
+            filtered.map((r) => (
+              <div key={r.id} className="bg-card border border-border rounded-2xl p-4 space-y-3">
+                <div className="flex items-start justify-between gap-2">
+                  <div>
+                    <p className="font-mono text-xs font-bold text-primary">{r.reference}</p>
+                    <p className="font-semibold text-foreground">{r.student_name}</p>
+                    <p className="text-xs text-muted-foreground">{r.guardian_name} · {r.guardian_phone}</p>
+                  </div>
+                  <Select value={r.status} onValueChange={(v) => updateStatus(r.id, v)}>
+                    <SelectTrigger className={`h-7 text-[10px] font-bold uppercase ${STATUS_COLORS[r.status] ?? ""}`}>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="pending">Pending</SelectItem>
+                      <SelectItem value="reviewing">Reviewing</SelectItem>
+                      <SelectItem value="approved">Approved</SelectItem>
+                      <SelectItem value="rejected">Rejected</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="grid grid-cols-2 gap-2 text-sm">
+                  <div>
+                    <p className="text-[10px] uppercase tracking-wider text-muted-foreground">School</p>
+                    <p className="font-medium text-foreground">{r.school_name}</p>
+                    <p className="text-xs text-muted-foreground">{r.current_grade}</p>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-[10px] uppercase tracking-wider text-muted-foreground">Amount</p>
+                    <p className="font-semibold text-foreground">
+                      {r.amount_requested ? `KSh ${Number(r.amount_requested).toLocaleString()}` : "—"}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-[10px] uppercase tracking-wider text-muted-foreground">Ward</p>
+                    <p className="text-foreground">{r.ward || "—"}</p>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2 pt-2 border-t border-border">
+                  <Button size="sm" variant="outline" className="flex-1" onClick={() => setSelected(r)}>
+                    <Eye className="h-3.5 w-3.5 mr-1" /> View
+                  </Button>
+                  <Button size="sm" variant="outline" className="flex-1" onClick={() => openSms(r)}>
+                    <Send className="h-3.5 w-3.5 mr-1" /> SMS
+                  </Button>
+                  <Button size="icon" variant="ghost" onClick={() => remove(r.id)} title="Delete">
+                    <Trash2 className="h-4 w-4 text-destructive" />
+                  </Button>
+                </div>
+              </div>
+            ))
+          )}
         </div>
       </div>
 
