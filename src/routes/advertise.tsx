@@ -493,7 +493,7 @@ function BusinessCard({ business, index }: { business: Business; index: number }
         </div>
       </div>
       <div className="p-5 flex-1 flex flex-col">
-        <p className="text-xs font-semibold uppercase tracking-wider text-primary mb-1">{business.category}</p>
+        <p className="text-xs font-semibold uppercase tracking-wider text-primary mb-1 line-clamp-1">{business.category}</p>
         <h3 className="font-display text-xl font-bold mb-1 line-clamp-1">{business.businessName}</h3>
         <p className="text-sm text-muted-foreground mb-3 line-clamp-2 min-h-[2.5rem]">
           {business.description || `Run by ${business.ownerName}`}
