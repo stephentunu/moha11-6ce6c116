@@ -1,0 +1,20 @@
+
+ALTER TABLE public.bursary_applications
+  ADD COLUMN IF NOT EXISTS registration_number TEXT,
+  ADD COLUMN IF NOT EXISTS father_alive BOOLEAN,
+  ADD COLUMN IF NOT EXISTS mother_alive BOOLEAN,
+  ADD COLUMN IF NOT EXISTS student_disability BOOLEAN DEFAULT false,
+  ADD COLUMN IF NOT EXISTS student_disability_detail TEXT,
+  ADD COLUMN IF NOT EXISTS school_category TEXT,
+  ADD COLUMN IF NOT EXISTS school_county TEXT,
+  ADD COLUMN IF NOT EXISTS school_sub_county TEXT,
+  ADD COLUMN IF NOT EXISTS year_of_admission TEXT,
+  ADD COLUMN IF NOT EXISTS student_outstanding TEXT,
+  ADD COLUMN IF NOT EXISTS school_bank_account TEXT,
+  ADD COLUMN IF NOT EXISTS parent_national_id TEXT,
+  ADD COLUMN IF NOT EXISTS parent_occupation TEXT,
+  ADD COLUMN IF NOT EXISTS parent_residence_sub_county TEXT,
+  ADD COLUMN IF NOT EXISTS polling_station TEXT,
+  ADD COLUMN IF NOT EXISTS parent_disability BOOLEAN DEFAULT false,
+  ADD COLUMN IF NOT EXISTS parent_disability_detail TEXT,
+  ADD COLUMN IF NOT EXISTS estimated_fee_balances NUMERIC DEFAULT 0;
