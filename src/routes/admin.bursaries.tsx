@@ -1,6 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
-import { GraduationCap, Send, Eye, Trash2 } from "lucide-react";
+import { GraduationCap, Send, Eye, Trash2, Download } from "lucide-react";
+import { generateBursaryPdf } from "@/lib/bursary-pdf";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
@@ -39,21 +40,38 @@ type Row = {
   id: string;
   reference: string;
   student_name: string;
+  registration_number: string | null;
   dob: string | null;
   gender: string | null;
-  id_or_birth_cert_number: string | null;
   phone: string | null;
-  school_name: string;
   current_grade: string;
-  kcse_year: string | null;
+  father_alive: boolean | null;
+  mother_alive: boolean | null;
+  student_disability: boolean | null;
+  student_disability_detail: string | null;
+
+  school_name: string;
+  school_category: string | null;
+  school_county: string | null;
+  school_sub_county: string | null;
+  year_of_admission: string | null;
+  student_outstanding: string | null;
+  school_bank_account: string | null;
+
   guardian_name: string;
   guardian_phone: string;
+  parent_national_id: string | null;
+  parent_occupation: string | null;
+  parent_residence_sub_county: string | null;
   ward: string | null;
-  residence_estate: string | null;
-  household_income_band: string | null;
+  polling_station: string | null;
+  parent_disability: boolean | null;
+  parent_disability_detail: string | null;
   siblings_in_school: number | null;
+  estimated_fee_balances: number | null;
   amount_requested: number | null;
   reason: string | null;
+
   status: string;
   admin_notes: string | null;
   sms_last_sent_at: string | null;
