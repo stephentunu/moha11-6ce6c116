@@ -125,12 +125,12 @@ export function Footer() {
                 </span>
               ))}
             </div>
-            <h4 className="font-display font-bold text-lg mb-4 text-gold">Partners</h4>
-            <ul className="space-y-1.5 text-sm text-primary-foreground/80">
-              {partners.map((p) => (
-                <li key={p}>• {p}</li>
-              ))}
-            </ul>
+            <Link
+              to="/advertise"
+              className="inline-block px-4 py-2 text-sm font-semibold rounded-full border-2 border-gold text-gold hover:bg-gold hover:text-primary transition-colors"
+            >
+              PARTNER WITH US
+            </Link>
           </div>
 
           {/* Contact */}
