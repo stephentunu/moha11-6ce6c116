@@ -445,11 +445,39 @@ function AdminBursariesPage() {
   );
 }
 
-function Detail({ label, value }: { label: string; value: string | null | undefined }) {
+function Detail({ label, value, full }: { label: string; value: string | null | undefined; full?: boolean }) {
   return (
-    <div>
+    <div className={full ? "sm:col-span-2" : ""}>
       <p className="text-xs uppercase tracking-wider text-muted-foreground">{label}</p>
-      <p className="font-semibold text-foreground">{value || "—"}</p>
+      <p className="font-semibold text-foreground whitespace-pre-line">{value || "—"}</p>
     </div>
   );
 }
+
+function DetailGroup({ title, children }: { title: string; children: React.ReactNode }) {
+  return (
+    <div className="bg-muted/20 border border-border rounded-xl p-3">
+      <p className="text-[10px] font-bold uppercase tracking-widest text-gold mb-2">{title}</p>
+      <div className="grid sm:grid-cols-2 gap-3 text-sm">{children}</div>
+    </div>
+  );
+}
+
+const yn = (v: boolean | null | undefined) => (v === null || v === undefined ? "—" : v ? "Yes" : "No");
+
+function downloadPdfFor(r: {
+  reference: string; student_name: string; registration_number: string | null; dob: string | null;
+  gender: string | null; current_grade: string; father_alive: boolean | null; mother_alive: boolean | null;
+  student_disability: boolean | null; student_disability_detail: string | null;
+  school_name: string; school_category: string | null; school_county: string | null;
+  school_sub_county: string | null; year_of_admission: string | null; student_outstanding: string | null;
+  school_bank_account: string | null; guardian_name: string; guardian_phone: string;
+  parent_national_id: string | null; parent_occupation: string | null;
+  parent_residence_sub_county: string | null; ward: string | null; polling_station: string | null;
+  parent_disability: boolean | null; parent_disability_detail: string | null;
+  siblings_in_school: number | null; estimated_fee_balances: number | null;
+  amount_requested: number | null; reason: string | null;
+}) {
+  generateBursaryPdf({ ...r });
+}
+
