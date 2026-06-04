@@ -54,10 +54,6 @@ const values = [
   "Unity",
 ];
 
-const partners = [
-  "PARTNER WITH US",
-  
-];
 
 export function Footer() {
   return (
