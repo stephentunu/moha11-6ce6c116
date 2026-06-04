@@ -105,6 +105,8 @@ export type Database = {
           created_at: string
           current_grade: string
           dob: string | null
+          estimated_fee_balances: number | null
+          father_alive: boolean | null
           gender: string | null
           guardian_name: string
           guardian_phone: string
@@ -112,19 +114,35 @@ export type Database = {
           id: string
           id_or_birth_cert_number: string | null
           kcse_year: string | null
+          mother_alive: boolean | null
+          parent_disability: boolean | null
+          parent_disability_detail: string | null
+          parent_national_id: string | null
+          parent_occupation: string | null
+          parent_residence_sub_county: string | null
           phone: string | null
+          polling_station: string | null
           reason: string | null
           reference: string
+          registration_number: string | null
           residence_estate: string | null
+          school_bank_account: string | null
+          school_category: string | null
+          school_county: string | null
           school_name: string
+          school_sub_county: string | null
           siblings_in_school: number | null
           sms_last_message: string | null
           sms_last_sent_at: string | null
           status: string
+          student_disability: boolean | null
+          student_disability_detail: string | null
           student_name: string
+          student_outstanding: string | null
           supporting_doc_url: string | null
           updated_at: string
           ward: string | null
+          year_of_admission: string | null
         }
         Insert: {
           admin_notes?: string | null
@@ -132,6 +150,8 @@ export type Database = {
           created_at?: string
           current_grade: string
           dob?: string | null
+          estimated_fee_balances?: number | null
+          father_alive?: boolean | null
           gender?: string | null
           guardian_name: string
           guardian_phone: string
@@ -139,19 +159,35 @@ export type Database = {
           id?: string
           id_or_birth_cert_number?: string | null
           kcse_year?: string | null
+          mother_alive?: boolean | null
+          parent_disability?: boolean | null
+          parent_disability_detail?: string | null
+          parent_national_id?: string | null
+          parent_occupation?: string | null
+          parent_residence_sub_county?: string | null
           phone?: string | null
+          polling_station?: string | null
           reason?: string | null
           reference?: string
+          registration_number?: string | null
           residence_estate?: string | null
+          school_bank_account?: string | null
+          school_category?: string | null
+          school_county?: string | null
           school_name: string
+          school_sub_county?: string | null
           siblings_in_school?: number | null
           sms_last_message?: string | null
           sms_last_sent_at?: string | null
           status?: string
+          student_disability?: boolean | null
+          student_disability_detail?: string | null
           student_name: string
+          student_outstanding?: string | null
           supporting_doc_url?: string | null
           updated_at?: string
           ward?: string | null
+          year_of_admission?: string | null
         }
         Update: {
           admin_notes?: string | null
@@ -159,6 +195,8 @@ export type Database = {
           created_at?: string
           current_grade?: string
           dob?: string | null
+          estimated_fee_balances?: number | null
+          father_alive?: boolean | null
           gender?: string | null
           guardian_name?: string
           guardian_phone?: string
@@ -166,19 +204,35 @@ export type Database = {
           id?: string
           id_or_birth_cert_number?: string | null
           kcse_year?: string | null
+          mother_alive?: boolean | null
+          parent_disability?: boolean | null
+          parent_disability_detail?: string | null
+          parent_national_id?: string | null
+          parent_occupation?: string | null
+          parent_residence_sub_county?: string | null
           phone?: string | null
+          polling_station?: string | null
           reason?: string | null
           reference?: string
+          registration_number?: string | null
           residence_estate?: string | null
+          school_bank_account?: string | null
+          school_category?: string | null
+          school_county?: string | null
           school_name?: string
+          school_sub_county?: string | null
           siblings_in_school?: number | null
           sms_last_message?: string | null
           sms_last_sent_at?: string | null
           status?: string
+          student_disability?: boolean | null
+          student_disability_detail?: string | null
           student_name?: string
+          student_outstanding?: string | null
           supporting_doc_url?: string | null
           updated_at?: string
           ward?: string | null
+          year_of_admission?: string | null
         }
         Relationships: []
       }
