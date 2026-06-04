@@ -340,21 +340,51 @@ function AdminBursariesPage() {
                   <Badge className={STATUS_COLORS[selected.status] ?? ""}>{selected.status}</Badge>
                 </DialogDescription>
               </DialogHeader>
-              <div className="grid sm:grid-cols-2 gap-3 text-sm">
-                <Detail label="DOB" value={selected.dob} />
-                <Detail label="Gender" value={selected.gender} />
-                <Detail label="ID / Birth cert" value={selected.id_or_birth_cert_number} />
-                <Detail label="Student phone" value={selected.phone} />
-                <Detail label="School" value={selected.school_name} />
-                <Detail label="Grade" value={selected.current_grade} />
-                <Detail label="KCSE year" value={selected.kcse_year} />
-                <Detail label="Guardian" value={`${selected.guardian_name} · ${selected.guardian_phone}`} />
-                <Detail label="Ward" value={selected.ward} />
-                <Detail label="Estate" value={selected.residence_estate} />
-                <Detail label="Income band" value={selected.household_income_band} />
-                <Detail label="Siblings in school" value={String(selected.siblings_in_school ?? "0")} />
-                <Detail label="Amount requested" value={selected.amount_requested ? `KSh ${Number(selected.amount_requested).toLocaleString()}` : null} />
-                <Detail label="Submitted" value={new Date(selected.created_at).toLocaleString()} />
+              <div className="space-y-4">
+                <DetailGroup title="Student">
+                  <Detail label="Registration No." value={selected.registration_number} />
+                  <Detail label="DOB" value={selected.dob} />
+                  <Detail label="Gender" value={selected.gender} />
+                  <Detail label="Grade" value={selected.current_grade} />
+                  <Detail label="Father alive" value={yn(selected.father_alive)} />
+                  <Detail label="Mother alive" value={yn(selected.mother_alive)} />
+                  <Detail
+                    label="Student disability"
+                    value={selected.student_disability ? (selected.student_disability_detail || "Yes") : "No"}
+                  />
+                </DetailGroup>
+                <DetailGroup title="School">
+                  <Detail label="School" value={selected.school_name} />
+                  <Detail label="Category" value={selected.school_category} />
+                  <Detail label="County" value={selected.school_county} />
+                  <Detail label="Sub-county" value={selected.school_sub_county} />
+                  <Detail label="Year of admission" value={selected.year_of_admission} />
+                  <Detail label="Bank account" value={selected.school_bank_account} />
+                  <Detail label="Outstanding" value={selected.student_outstanding} full />
+                </DetailGroup>
+                <DetailGroup title="Parent / Guardian">
+                  <Detail label="Name" value={selected.guardian_name} />
+                  <Detail label="Phone" value={selected.guardian_phone} />
+                  <Detail label="National ID" value={selected.parent_national_id} />
+                  <Detail label="Occupation" value={selected.parent_occupation} />
+                  <Detail label="Residential sub-county" value={selected.parent_residence_sub_county} />
+                  <Detail label="Ward" value={selected.ward} />
+                  <Detail label="Polling station" value={selected.polling_station} />
+                  <Detail
+                    label="Parent disability"
+                    value={selected.parent_disability ? (selected.parent_disability_detail || "Yes") : "No"}
+                  />
+                  <Detail label="Children in school" value={String(selected.siblings_in_school ?? "0")} />
+                  <Detail
+                    label="Fee balances"
+                    value={selected.estimated_fee_balances ? `KSh ${Number(selected.estimated_fee_balances).toLocaleString()}` : null}
+                  />
+                  <Detail
+                    label="Amount requested"
+                    value={selected.amount_requested ? `KSh ${Number(selected.amount_requested).toLocaleString()}` : null}
+                  />
+                  <Detail label="Submitted" value={new Date(selected.created_at).toLocaleString()} />
+                </DetailGroup>
               </div>
               {selected.reason && (
                 <div className="mt-3">
@@ -370,8 +400,11 @@ function AdminBursariesPage() {
                   <p className="text-sm bg-gold/10 p-3 rounded-lg">{selected.sms_last_message}</p>
                 </div>
               )}
-              <DialogFooter>
+              <DialogFooter className="gap-2 sm:gap-2">
                 <Button variant="outline" onClick={() => setSelected(null)}>Close</Button>
+                <Button variant="outline" onClick={() => downloadPdfFor(selected)}>
+                  <Download className="h-4 w-4" /> Download PDF
+                </Button>
                 <Button variant="hero" onClick={() => { openSms(selected); setSelected(null); }}>
                   <Send className="h-4 w-4" /> Send SMS Feedback
                 </Button>
