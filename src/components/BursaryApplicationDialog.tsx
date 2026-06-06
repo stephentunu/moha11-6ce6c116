@@ -55,6 +55,16 @@ type Form = {
   motherAlive: boolean;
   studentDisability: boolean;
   studentDisabilityDetail: string;
+  // Father (when alive)
+  fatherName: string;
+  fatherPhone: string;
+  fatherOccupation: string;
+  fatherNationalId: string;
+  // Mother (when alive)
+  motherName: string;
+  motherPhone: string;
+  motherOccupation: string;
+  motherNationalId: string;
   // School
   schoolName: string;
   schoolCategory: string;
@@ -82,6 +92,8 @@ type Form = {
 const EMPTY: Form = {
   studentName: "", registrationNumber: "", dob: "", currentGrade: "", gender: "",
   fatherAlive: true, motherAlive: true, studentDisability: false, studentDisabilityDetail: "",
+  fatherName: "", fatherPhone: "", fatherOccupation: "", fatherNationalId: "",
+  motherName: "", motherPhone: "", motherOccupation: "", motherNationalId: "",
   schoolName: "", schoolCategory: "", schoolCounty: "", schoolSubCounty: "",
   yearOfAdmission: "", studentOutstanding: "", schoolBankAccount: "",
   guardianName: "", guardianPhone: "", parentNationalId: "", parentOccupation: "",
@@ -91,9 +103,7 @@ const EMPTY: Form = {
 };
 
 const GRADES = [
-  "PP1", "PP2", "Grade 1", "Grade 2", "Grade 3", "Grade 4", "Grade 5", "Grade 6",
-  "Grade 7", "Grade 8", "Grade 9", "Grade 10", "Grade 11", "Grade 12",
-  "TVET / College", "University",
+  "Grade 10", "Form 3", "Form 4", "TVET / College", "University",
 ];
 const SCHOOL_CATEGORIES = [
   { v: "C1", l: "C1 — National" },
@@ -141,6 +151,14 @@ export function BursaryApplicationDialog({ trigger }: { trigger: ReactNode }) {
         gender: form.gender || null,
         father_alive: form.fatherAlive,
         mother_alive: form.motherAlive,
+        father_name: form.fatherAlive ? (form.fatherName || null) : null,
+        father_phone: form.fatherAlive ? (form.fatherPhone || null) : null,
+        father_occupation: form.fatherAlive ? (form.fatherOccupation || null) : null,
+        father_national_id: form.fatherAlive ? (form.fatherNationalId || null) : null,
+        mother_name: form.motherAlive ? (form.motherName || null) : null,
+        mother_phone: form.motherAlive ? (form.motherPhone || null) : null,
+        mother_occupation: form.motherAlive ? (form.motherOccupation || null) : null,
+        mother_national_id: form.motherAlive ? (form.motherNationalId || null) : null,
         student_disability: form.studentDisability,
         student_disability_detail: form.studentDisabilityDetail || null,
         school_name: form.schoolName,
@@ -191,6 +209,14 @@ export function BursaryApplicationDialog({ trigger }: { trigger: ReactNode }) {
       current_grade: form.currentGrade,
       father_alive: form.fatherAlive,
       mother_alive: form.motherAlive,
+      father_name: form.fatherAlive ? form.fatherName : "",
+      father_phone: form.fatherAlive ? form.fatherPhone : "",
+      father_occupation: form.fatherAlive ? form.fatherOccupation : "",
+      father_national_id: form.fatherAlive ? form.fatherNationalId : "",
+      mother_name: form.motherAlive ? form.motherName : "",
+      mother_phone: form.motherAlive ? form.motherPhone : "",
+      mother_occupation: form.motherAlive ? form.motherOccupation : "",
+      mother_national_id: form.motherAlive ? form.motherNationalId : "",
       student_disability: form.studentDisability,
       student_disability_detail: form.studentDisabilityDetail,
       school_name: form.schoolName,
@@ -227,7 +253,7 @@ export function BursaryApplicationDialog({ trigger }: { trigger: ReactNode }) {
           </DialogTitle>
           <DialogDescription>
             Ward Bursary Application Form — Term 2 (2026/2027). Complete the three sections and download
-            your application form to sign and submit at the Moha Coordination Office, Huruma-Mathare.
+            your application form to sign and submit at the Moha Coordination Office, Kiamako-Mathare.
           </DialogDescription>
         </DialogHeader>
 
@@ -238,8 +264,8 @@ export function BursaryApplicationDialog({ trigger }: { trigger: ReactNode }) {
             </div>
             <h3 className="text-xl font-display font-bold">Application received</h3>
             <p className="text-sm text-muted-foreground max-w-md mx-auto">
-              Download the pre-filled form, attach the required documents (National ID, fee structure,
-              report form, NCPWD card, etc.), sign, and drop it at the Moha Coordination Office, Huruma-Mathare.
+              Download the pre-filled form, attach the required documents (National ID, birth certificate, fee structure,
+              report form, NCPWD card, etc.), sign, and drop it at the Moha Coordination Office, Kiamako-Mathare.
             </p>
             <p className="text-2xl font-bold tracking-wider text-primary">{result.reference}</p>
             <div className="flex flex-col sm:flex-row gap-2 justify-center">
@@ -280,7 +306,6 @@ export function BursaryApplicationDialog({ trigger }: { trigger: ReactNode }) {
                       <SelectContent>
                         <SelectItem value="female">Female</SelectItem>
                         <SelectItem value="male">Male</SelectItem>
-                        <SelectItem value="other">Other</SelectItem>
                       </SelectContent>
                     </Select>
                   </Field>
@@ -295,6 +320,51 @@ export function BursaryApplicationDialog({ trigger }: { trigger: ReactNode }) {
                     <CheckboxRow label="Mother alive" checked={form.motherAlive} onChange={(v) => set("motherAlive", v)} />
                   </div>
                 </div>
+
+                {form.fatherAlive && (
+                  <div className="rounded-lg border border-border bg-muted/30 p-4 space-y-3">
+                    <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                      Father's details
+                    </p>
+                    <div className="grid sm:grid-cols-2 gap-4">
+                      <Field label="Father's name">
+                        <Input value={form.fatherName} onChange={(e) => set("fatherName", e.target.value)} />
+                      </Field>
+                      <Field label="Father's phone">
+                        <Input value={form.fatherPhone} onChange={(e) => set("fatherPhone", e.target.value)} placeholder="07XX XXX XXX" />
+                      </Field>
+                      <Field label="Father's occupation">
+                        <Input value={form.fatherOccupation} onChange={(e) => set("fatherOccupation", e.target.value)} />
+                      </Field>
+                      <Field label="Father's national ID">
+                        <Input value={form.fatherNationalId} onChange={(e) => set("fatherNationalId", e.target.value)} />
+                      </Field>
+                    </div>
+                  </div>
+                )}
+
+                {form.motherAlive && (
+                  <div className="rounded-lg border border-border bg-muted/30 p-4 space-y-3">
+                    <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                      Mother's details
+                    </p>
+                    <div className="grid sm:grid-cols-2 gap-4">
+                      <Field label="Mother's name">
+                        <Input value={form.motherName} onChange={(e) => set("motherName", e.target.value)} />
+                      </Field>
+                      <Field label="Mother's phone">
+                        <Input value={form.motherPhone} onChange={(e) => set("motherPhone", e.target.value)} placeholder="07XX XXX XXX" />
+                      </Field>
+                      <Field label="Mother's occupation">
+                        <Input value={form.motherOccupation} onChange={(e) => set("motherOccupation", e.target.value)} />
+                      </Field>
+                      <Field label="Mother's national ID">
+                        <Input value={form.motherNationalId} onChange={(e) => set("motherNationalId", e.target.value)} />
+                      </Field>
+                    </div>
+                  </div>
+                )}
+
 
                 <div className="rounded-lg border border-border bg-muted/30 p-4 space-y-3">
                   <CheckboxRow

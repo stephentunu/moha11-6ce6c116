@@ -9,6 +9,14 @@ export type BursaryPdfData = {
   current_grade: string;
   father_alive?: boolean | null;
   mother_alive?: boolean | null;
+  father_name?: string | null;
+  father_phone?: string | null;
+  father_occupation?: string | null;
+  father_national_id?: string | null;
+  mother_name?: string | null;
+  mother_phone?: string | null;
+  mother_occupation?: string | null;
+  mother_national_id?: string | null;
   student_disability?: boolean | null;
   student_disability_detail?: string | null;
 
@@ -72,9 +80,10 @@ export function generateBursaryPdf(d: BursaryPdfData) {
   doc.setFontSize(8.5);
   const instr = [
     "Attach copies of the following supportive documents:",
-    "• Parent's National ID  • Parent's Death Certificate(s)  • Current report form and fee structure",
-    "• NCPWD card or letter  • Admission letter where necessary  • Any other crucial supporting documents",
-    "Duly filled form to be returned to the Moha Coordination Office, Huruma-Mathare.",
+    "• Parent's National ID  • Student's Birth Certificate  • Parent's Death Certificate(s)",
+    "• Current report form and fee structure  • NCPWD card or letter  • Admission letter where necessary",
+    "• Any other crucial supporting documents",
+    "Duly filled form to be returned to the Moha Coordination Office, Kiamako-Mathare.",
     "STUDENTS LIVING WITH DISABILITY ARE ENCOURAGED TO APPLY.",
   ];
   for (const line of instr) {
@@ -97,6 +106,35 @@ export function generateBursaryPdf(d: BursaryPdfData) {
     ["Living with Disability", d.student_disability ? `Yes — ${d.student_disability_detail || "specified"}` : "No"],
   ]);
   y += rowHeight(8);
+
+  // B.1: Father's details (only if alive)
+  if (d.father_alive) {
+    y += 2;
+    sectionTitle(doc, "B1: FATHER'S DETAILS", y);
+    y += 5;
+    kvRows(doc, y, [
+      ["Father's Name", dash(d.father_name)],
+      ["Phone", dash(d.father_phone)],
+      ["Occupation", dash(d.father_occupation)],
+      ["National ID", dash(d.father_national_id)],
+    ]);
+    y += rowHeight(4);
+  }
+
+  // B.2: Mother's details (only if alive)
+  if (d.mother_alive) {
+    y += 2;
+    sectionTitle(doc, "B2: MOTHER'S DETAILS", y);
+    y += 5;
+    kvRows(doc, y, [
+      ["Mother's Name", dash(d.mother_name)],
+      ["Phone", dash(d.mother_phone)],
+      ["Occupation", dash(d.mother_occupation)],
+      ["National ID", dash(d.mother_national_id)],
+    ]);
+    y += rowHeight(4);
+  }
+
 
   // C: School
   y += 2;

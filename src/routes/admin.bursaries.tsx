@@ -47,6 +47,14 @@ type Row = {
   current_grade: string;
   father_alive: boolean | null;
   mother_alive: boolean | null;
+  father_name: string | null;
+  father_phone: string | null;
+  father_occupation: string | null;
+  father_national_id: string | null;
+  mother_name: string | null;
+  mother_phone: string | null;
+  mother_occupation: string | null;
+  mother_national_id: string | null;
   student_disability: boolean | null;
   student_disability_detail: string | null;
 
@@ -353,6 +361,22 @@ function AdminBursariesPage() {
                     value={selected.student_disability ? (selected.student_disability_detail || "Yes") : "No"}
                   />
                 </DetailGroup>
+                {selected.father_alive && (
+                  <DetailGroup title="Father">
+                    <Detail label="Name" value={selected.father_name} />
+                    <Detail label="Phone" value={selected.father_phone} />
+                    <Detail label="Occupation" value={selected.father_occupation} />
+                    <Detail label="National ID" value={selected.father_national_id} />
+                  </DetailGroup>
+                )}
+                {selected.mother_alive && (
+                  <DetailGroup title="Mother">
+                    <Detail label="Name" value={selected.mother_name} />
+                    <Detail label="Phone" value={selected.mother_phone} />
+                    <Detail label="Occupation" value={selected.mother_occupation} />
+                    <Detail label="National ID" value={selected.mother_national_id} />
+                  </DetailGroup>
+                )}
                 <DetailGroup title="School">
                   <Detail label="School" value={selected.school_name} />
                   <Detail label="Category" value={selected.school_category} />
@@ -468,6 +492,8 @@ const yn = (v: boolean | null | undefined) => (v === null || v === undefined ? "
 function downloadPdfFor(r: {
   reference: string; student_name: string; registration_number: string | null; dob: string | null;
   gender: string | null; current_grade: string; father_alive: boolean | null; mother_alive: boolean | null;
+  father_name: string | null; father_phone: string | null; father_occupation: string | null; father_national_id: string | null;
+  mother_name: string | null; mother_phone: string | null; mother_occupation: string | null; mother_national_id: string | null;
   student_disability: boolean | null; student_disability_detail: string | null;
   school_name: string; school_category: string | null; school_county: string | null;
   school_sub_county: string | null; year_of_admission: string | null; student_outstanding: string | null;
