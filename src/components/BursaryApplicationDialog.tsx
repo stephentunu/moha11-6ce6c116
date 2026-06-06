@@ -305,6 +305,51 @@ export function BursaryApplicationDialog({ trigger }: { trigger: ReactNode }) {
                   </div>
                 </div>
 
+                {form.fatherAlive && (
+                  <div className="rounded-lg border border-border bg-muted/30 p-4 space-y-3">
+                    <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                      Father's details
+                    </p>
+                    <div className="grid sm:grid-cols-2 gap-4">
+                      <Field label="Father's name">
+                        <Input value={form.fatherName} onChange={(e) => set("fatherName", e.target.value)} />
+                      </Field>
+                      <Field label="Father's phone">
+                        <Input value={form.fatherPhone} onChange={(e) => set("fatherPhone", e.target.value)} placeholder="07XX XXX XXX" />
+                      </Field>
+                      <Field label="Father's occupation">
+                        <Input value={form.fatherOccupation} onChange={(e) => set("fatherOccupation", e.target.value)} />
+                      </Field>
+                      <Field label="Father's national ID">
+                        <Input value={form.fatherNationalId} onChange={(e) => set("fatherNationalId", e.target.value)} />
+                      </Field>
+                    </div>
+                  </div>
+                )}
+
+                {form.motherAlive && (
+                  <div className="rounded-lg border border-border bg-muted/30 p-4 space-y-3">
+                    <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                      Mother's details
+                    </p>
+                    <div className="grid sm:grid-cols-2 gap-4">
+                      <Field label="Mother's name">
+                        <Input value={form.motherName} onChange={(e) => set("motherName", e.target.value)} />
+                      </Field>
+                      <Field label="Mother's phone">
+                        <Input value={form.motherPhone} onChange={(e) => set("motherPhone", e.target.value)} placeholder="07XX XXX XXX" />
+                      </Field>
+                      <Field label="Mother's occupation">
+                        <Input value={form.motherOccupation} onChange={(e) => set("motherOccupation", e.target.value)} />
+                      </Field>
+                      <Field label="Mother's national ID">
+                        <Input value={form.motherNationalId} onChange={(e) => set("motherNationalId", e.target.value)} />
+                      </Field>
+                    </div>
+                  </div>
+                )}
+
+
                 <div className="rounded-lg border border-border bg-muted/30 p-4 space-y-3">
                   <CheckboxRow
                     label="Student lives with a disability"
