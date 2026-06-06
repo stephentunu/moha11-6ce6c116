@@ -109,7 +109,7 @@ function HomePage() {
               initial={{ opacity: 0, y: 30 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.7, delay: 0.25 }}
-              className="mt-6 text-2xl md:text-3xl font-display italic text-gold"
+              className="mt-4 text-xl md:text-2xl font-display italic text-gold"
             >
               "{content.homeTagline}"
             </motion.p>
@@ -118,7 +118,7 @@ function HomePage() {
               initial={{ opacity: 0, y: 30 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.7, delay: 0.4 }}
-              className="mt-6 text-lg md:text-xl text-white/85 max-w-2xl leading-relaxed"
+              className="mt-4 text-base md:text-lg text-white/85 max-w-2xl leading-relaxed"
             >
               A son of Mathare. A voice for the hustler, the student, the mama, and the mzee.
               Building a constituency where every life matters and every dream has a runway.
@@ -128,7 +128,7 @@ function HomePage() {
               initial={{ opacity: 0, y: 30 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.7, delay: 0.55 }}
-              className="mt-10 flex flex-wrap gap-4"
+              className="mt-8 flex flex-wrap gap-4"
             >
               <Button asChild variant="hero" size="xl">
                 <Link to="/donate">
