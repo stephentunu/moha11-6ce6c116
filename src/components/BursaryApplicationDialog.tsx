@@ -55,6 +55,16 @@ type Form = {
   motherAlive: boolean;
   studentDisability: boolean;
   studentDisabilityDetail: string;
+  // Father (when alive)
+  fatherName: string;
+  fatherPhone: string;
+  fatherOccupation: string;
+  fatherNationalId: string;
+  // Mother (when alive)
+  motherName: string;
+  motherPhone: string;
+  motherOccupation: string;
+  motherNationalId: string;
   // School
   schoolName: string;
   schoolCategory: string;
@@ -82,6 +92,8 @@ type Form = {
 const EMPTY: Form = {
   studentName: "", registrationNumber: "", dob: "", currentGrade: "", gender: "",
   fatherAlive: true, motherAlive: true, studentDisability: false, studentDisabilityDetail: "",
+  fatherName: "", fatherPhone: "", fatherOccupation: "", fatherNationalId: "",
+  motherName: "", motherPhone: "", motherOccupation: "", motherNationalId: "",
   schoolName: "", schoolCategory: "", schoolCounty: "", schoolSubCounty: "",
   yearOfAdmission: "", studentOutstanding: "", schoolBankAccount: "",
   guardianName: "", guardianPhone: "", parentNationalId: "", parentOccupation: "",
@@ -91,9 +103,7 @@ const EMPTY: Form = {
 };
 
 const GRADES = [
-  "PP1", "PP2", "Grade 1", "Grade 2", "Grade 3", "Grade 4", "Grade 5", "Grade 6",
-  "Grade 7", "Grade 8", "Grade 9", "Grade 10", "Grade 11", "Grade 12",
-  "TVET / College", "University",
+  "Grade 10", "Form 3", "Form 4", "TVET / College", "University",
 ];
 const SCHOOL_CATEGORIES = [
   { v: "C1", l: "C1 — National" },
