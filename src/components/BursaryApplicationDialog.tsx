@@ -253,7 +253,7 @@ export function BursaryApplicationDialog({ trigger }: { trigger: ReactNode }) {
           </DialogTitle>
           <DialogDescription>
             Ward Bursary Application Form — Term 2 (2026/2027). Complete the three sections and download
-            your application form to sign and submit at the Moha Coordination Office, Huruma-Mathare.
+            your application form to sign and submit at the Moha Coordination Office, Kiamako-Mathare.
           </DialogDescription>
         </DialogHeader>
 
