@@ -9,6 +9,14 @@ export type BursaryPdfData = {
   current_grade: string;
   father_alive?: boolean | null;
   mother_alive?: boolean | null;
+  father_name?: string | null;
+  father_phone?: string | null;
+  father_occupation?: string | null;
+  father_national_id?: string | null;
+  mother_name?: string | null;
+  mother_phone?: string | null;
+  mother_occupation?: string | null;
+  mother_national_id?: string | null;
   student_disability?: boolean | null;
   student_disability_detail?: string | null;
 
