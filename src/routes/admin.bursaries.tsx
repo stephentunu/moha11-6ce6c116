@@ -492,9 +492,20 @@ const yn = (v: boolean | null | undefined) => (v === null || v === undefined ? "
 function downloadPdfFor(r: {
   reference: string; student_name: string; registration_number: string | null; dob: string | null;
   gender: string | null; current_grade: string; father_alive: boolean | null; mother_alive: boolean | null;
+  father_name: string | null; father_phone: string | null; father_occupation: string | null; father_national_id: string | null;
+  mother_name: string | null; mother_phone: string | null; mother_occupation: string | null; mother_national_id: string | null;
   student_disability: boolean | null; student_disability_detail: string | null;
   school_name: string; school_category: string | null; school_county: string | null;
   school_sub_county: string | null; year_of_admission: string | null; student_outstanding: string | null;
+  school_bank_account: string | null; guardian_name: string; guardian_phone: string;
+  parent_national_id: string | null; parent_occupation: string | null;
+  parent_residence_sub_county: string | null; ward: string | null; polling_station: string | null;
+  parent_disability: boolean | null; parent_disability_detail: string | null;
+  siblings_in_school: number | null; estimated_fee_balances: number | null;
+  amount_requested: number | null; reason: string | null;
+}) {
+  generateBursaryPdf({ ...r });
+}
   school_bank_account: string | null; guardian_name: string; guardian_phone: string;
   parent_national_id: string | null; parent_occupation: string | null;
   parent_residence_sub_county: string | null; ward: string | null; polling_station: string | null;
