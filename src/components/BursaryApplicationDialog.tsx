@@ -290,7 +290,6 @@ export function BursaryApplicationDialog({ trigger }: { trigger: ReactNode }) {
                       <SelectContent>
                         <SelectItem value="female">Female</SelectItem>
                         <SelectItem value="male">Male</SelectItem>
-                        <SelectItem value="other">Other</SelectItem>
                       </SelectContent>
                     </Select>
                   </Field>
