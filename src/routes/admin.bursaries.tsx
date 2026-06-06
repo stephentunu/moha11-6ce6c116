@@ -506,13 +506,4 @@ function downloadPdfFor(r: {
 }) {
   generateBursaryPdf({ ...r });
 }
-  school_bank_account: string | null; guardian_name: string; guardian_phone: string;
-  parent_national_id: string | null; parent_occupation: string | null;
-  parent_residence_sub_county: string | null; ward: string | null; polling_station: string | null;
-  parent_disability: boolean | null; parent_disability_detail: string | null;
-  siblings_in_school: number | null; estimated_fee_balances: number | null;
-  amount_requested: number | null; reason: string | null;
-}) {
-  generateBursaryPdf({ ...r });
-}
 
