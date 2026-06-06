@@ -80,9 +80,10 @@ export function generateBursaryPdf(d: BursaryPdfData) {
   doc.setFontSize(8.5);
   const instr = [
     "Attach copies of the following supportive documents:",
-    "• Parent's National ID  • Parent's Death Certificate(s)  • Current report form and fee structure",
-    "• NCPWD card or letter  • Admission letter where necessary  • Any other crucial supporting documents",
-    "Duly filled form to be returned to the Moha Coordination Office, Huruma-Mathare.",
+    "• Parent's National ID  • Student's Birth Certificate  • Parent's Death Certificate(s)",
+    "• Current report form and fee structure  • NCPWD card or letter  • Admission letter where necessary",
+    "• Any other crucial supporting documents",
+    "Duly filled form to be returned to the Moha Coordination Office, Kiamako-Mathare.",
     "STUDENTS LIVING WITH DISABILITY ARE ENCOURAGED TO APPLY.",
   ];
   for (const line of instr) {
