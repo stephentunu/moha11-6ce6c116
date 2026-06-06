@@ -70,7 +70,7 @@ function HomePage() {
   return (
     <>
       {/* HERO */}
-      <section className="relative min-h-screen flex items-center overflow-hidden">
+      <section className="relative min-h-[60vh] flex items-center overflow-hidden">
         <div className="absolute inset-0">
           <img
             src={hero}
@@ -82,7 +82,7 @@ function HomePage() {
           <div className="absolute inset-0 bg-gradient-hero" />
         </div>
 
-        <div className="container mx-auto px-4 lg:px-8 relative z-10 pt-24 pb-20">
+        <div className="container mx-auto px-4 lg:px-8 relative z-10 pt-16 pb-12">
           <div className="max-w-3xl">
             <motion.span
               initial={{ opacity: 0, y: 20 }}
@@ -98,7 +98,7 @@ function HomePage() {
               initial={{ opacity: 0, y: 30 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.7, delay: 0.1 }}
-              className="text-6xl md:text-7xl lg:text-8xl font-display font-black text-white leading-[0.95] text-balance"
+              className="text-4xl md:text-5xl lg:text-6xl font-display font-black text-white leading-[0.95] text-balance"
             >
               <span className="bg-gradient-to-r from-gold to-yellow-300 bg-clip-text text-transparent">
                 {content.homeHeadline}

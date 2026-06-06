@@ -9,7 +9,7 @@ interface Props {
 
 export function PageHero({ eyebrow, title, subtitle, bgImage }: Props) {
   return (
-    <section className="relative pt-36 pb-16 md:pt-44 md:pb-24 bg-gradient-to-br from-primary via-[oklch(0.22_0.06_150)] to-[oklch(0.3_0.1_30)] overflow-hidden">
+    <section className="relative pt-20 pb-10 md:pt-24 md:pb-12 bg-gradient-to-br from-primary via-[oklch(0.22_0.06_150)] to-[oklch(0.3_0.1_30)] overflow-hidden">
       {bgImage && (
         <>
           <img
