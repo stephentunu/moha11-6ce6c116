@@ -264,8 +264,8 @@ export function BursaryApplicationDialog({ trigger }: { trigger: ReactNode }) {
             </div>
             <h3 className="text-xl font-display font-bold">Application received</h3>
             <p className="text-sm text-muted-foreground max-w-md mx-auto">
-              Download the pre-filled form, attach the required documents (National ID, fee structure,
-              report form, NCPWD card, etc.), sign, and drop it at the Moha Coordination Office, Huruma-Mathare.
+              Download the pre-filled form, attach the required documents (National ID, birth certificate, fee structure,
+              report form, NCPWD card, etc.), sign, and drop it at the Moha Coordination Office, Kiamako-Mathare.
             </p>
             <p className="text-2xl font-bold tracking-wider text-primary">{result.reference}</p>
             <div className="flex flex-col sm:flex-row gap-2 justify-center">
