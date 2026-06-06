@@ -107,6 +107,10 @@ export type Database = {
           dob: string | null
           estimated_fee_balances: number | null
           father_alive: boolean | null
+          father_name: string | null
+          father_national_id: string | null
+          father_occupation: string | null
+          father_phone: string | null
           gender: string | null
           guardian_name: string
           guardian_phone: string
@@ -115,6 +119,10 @@ export type Database = {
           id_or_birth_cert_number: string | null
           kcse_year: string | null
           mother_alive: boolean | null
+          mother_name: string | null
+          mother_national_id: string | null
+          mother_occupation: string | null
+          mother_phone: string | null
           parent_disability: boolean | null
           parent_disability_detail: string | null
           parent_national_id: string | null
@@ -152,6 +160,10 @@ export type Database = {
           dob?: string | null
           estimated_fee_balances?: number | null
           father_alive?: boolean | null
+          father_name?: string | null
+          father_national_id?: string | null
+          father_occupation?: string | null
+          father_phone?: string | null
           gender?: string | null
           guardian_name: string
           guardian_phone: string
@@ -160,6 +172,10 @@ export type Database = {
           id_or_birth_cert_number?: string | null
           kcse_year?: string | null
           mother_alive?: boolean | null
+          mother_name?: string | null
+          mother_national_id?: string | null
+          mother_occupation?: string | null
+          mother_phone?: string | null
           parent_disability?: boolean | null
           parent_disability_detail?: string | null
           parent_national_id?: string | null
@@ -197,6 +213,10 @@ export type Database = {
           dob?: string | null
           estimated_fee_balances?: number | null
           father_alive?: boolean | null
+          father_name?: string | null
+          father_national_id?: string | null
+          father_occupation?: string | null
+          father_phone?: string | null
           gender?: string | null
           guardian_name?: string
           guardian_phone?: string
@@ -205,6 +225,10 @@ export type Database = {
           id_or_birth_cert_number?: string | null
           kcse_year?: string | null
           mother_alive?: boolean | null
+          mother_name?: string | null
+          mother_national_id?: string | null
+          mother_occupation?: string | null
+          mother_phone?: string | null
           parent_disability?: boolean | null
           parent_disability_detail?: string | null
           parent_national_id?: string | null
