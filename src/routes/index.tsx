@@ -70,7 +70,7 @@ function HomePage() {
   return (
     <>
       {/* HERO */}
-      <section className="relative min-h-screen flex items-center overflow-hidden">
+      <section className="relative min-h-[60vh] flex items-center overflow-hidden">
         <div className="absolute inset-0">
           <img
             src={hero}
@@ -82,7 +82,7 @@ function HomePage() {
           <div className="absolute inset-0 bg-gradient-hero" />
         </div>
 
-        <div className="container mx-auto px-4 lg:px-8 relative z-10 pt-24 pb-20">
+        <div className="container mx-auto px-4 lg:px-8 relative z-10 pt-16 pb-12">
           <div className="max-w-3xl">
             <motion.span
               initial={{ opacity: 0, y: 20 }}
@@ -98,7 +98,7 @@ function HomePage() {
               initial={{ opacity: 0, y: 30 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.7, delay: 0.1 }}
-              className="text-6xl md:text-7xl lg:text-8xl font-display font-black text-white leading-[0.95] text-balance"
+              className="text-4xl md:text-5xl lg:text-6xl font-display font-black text-white leading-[0.95] text-balance"
             >
               <span className="bg-gradient-to-r from-gold to-yellow-300 bg-clip-text text-transparent">
                 {content.homeHeadline}
@@ -109,7 +109,7 @@ function HomePage() {
               initial={{ opacity: 0, y: 30 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.7, delay: 0.25 }}
-              className="mt-6 text-2xl md:text-3xl font-display italic text-gold"
+              className="mt-4 text-xl md:text-2xl font-display italic text-gold"
             >
               "{content.homeTagline}"
             </motion.p>
@@ -118,7 +118,7 @@ function HomePage() {
               initial={{ opacity: 0, y: 30 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.7, delay: 0.4 }}
-              className="mt-6 text-lg md:text-xl text-white/85 max-w-2xl leading-relaxed"
+              className="mt-4 text-base md:text-lg text-white/85 max-w-2xl leading-relaxed"
             >
               A son of Mathare. A voice for the hustler, the student, the mama, and the mzee.
               Building a constituency where every life matters and every dream has a runway.
@@ -128,7 +128,7 @@ function HomePage() {
               initial={{ opacity: 0, y: 30 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.7, delay: 0.55 }}
-              className="mt-10 flex flex-wrap gap-4"
+              className="mt-8 flex flex-wrap gap-4"
             >
               <Button asChild variant="hero" size="xl">
                 <Link to="/donate">

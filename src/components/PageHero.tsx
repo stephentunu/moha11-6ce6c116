@@ -9,7 +9,7 @@ interface Props {
 
 export function PageHero({ eyebrow, title, subtitle, bgImage }: Props) {
   return (
-    <section className="relative pt-36 pb-16 md:pt-44 md:pb-24 bg-gradient-to-br from-primary via-[oklch(0.22_0.06_150)] to-[oklch(0.3_0.1_30)] overflow-hidden">
+    <section className="relative pt-20 pb-10 md:pt-24 md:pb-12 bg-gradient-to-br from-primary via-[oklch(0.22_0.06_150)] to-[oklch(0.3_0.1_30)] overflow-hidden">
       {bgImage && (
         <>
           <img
@@ -33,15 +33,15 @@ export function PageHero({ eyebrow, title, subtitle, bgImage }: Props) {
           className="max-w-4xl"
         >
           {eyebrow && (
-            <span className="inline-block px-4 py-1.5 mb-5 text-xs font-bold tracking-widest uppercase text-gold bg-gold/10 rounded-full border border-gold/30">
+            <span className="inline-block px-4 py-1.5 mb-3 text-xs font-bold tracking-widest uppercase text-gold bg-gold/10 rounded-full border border-gold/30">
               {eyebrow}
             </span>
           )}
-          <h1 className="text-5xl md:text-6xl lg:text-7xl font-display font-bold text-primary-foreground text-balance leading-[1.05]">
+          <h1 className="text-3xl md:text-4xl lg:text-5xl font-display font-bold text-primary-foreground text-balance leading-[1.05]">
             {title}
           </h1>
           {subtitle && (
-            <p className="mt-6 text-lg md:text-xl text-primary-foreground/80 max-w-2xl leading-relaxed">
+            <p className="mt-3 text-base md:text-lg text-primary-foreground/80 max-w-2xl leading-relaxed">
               {subtitle}
             </p>
           )}
