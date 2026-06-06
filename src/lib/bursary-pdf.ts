@@ -107,6 +107,35 @@ export function generateBursaryPdf(d: BursaryPdfData) {
   ]);
   y += rowHeight(8);
 
+  // B.1: Father's details (only if alive)
+  if (d.father_alive) {
+    y += 2;
+    sectionTitle(doc, "B1: FATHER'S DETAILS", y);
+    y += 5;
+    kvRows(doc, y, [
+      ["Father's Name", dash(d.father_name)],
+      ["Phone", dash(d.father_phone)],
+      ["Occupation", dash(d.father_occupation)],
+      ["National ID", dash(d.father_national_id)],
+    ]);
+    y += rowHeight(4);
+  }
+
+  // B.2: Mother's details (only if alive)
+  if (d.mother_alive) {
+    y += 2;
+    sectionTitle(doc, "B2: MOTHER'S DETAILS", y);
+    y += 5;
+    kvRows(doc, y, [
+      ["Mother's Name", dash(d.mother_name)],
+      ["Phone", dash(d.mother_phone)],
+      ["Occupation", dash(d.mother_occupation)],
+      ["National ID", dash(d.mother_national_id)],
+    ]);
+    y += rowHeight(4);
+  }
+
+
   // C: School
   y += 2;
   sectionTitle(doc, "C: SCHOOL'S DETAILS", y);
