@@ -361,6 +361,22 @@ function AdminBursariesPage() {
                     value={selected.student_disability ? (selected.student_disability_detail || "Yes") : "No"}
                   />
                 </DetailGroup>
+                {selected.father_alive && (
+                  <DetailGroup title="Father">
+                    <Detail label="Name" value={selected.father_name} />
+                    <Detail label="Phone" value={selected.father_phone} />
+                    <Detail label="Occupation" value={selected.father_occupation} />
+                    <Detail label="National ID" value={selected.father_national_id} />
+                  </DetailGroup>
+                )}
+                {selected.mother_alive && (
+                  <DetailGroup title="Mother">
+                    <Detail label="Name" value={selected.mother_name} />
+                    <Detail label="Phone" value={selected.mother_phone} />
+                    <Detail label="Occupation" value={selected.mother_occupation} />
+                    <Detail label="National ID" value={selected.mother_national_id} />
+                  </DetailGroup>
+                )}
                 <DetailGroup title="School">
                   <Detail label="School" value={selected.school_name} />
                   <Detail label="Category" value={selected.school_category} />
