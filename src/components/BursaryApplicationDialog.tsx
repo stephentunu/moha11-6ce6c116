@@ -188,8 +188,14 @@ export function BursaryApplicationDialog({ trigger }: { trigger: ReactNode }) {
         parent_disability: form.parentDisability,
         parent_disability_detail: form.parentDisabilityDetail || null,
         siblings_in_school: form.siblingsInSchool ? Number(form.siblingsInSchool) : 0,
+        total_fee_payable: form.totalFeePayable ? Number(form.totalFeePayable) : null,
+        fee_arrears: form.feeArrears ? Number(form.feeArrears) : null,
+        monthly_budget: form.monthlyBudget ? Number(form.monthlyBudget) : null,
         estimated_fee_balances: form.estimatedFeeBalances ? Number(form.estimatedFeeBalances) : 0,
         amount_requested: form.amountRequested ? Number(form.amountRequested) : 0,
+        received_bursary_before: form.receivedBursaryBefore,
+        previous_bursary_source: form.receivedBursaryBefore ? (form.previousBursarySource || null) : null,
+        previous_bursary_amount: form.receivedBursaryBefore && form.previousBursaryAmount ? Number(form.previousBursaryAmount) : null,
         reason: form.reason || null,
       };
       const { data, error } = await supabase
