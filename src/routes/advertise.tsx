@@ -399,6 +399,7 @@ function BusinessCard({ business, index }: { business: Business; index: number }
   const Icon = categoryIcon(business.category);
   const loyalty = useLoyalty();
   const images = business.imageUrls.length ? business.imageUrls : business.imageUrl ? [business.imageUrl] : [];
+  const [editOpen, setEditOpen] = useState(false);
 
   const handleShare = async () => {
     const result = await shareBusiness(business);
