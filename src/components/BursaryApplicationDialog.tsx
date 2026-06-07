@@ -252,8 +252,14 @@ export function BursaryApplicationDialog({ trigger }: { trigger: ReactNode }) {
       parent_disability: form.parentDisability,
       parent_disability_detail: form.parentDisabilityDetail,
       siblings_in_school: form.siblingsInSchool ? Number(form.siblingsInSchool) : 0,
+      total_fee_payable: form.totalFeePayable ? Number(form.totalFeePayable) : 0,
+      fee_arrears: form.feeArrears ? Number(form.feeArrears) : 0,
+      monthly_budget: form.monthlyBudget ? Number(form.monthlyBudget) : 0,
       estimated_fee_balances: form.estimatedFeeBalances ? Number(form.estimatedFeeBalances) : 0,
       amount_requested: form.amountRequested ? Number(form.amountRequested) : 0,
+      received_bursary_before: form.receivedBursaryBefore,
+      previous_bursary_source: form.receivedBursaryBefore ? form.previousBursarySource : "",
+      previous_bursary_amount: form.receivedBursaryBefore && form.previousBursaryAmount ? Number(form.previousBursaryAmount) : 0,
       reason: form.reason,
     });
   };
