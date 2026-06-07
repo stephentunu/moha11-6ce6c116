@@ -84,8 +84,14 @@ type Form = {
   parentDisability: boolean;
   parentDisabilityDetail: string;
   siblingsInSchool: string;
+  totalFeePayable: string;
+  feeArrears: string;
+  monthlyBudget: string;
   estimatedFeeBalances: string;
   amountRequested: string;
+  receivedBursaryBefore: boolean;
+  previousBursarySource: string;
+  previousBursaryAmount: string;
   reason: string;
 };
 
@@ -98,8 +104,12 @@ const EMPTY: Form = {
   yearOfAdmission: "", studentOutstanding: "", schoolBankAccount: "",
   guardianName: "", guardianPhone: "", parentNationalId: "", parentOccupation: "",
   parentResidenceSubCounty: "", ward: "", pollingStation: "", parentDisability: false,
-  parentDisabilityDetail: "", siblingsInSchool: "", estimatedFeeBalances: "",
-  amountRequested: "", reason: "",
+  parentDisabilityDetail: "", siblingsInSchool: "",
+  totalFeePayable: "", feeArrears: "", monthlyBudget: "",
+  estimatedFeeBalances: "",
+  amountRequested: "",
+  receivedBursaryBefore: false, previousBursarySource: "", previousBursaryAmount: "",
+  reason: "",
 };
 
 const GRADES = [
@@ -178,8 +188,14 @@ export function BursaryApplicationDialog({ trigger }: { trigger: ReactNode }) {
         parent_disability: form.parentDisability,
         parent_disability_detail: form.parentDisabilityDetail || null,
         siblings_in_school: form.siblingsInSchool ? Number(form.siblingsInSchool) : 0,
+        total_fee_payable: form.totalFeePayable ? Number(form.totalFeePayable) : null,
+        fee_arrears: form.feeArrears ? Number(form.feeArrears) : null,
+        monthly_budget: form.monthlyBudget ? Number(form.monthlyBudget) : null,
         estimated_fee_balances: form.estimatedFeeBalances ? Number(form.estimatedFeeBalances) : 0,
         amount_requested: form.amountRequested ? Number(form.amountRequested) : 0,
+        received_bursary_before: form.receivedBursaryBefore,
+        previous_bursary_source: form.receivedBursaryBefore ? (form.previousBursarySource || null) : null,
+        previous_bursary_amount: form.receivedBursaryBefore && form.previousBursaryAmount ? Number(form.previousBursaryAmount) : null,
         reason: form.reason || null,
       };
       const { data, error } = await supabase
@@ -236,8 +252,14 @@ export function BursaryApplicationDialog({ trigger }: { trigger: ReactNode }) {
       parent_disability: form.parentDisability,
       parent_disability_detail: form.parentDisabilityDetail,
       siblings_in_school: form.siblingsInSchool ? Number(form.siblingsInSchool) : 0,
+      total_fee_payable: form.totalFeePayable ? Number(form.totalFeePayable) : 0,
+      fee_arrears: form.feeArrears ? Number(form.feeArrears) : 0,
+      monthly_budget: form.monthlyBudget ? Number(form.monthlyBudget) : 0,
       estimated_fee_balances: form.estimatedFeeBalances ? Number(form.estimatedFeeBalances) : 0,
       amount_requested: form.amountRequested ? Number(form.amountRequested) : 0,
+      received_bursary_before: form.receivedBursaryBefore,
+      previous_bursary_source: form.receivedBursaryBefore ? form.previousBursarySource : "",
+      previous_bursary_amount: form.receivedBursaryBefore && form.previousBursaryAmount ? Number(form.previousBursaryAmount) : 0,
       reason: form.reason,
     });
   };
@@ -494,6 +516,27 @@ export function BursaryApplicationDialog({ trigger }: { trigger: ReactNode }) {
                       onChange={(e) => set("siblingsInSchool", e.target.value)}
                     />
                   </Field>
+                  <Field label="Total fee payable — all children (KSh)">
+                    <Input
+                      type="number" min="0"
+                      value={form.totalFeePayable}
+                      onChange={(e) => set("totalFeePayable", e.target.value)}
+                    />
+                  </Field>
+                  <Field label="Fee arrears — all children (KSh)">
+                    <Input
+                      type="number" min="0"
+                      value={form.feeArrears}
+                      onChange={(e) => set("feeArrears", e.target.value)}
+                    />
+                  </Field>
+                  <Field label="Parent / Guardian monthly budget (KSh)">
+                    <Input
+                      type="number" min="0"
+                      value={form.monthlyBudget}
+                      onChange={(e) => set("monthlyBudget", e.target.value)}
+                    />
+                  </Field>
                   <Field label="Estimated total fee balances (all children, KSh)">
                     <Input
                       type="number" min="0"
@@ -508,6 +551,31 @@ export function BursaryApplicationDialog({ trigger }: { trigger: ReactNode }) {
                       onChange={(e) => set("amountRequested", e.target.value)}
                     />
                   </Field>
+                </div>
+
+                <div className="rounded-lg border border-border bg-muted/30 p-4 space-y-3">
+                  <CheckboxRow
+                    label="Has the parent / guardian previously received a bursary (from Moha Foundation or any other)?"
+                    checked={form.receivedBursaryBefore}
+                    onChange={(v) => set("receivedBursaryBefore", v)}
+                  />
+                  {form.receivedBursaryBefore && (
+                    <div className="grid sm:grid-cols-2 gap-4">
+                      <Field label="Source (e.g. Moha Foundation, NG-CDF, Equity Wings)">
+                        <Input
+                          value={form.previousBursarySource}
+                          onChange={(e) => set("previousBursarySource", e.target.value)}
+                        />
+                      </Field>
+                      <Field label="Amount received (KSh)">
+                        <Input
+                          type="number" min="0"
+                          value={form.previousBursaryAmount}
+                          onChange={(e) => set("previousBursaryAmount", e.target.value)}
+                        />
+                      </Field>
+                    </div>
+                  )}
                 </div>
 
                 <div className="rounded-lg border border-border bg-muted/30 p-4 space-y-3">

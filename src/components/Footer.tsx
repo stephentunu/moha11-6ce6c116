@@ -135,7 +135,7 @@ export function Footer() {
             <ul className="space-y-3 text-sm text-primary-foreground/90 mb-6">
               <li className="flex items-start gap-2">
                 <MapPin className="h-4 w-4 mt-0.5 text-gold shrink-0" />
-                Jonsaga, Jowanga Building- Mathare.
+                Jonsaga, Tavern Building- Mathare.
               </li>
               <li className="flex items-start gap-2">
                 <Phone className="h-4 w-4 mt-0.5 text-gold shrink-0" />

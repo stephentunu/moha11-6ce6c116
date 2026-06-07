@@ -308,11 +308,12 @@ const foundations: Foundation[] = [
 
 function FoundationsPage() {
   const [content] = useContent();
+  const title = (content.foundationsHeadline || "").replace(/Foundations/gi, "Foundation");
   return (
     <>
       <PageHero
         eyebrow="Service in Action"
-        title={content.foundationsHeadline}
+        title={title}
         subtitle={content.foundationsSubtitle}
         bgImage={vulnerableImg}
       />
@@ -440,7 +441,7 @@ function FoundationsPage() {
           <div className="text-center pt-8">
             <Button asChild variant="hero" size="lg">
               <Link to="/donate">
-                Power the Foundations <ArrowRight className="h-5 w-5" />
+                Power the Foundation <ArrowRight className="h-5 w-5" />
               </Link>
             </Button>
           </div>

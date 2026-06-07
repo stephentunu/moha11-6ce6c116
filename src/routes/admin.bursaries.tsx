@@ -1,10 +1,11 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
-import { GraduationCap, Send, Eye, Trash2, Download } from "lucide-react";
+import { GraduationCap, Send, Eye, Trash2, Download, Search } from "lucide-react";
 import { generateBursaryPdf } from "@/lib/bursary-pdf";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
+import { Input } from "@/components/ui/input";
 import {
   Select,
   SelectContent,
@@ -76,8 +77,14 @@ type Row = {
   parent_disability: boolean | null;
   parent_disability_detail: string | null;
   siblings_in_school: number | null;
+  total_fee_payable: number | null;
+  fee_arrears: number | null;
+  monthly_budget: number | null;
   estimated_fee_balances: number | null;
   amount_requested: number | null;
+  received_bursary_before: boolean | null;
+  previous_bursary_source: string | null;
+  previous_bursary_amount: number | null;
   reason: string | null;
 
   status: string;
@@ -97,6 +104,7 @@ const STATUS_COLORS: Record<string, string> = {
 function AdminBursariesPage() {
   const [rows, setRows] = useState<Row[]>([]);
   const [filter, setFilter] = useState<string>("all");
+  const [search, setSearch] = useState("");
   const [selected, setSelected] = useState<Row | null>(null);
   const [smsOpen, setSmsOpen] = useState(false);
   const [smsTarget, setSmsTarget] = useState<Row | null>(null);
@@ -121,10 +129,24 @@ function AdminBursariesPage() {
     return () => { supabase.removeChannel(ch); };
   }, []);
 
-  const filtered = useMemo(
-    () => (filter === "all" ? rows : rows.filter((r) => r.status === filter)),
-    [rows, filter],
-  );
+  const filtered = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    return rows.filter((r) => {
+      if (filter !== "all" && r.status !== filter) return false;
+      if (!q) return true;
+      const amount = r.amount_requested ? String(r.amount_requested) : "";
+      return (
+        r.student_name.toLowerCase().includes(q) ||
+        (r.school_name || "").toLowerCase().includes(q) ||
+        (r.school_county || "").toLowerCase().includes(q) ||
+        (r.school_sub_county || "").toLowerCase().includes(q) ||
+        (r.parent_residence_sub_county || "").toLowerCase().includes(q) ||
+        (r.ward || "").toLowerCase().includes(q) ||
+        (r.reference || "").toLowerCase().includes(q) ||
+        amount.includes(q)
+      );
+    });
+  }, [rows, filter, search]);
 
   const counts = useMemo(() => {
     const c = { all: rows.length, pending: 0, reviewing: 0, approved: 0, rejected: 0 };
@@ -180,6 +202,15 @@ function AdminBursariesPage() {
     <AdminLayout title="Bursary Applications">
       <Toaster />
       <div className="space-y-6">
+        <div className="relative">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Input
+            placeholder="Search by student name, school, location, amount, ward or reference number…"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="pl-9 h-11"
+          />
+        </div>
         <div className="grid sm:grid-cols-5 gap-3">
           {(["all", "pending", "reviewing", "approved", "rejected"] as const).map((k) => (
             <button
@@ -400,12 +431,33 @@ function AdminBursariesPage() {
                   />
                   <Detail label="Children in school" value={String(selected.siblings_in_school ?? "0")} />
                   <Detail
+                    label="Total fee payable"
+                    value={selected.total_fee_payable ? `KSh ${Number(selected.total_fee_payable).toLocaleString()}` : null}
+                  />
+                  <Detail
+                    label="Fee arrears"
+                    value={selected.fee_arrears ? `KSh ${Number(selected.fee_arrears).toLocaleString()}` : null}
+                  />
+                  <Detail
+                    label="Monthly budget"
+                    value={selected.monthly_budget ? `KSh ${Number(selected.monthly_budget).toLocaleString()}` : null}
+                  />
+                  <Detail
                     label="Fee balances"
                     value={selected.estimated_fee_balances ? `KSh ${Number(selected.estimated_fee_balances).toLocaleString()}` : null}
                   />
                   <Detail
                     label="Amount requested"
                     value={selected.amount_requested ? `KSh ${Number(selected.amount_requested).toLocaleString()}` : null}
+                  />
+                  <Detail
+                    label="Previously received bursary"
+                    value={
+                      selected.received_bursary_before
+                        ? `Yes${selected.previous_bursary_source ? ` — ${selected.previous_bursary_source}` : ""}${selected.previous_bursary_amount ? ` (KSh ${Number(selected.previous_bursary_amount).toLocaleString()})` : ""}`
+                        : "No"
+                    }
+                    full
                   />
                   <Detail label="Submitted" value={new Date(selected.created_at).toLocaleString()} />
                 </DetailGroup>
@@ -489,21 +541,7 @@ function DetailGroup({ title, children }: { title: string; children: React.React
 
 const yn = (v: boolean | null | undefined) => (v === null || v === undefined ? "—" : v ? "Yes" : "No");
 
-function downloadPdfFor(r: {
-  reference: string; student_name: string; registration_number: string | null; dob: string | null;
-  gender: string | null; current_grade: string; father_alive: boolean | null; mother_alive: boolean | null;
-  father_name: string | null; father_phone: string | null; father_occupation: string | null; father_national_id: string | null;
-  mother_name: string | null; mother_phone: string | null; mother_occupation: string | null; mother_national_id: string | null;
-  student_disability: boolean | null; student_disability_detail: string | null;
-  school_name: string; school_category: string | null; school_county: string | null;
-  school_sub_county: string | null; year_of_admission: string | null; student_outstanding: string | null;
-  school_bank_account: string | null; guardian_name: string; guardian_phone: string;
-  parent_national_id: string | null; parent_occupation: string | null;
-  parent_residence_sub_county: string | null; ward: string | null; polling_station: string | null;
-  parent_disability: boolean | null; parent_disability_detail: string | null;
-  siblings_in_school: number | null; estimated_fee_balances: number | null;
-  amount_requested: number | null; reason: string | null;
-}) {
-  generateBursaryPdf({ ...r });
+function downloadPdfFor(r: Row) {
+  generateBursaryPdf(r);
 }
 

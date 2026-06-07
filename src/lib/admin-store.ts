@@ -188,7 +188,7 @@ const DEFAULT_CONTENT: SiteContent = {
   homeQuoteAuthor: "Moha",
   prioritiesHeadline: "Our Priorities",
   prioritiesSubtitle: "Education, Health, Business, Environment.",
-  foundationsHeadline: "The Moha Foundations",
+  foundationsHeadline: "The Moha Foundation",
   foundationsSubtitle: "Real work that does not wait for elections.",
   heroImageUrl: "",
 };

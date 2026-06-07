@@ -69,6 +69,7 @@ import { cn } from "@/lib/utils";
 import {
   useBusinesses,
   addBusiness,
+  addMessage,
   type Business as StoreBusiness,
   type PaymentMethod,
 } from "@/lib/admin-store";
@@ -116,7 +117,7 @@ const CATEGORIES = [
 ] as const;
 
 const PAYMENT_OPTIONS: { value: PaymentMethod; label: string }[] = [
-  { value: "send_money", label: "Send Money (M-Pesa)" },
+  { value: "send_money", label: "Send Money" },
   { value: "pochi", label: "Pochi la Biashara" },
   { value: "till", label: "Till Number" },
   { value: "paybill", label: "Paybill" },
@@ -398,6 +399,7 @@ function BusinessCard({ business, index }: { business: Business; index: number }
   const Icon = categoryIcon(business.category);
   const loyalty = useLoyalty();
   const images = business.imageUrls.length ? business.imageUrls : business.imageUrl ? [business.imageUrl] : [];
+  const [editOpen, setEditOpen] = useState(false);
 
   const handleShare = async () => {
     const result = await shareBusiness(business);
@@ -546,9 +548,94 @@ function BusinessCard({ business, index }: { business: Business; index: number }
               Share this business
             </button>
           )}
+          <button
+            type="button"
+            onClick={() => setEditOpen(true)}
+            className="flex items-center justify-center gap-2 w-full h-10 rounded-md border border-border text-muted-foreground hover:border-primary hover:text-primary font-semibold transition-colors text-sm"
+          >
+            Request edits to this listing
+          </button>
         </div>
       </div>
+      <EditRequestDialog business={business} open={editOpen} onOpenChange={setEditOpen} />
     </motion.article>
+  );
+}
+
+function EditRequestDialog({
+  business,
+  open,
+  onOpenChange,
+}: {
+  business: Business;
+  open: boolean;
+  onOpenChange: (v: boolean) => void;
+}) {
+  const [name, setName] = useState(business.ownerName);
+  const [contact, setContact] = useState(business.phone);
+  const [changes, setChanges] = useState("");
+  const [busy, setBusy] = useState(false);
+
+  const submit = () => {
+    if (!name.trim() || !contact.trim() || changes.trim().length < 5) {
+      toast.error("Please fill in your name, contact and the changes you need.");
+      return;
+    }
+    setBusy(true);
+    try {
+      addMessage({
+        kind: "opinion",
+        name: name.trim(),
+        contact: contact.trim(),
+        body: `BUSINESS EDIT REQUEST\nListing: ${business.businessName} (ID: ${business.id})\nCategory: ${business.category}\nWard: ${business.ward}\n\nRequested changes:\n${changes.trim()}`,
+      });
+      toast.success("Edit request sent to the admin team", {
+        description: "Moha's team will review and update your listing shortly.",
+      });
+      setChanges("");
+      onOpenChange(false);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-md">
+        <DialogHeader>
+          <DialogTitle className="font-display">Request edits to your listing</DialogTitle>
+          <DialogDescription>
+            Tell the admin what to change about <strong>{business.businessName}</strong> (location,
+            contacts, photos, payment details, etc.). The team will verify and update for you.
+          </DialogDescription>
+        </DialogHeader>
+        <div className="space-y-3">
+          <div className="space-y-1.5">
+            <Label htmlFor="er-name">Your name</Label>
+            <Input id="er-name" value={name} onChange={(e) => setName(e.target.value)} maxLength={80} />
+          </div>
+          <div className="space-y-1.5">
+            <Label htmlFor="er-contact">Phone / WhatsApp contact</Label>
+            <Input id="er-contact" value={contact} onChange={(e) => setContact(e.target.value)} maxLength={40} />
+          </div>
+          <div className="space-y-1.5">
+            <Label htmlFor="er-changes">What needs to change?</Label>
+            <Textarea
+              id="er-changes"
+              rows={5}
+              maxLength={1000}
+              value={changes}
+              onChange={(e) => setChanges(e.target.value)}
+              placeholder="e.g. New location: Mathare 4B, opposite Mary's Pharmacy. Update phone to 07XX…"
+            />
+          </div>
+        </div>
+        <div className="flex justify-end gap-2 pt-2">
+          <Button variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
+          <Button variant="hero" onClick={submit} disabled={busy}>Send request</Button>
+        </div>
+      </DialogContent>
+    </Dialog>
   );
 }
 
@@ -846,8 +933,8 @@ function RegistrationDialog({
                   </div>
                 )}
                 <div className="space-y-2">
-                  <Label htmlFor="nearestTransport">Nearest Transport / Stage</Label>
-                  <Input id="nearestTransport" placeholder="e.g. Huruma Stage, Bondeni matatu" value={form.nearestTransport} onChange={(e) => update("nearestTransport", e.target.value)} maxLength={120} />
+                  <Label htmlFor="nearestTransport">Means of Transport</Label>
+                  <Input id="nearestTransport" placeholder="e.g. Taxi, Bodaboda, Matatu, Tuk-tuk" value={form.nearestTransport} onChange={(e) => update("nearestTransport", e.target.value)} maxLength={120} />
                 </div>
                 <div className="flex items-center justify-between p-3 rounded-lg border border-border">
                   <div>
