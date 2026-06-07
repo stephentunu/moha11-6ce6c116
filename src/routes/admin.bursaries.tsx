@@ -202,6 +202,15 @@ function AdminBursariesPage() {
     <AdminLayout title="Bursary Applications">
       <Toaster />
       <div className="space-y-6">
+        <div className="relative">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Input
+            placeholder="Search by student name, school, location, amount, ward or reference number…"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="pl-9 h-11"
+          />
+        </div>
         <div className="grid sm:grid-cols-5 gap-3">
           {(["all", "pending", "reviewing", "approved", "rejected"] as const).map((k) => (
             <button
