@@ -69,6 +69,7 @@ import { cn } from "@/lib/utils";
 import {
   useBusinesses,
   addBusiness,
+  addMessage,
   type Business as StoreBusiness,
   type PaymentMethod,
 } from "@/lib/admin-store";
