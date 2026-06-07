@@ -516,6 +516,27 @@ export function BursaryApplicationDialog({ trigger }: { trigger: ReactNode }) {
                       onChange={(e) => set("siblingsInSchool", e.target.value)}
                     />
                   </Field>
+                  <Field label="Total fee payable — all children (KSh)">
+                    <Input
+                      type="number" min="0"
+                      value={form.totalFeePayable}
+                      onChange={(e) => set("totalFeePayable", e.target.value)}
+                    />
+                  </Field>
+                  <Field label="Fee arrears — all children (KSh)">
+                    <Input
+                      type="number" min="0"
+                      value={form.feeArrears}
+                      onChange={(e) => set("feeArrears", e.target.value)}
+                    />
+                  </Field>
+                  <Field label="Parent / Guardian monthly budget (KSh)">
+                    <Input
+                      type="number" min="0"
+                      value={form.monthlyBudget}
+                      onChange={(e) => set("monthlyBudget", e.target.value)}
+                    />
+                  </Field>
                   <Field label="Estimated total fee balances (all children, KSh)">
                     <Input
                       type="number" min="0"
@@ -530,6 +551,31 @@ export function BursaryApplicationDialog({ trigger }: { trigger: ReactNode }) {
                       onChange={(e) => set("amountRequested", e.target.value)}
                     />
                   </Field>
+                </div>
+
+                <div className="rounded-lg border border-border bg-muted/30 p-4 space-y-3">
+                  <CheckboxRow
+                    label="Has the parent / guardian previously received a bursary (from Moha Foundation or any other)?"
+                    checked={form.receivedBursaryBefore}
+                    onChange={(v) => set("receivedBursaryBefore", v)}
+                  />
+                  {form.receivedBursaryBefore && (
+                    <div className="grid sm:grid-cols-2 gap-4">
+                      <Field label="Source (e.g. Moha Foundation, NG-CDF, Equity Wings)">
+                        <Input
+                          value={form.previousBursarySource}
+                          onChange={(e) => set("previousBursarySource", e.target.value)}
+                        />
+                      </Field>
+                      <Field label="Amount received (KSh)">
+                        <Input
+                          type="number" min="0"
+                          value={form.previousBursaryAmount}
+                          onChange={(e) => set("previousBursaryAmount", e.target.value)}
+                        />
+                      </Field>
+                    </div>
+                  )}
                 </div>
 
                 <div className="rounded-lg border border-border bg-muted/30 p-4 space-y-3">
