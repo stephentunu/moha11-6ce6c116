@@ -431,12 +431,33 @@ function AdminBursariesPage() {
                   />
                   <Detail label="Children in school" value={String(selected.siblings_in_school ?? "0")} />
                   <Detail
+                    label="Total fee payable"
+                    value={selected.total_fee_payable ? `KSh ${Number(selected.total_fee_payable).toLocaleString()}` : null}
+                  />
+                  <Detail
+                    label="Fee arrears"
+                    value={selected.fee_arrears ? `KSh ${Number(selected.fee_arrears).toLocaleString()}` : null}
+                  />
+                  <Detail
+                    label="Monthly budget"
+                    value={selected.monthly_budget ? `KSh ${Number(selected.monthly_budget).toLocaleString()}` : null}
+                  />
+                  <Detail
                     label="Fee balances"
                     value={selected.estimated_fee_balances ? `KSh ${Number(selected.estimated_fee_balances).toLocaleString()}` : null}
                   />
                   <Detail
                     label="Amount requested"
                     value={selected.amount_requested ? `KSh ${Number(selected.amount_requested).toLocaleString()}` : null}
+                  />
+                  <Detail
+                    label="Previously received bursary"
+                    value={
+                      selected.received_bursary_before
+                        ? `Yes${selected.previous_bursary_source ? ` — ${selected.previous_bursary_source}` : ""}${selected.previous_bursary_amount ? ` (KSh ${Number(selected.previous_bursary_amount).toLocaleString()})` : ""}`
+                        : "No"
+                    }
+                    full
                   />
                   <Detail label="Submitted" value={new Date(selected.created_at).toLocaleString()} />
                 </DetailGroup>
