@@ -38,8 +38,14 @@ export type BursaryPdfData = {
   parent_disability?: boolean | null;
   parent_disability_detail?: string | null;
   siblings_in_school?: number | null;
+  total_fee_payable?: number | null;
+  fee_arrears?: number | null;
+  monthly_budget?: number | null;
   estimated_fee_balances?: number | null;
   amount_requested?: number | null;
+  received_bursary_before?: boolean | null;
+  previous_bursary_source?: string | null;
+  previous_bursary_amount?: number | null;
   reason?: string | null;
 };
 
@@ -165,10 +171,15 @@ export function generateBursaryPdf(d: BursaryPdfData) {
     ["Polling Station", dash(d.polling_station)],
     ["Living with Disability", d.parent_disability ? `Yes — ${d.parent_disability_detail || "specified"}` : "No"],
     ["Children in High School / University", dash(d.siblings_in_school ?? 0)],
+    ["Total Fee Payable (all children)", money(d.total_fee_payable)],
+    ["Fee Arrears (all children)", money(d.fee_arrears)],
+    ["Parent's Monthly Budget", money(d.monthly_budget)],
     ["Estimated Total Fee Balances", money(d.estimated_fee_balances)],
     ["Amount Applying For", money(d.amount_requested)],
+    ["Previously Received Bursary?", d.received_bursary_before ? `Yes — ${d.previous_bursary_source || "source unspecified"}` : "No"],
+    ["Previous Bursary Amount", money(d.previous_bursary_amount)],
   ]);
-  y += rowHeight(11);
+  y += rowHeight(16);
 
   // Reason
   y += 2;
