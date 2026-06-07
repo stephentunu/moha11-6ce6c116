@@ -76,8 +76,14 @@ type Row = {
   parent_disability: boolean | null;
   parent_disability_detail: string | null;
   siblings_in_school: number | null;
+  total_fee_payable: number | null;
+  fee_arrears: number | null;
+  monthly_budget: number | null;
   estimated_fee_balances: number | null;
   amount_requested: number | null;
+  received_bursary_before: boolean | null;
+  previous_bursary_source: string | null;
+  previous_bursary_amount: number | null;
   reason: string | null;
 
   status: string;
@@ -97,6 +103,7 @@ const STATUS_COLORS: Record<string, string> = {
 function AdminBursariesPage() {
   const [rows, setRows] = useState<Row[]>([]);
   const [filter, setFilter] = useState<string>("all");
+  const [search, setSearch] = useState("");
   const [selected, setSelected] = useState<Row | null>(null);
   const [smsOpen, setSmsOpen] = useState(false);
   const [smsTarget, setSmsTarget] = useState<Row | null>(null);
@@ -121,10 +128,24 @@ function AdminBursariesPage() {
     return () => { supabase.removeChannel(ch); };
   }, []);
 
-  const filtered = useMemo(
-    () => (filter === "all" ? rows : rows.filter((r) => r.status === filter)),
-    [rows, filter],
-  );
+  const filtered = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    return rows.filter((r) => {
+      if (filter !== "all" && r.status !== filter) return false;
+      if (!q) return true;
+      const amount = r.amount_requested ? String(r.amount_requested) : "";
+      return (
+        r.student_name.toLowerCase().includes(q) ||
+        (r.school_name || "").toLowerCase().includes(q) ||
+        (r.school_county || "").toLowerCase().includes(q) ||
+        (r.school_sub_county || "").toLowerCase().includes(q) ||
+        (r.parent_residence_sub_county || "").toLowerCase().includes(q) ||
+        (r.ward || "").toLowerCase().includes(q) ||
+        (r.reference || "").toLowerCase().includes(q) ||
+        amount.includes(q)
+      );
+    });
+  }, [rows, filter, search]);
 
   const counts = useMemo(() => {
     const c = { all: rows.length, pending: 0, reviewing: 0, approved: 0, rejected: 0 };
