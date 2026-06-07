@@ -111,6 +111,7 @@ export type Database = {
           father_national_id: string | null
           father_occupation: string | null
           father_phone: string | null
+          fee_arrears: number | null
           gender: string | null
           guardian_name: string
           guardian_phone: string
@@ -118,6 +119,7 @@ export type Database = {
           id: string
           id_or_birth_cert_number: string | null
           kcse_year: string | null
+          monthly_budget: number | null
           mother_alive: boolean | null
           mother_name: string | null
           mother_national_id: string | null
@@ -130,7 +132,10 @@ export type Database = {
           parent_residence_sub_county: string | null
           phone: string | null
           polling_station: string | null
+          previous_bursary_amount: number | null
+          previous_bursary_source: string | null
           reason: string | null
+          received_bursary_before: boolean | null
           reference: string
           registration_number: string | null
           residence_estate: string | null
@@ -148,6 +153,7 @@ export type Database = {
           student_name: string
           student_outstanding: string | null
           supporting_doc_url: string | null
+          total_fee_payable: number | null
           updated_at: string
           ward: string | null
           year_of_admission: string | null
@@ -164,6 +170,7 @@ export type Database = {
           father_national_id?: string | null
           father_occupation?: string | null
           father_phone?: string | null
+          fee_arrears?: number | null
           gender?: string | null
           guardian_name: string
           guardian_phone: string
@@ -171,6 +178,7 @@ export type Database = {
           id?: string
           id_or_birth_cert_number?: string | null
           kcse_year?: string | null
+          monthly_budget?: number | null
           mother_alive?: boolean | null
           mother_name?: string | null
           mother_national_id?: string | null
@@ -183,7 +191,10 @@ export type Database = {
           parent_residence_sub_county?: string | null
           phone?: string | null
           polling_station?: string | null
+          previous_bursary_amount?: number | null
+          previous_bursary_source?: string | null
           reason?: string | null
+          received_bursary_before?: boolean | null
           reference?: string
           registration_number?: string | null
           residence_estate?: string | null
@@ -201,6 +212,7 @@ export type Database = {
           student_name: string
           student_outstanding?: string | null
           supporting_doc_url?: string | null
+          total_fee_payable?: number | null
           updated_at?: string
           ward?: string | null
           year_of_admission?: string | null
@@ -217,6 +229,7 @@ export type Database = {
           father_national_id?: string | null
           father_occupation?: string | null
           father_phone?: string | null
+          fee_arrears?: number | null
           gender?: string | null
           guardian_name?: string
           guardian_phone?: string
@@ -224,6 +237,7 @@ export type Database = {
           id?: string
           id_or_birth_cert_number?: string | null
           kcse_year?: string | null
+          monthly_budget?: number | null
           mother_alive?: boolean | null
           mother_name?: string | null
           mother_national_id?: string | null
@@ -236,7 +250,10 @@ export type Database = {
           parent_residence_sub_county?: string | null
           phone?: string | null
           polling_station?: string | null
+          previous_bursary_amount?: number | null
+          previous_bursary_source?: string | null
           reason?: string | null
+          received_bursary_before?: boolean | null
           reference?: string
           registration_number?: string | null
           residence_estate?: string | null
@@ -254,6 +271,7 @@ export type Database = {
           student_name?: string
           student_outstanding?: string | null
           supporting_doc_url?: string | null
+          total_fee_payable?: number | null
           updated_at?: string
           ward?: string | null
           year_of_admission?: string | null
