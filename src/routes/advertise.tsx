@@ -116,7 +116,7 @@ const CATEGORIES = [
 ] as const;
 
 const PAYMENT_OPTIONS: { value: PaymentMethod; label: string }[] = [
-  { value: "send_money", label: "Send Money (M-Pesa)" },
+  { value: "send_money", label: "Send Money" },
   { value: "pochi", label: "Pochi la Biashara" },
   { value: "till", label: "Till Number" },
   { value: "paybill", label: "Paybill" },
@@ -846,8 +846,8 @@ function RegistrationDialog({
                   </div>
                 )}
                 <div className="space-y-2">
-                  <Label htmlFor="nearestTransport">Nearest Transport / Stage</Label>
-                  <Input id="nearestTransport" placeholder="e.g. Huruma Stage, Bondeni matatu" value={form.nearestTransport} onChange={(e) => update("nearestTransport", e.target.value)} maxLength={120} />
+                  <Label htmlFor="nearestTransport">Means of Transport</Label>
+                  <Input id="nearestTransport" placeholder="e.g. Taxi, Bodaboda, Matatu, Tuk-tuk" value={form.nearestTransport} onChange={(e) => update("nearestTransport", e.target.value)} maxLength={120} />
                 </div>
                 <div className="flex items-center justify-between p-3 rounded-lg border border-border">
                   <div>
