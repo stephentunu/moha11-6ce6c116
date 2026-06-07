@@ -84,8 +84,14 @@ type Form = {
   parentDisability: boolean;
   parentDisabilityDetail: string;
   siblingsInSchool: string;
+  totalFeePayable: string;
+  feeArrears: string;
+  monthlyBudget: string;
   estimatedFeeBalances: string;
   amountRequested: string;
+  receivedBursaryBefore: boolean;
+  previousBursarySource: string;
+  previousBursaryAmount: string;
   reason: string;
 };
 
@@ -98,8 +104,12 @@ const EMPTY: Form = {
   yearOfAdmission: "", studentOutstanding: "", schoolBankAccount: "",
   guardianName: "", guardianPhone: "", parentNationalId: "", parentOccupation: "",
   parentResidenceSubCounty: "", ward: "", pollingStation: "", parentDisability: false,
-  parentDisabilityDetail: "", siblingsInSchool: "", estimatedFeeBalances: "",
-  amountRequested: "", reason: "",
+  parentDisabilityDetail: "", siblingsInSchool: "",
+  totalFeePayable: "", feeArrears: "", monthlyBudget: "",
+  estimatedFeeBalances: "",
+  amountRequested: "",
+  receivedBursaryBefore: false, previousBursarySource: "", previousBursaryAmount: "",
+  reason: "",
 };
 
 const GRADES = [
