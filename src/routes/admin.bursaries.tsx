@@ -542,6 +542,6 @@ function DetailGroup({ title, children }: { title: string; children: React.React
 const yn = (v: boolean | null | undefined) => (v === null || v === undefined ? "—" : v ? "Yes" : "No");
 
 function downloadPdfFor(r: Row) {
-  generateBursaryPdf({ ...r });
+  generateBursaryPdf(r);
 }
 
