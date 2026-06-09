@@ -95,13 +95,13 @@ import children from "@/assets/moha/gallery/children.jpeg";
 export const Route = createFileRoute("/foundations")({
   head: () => ({
     meta: [
-      { title: "Foundations — Moha for Mathare" },
+      { title: "Foundation — Moha for Mathare" },
       {
         name: "description",
         content:
           "Moha's foundations: vulnerable groups, bursaries, PWDs, youth empowerment, sports & talent, school supplies, business support, and early childhood care in Mathare.",
       },
-      { property: "og:title", content: "Foundations — Moha for Mathare" },
+      { property: "og:title", content: "Foundation — Moha for Mathare" },
       {
         property: "og:description",
         content: "Service in action across Mathare — youth, sports, education, business and care.",

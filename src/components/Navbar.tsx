@@ -8,7 +8,7 @@ import mohaLogo from "@/assets/moha/moha-portrait.jpeg";
 const links = [
   { to: "/", label: "Home" },
   { to: "/priorities", label: "Priorities" },
-  { to: "/foundations", label: "Foundations" },
+  { to: "/foundations", label: "Foundation" },
   { to: "/stories", label: "Featured Stories" },
   { to: "/news", label: "Top Stories" },
   { to: "/polling", label: "Polling" },

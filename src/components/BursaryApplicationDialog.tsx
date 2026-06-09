@@ -2,13 +2,14 @@ import { useState, useMemo, type ReactNode } from "react";
 import { z } from "zod";
 import { toast } from "sonner";
 import {
-  GraduationCap, ArrowRight, ArrowLeft, CheckCircle2, Download, User, School, Users,
+  GraduationCap, ArrowRight, ArrowLeft, CheckCircle2, Download, User, School, Users, ShieldCheck,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Switch } from "@/components/ui/switch";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger,
   DialogDescription, DialogFooter,
@@ -21,12 +22,21 @@ import { MATHARE_WARDS } from "@/lib/admin-store";
 import { KENYA_COUNTIES, COUNTY_NAMES } from "@/lib/kenya-counties";
 import { generateBursaryPdf } from "@/lib/bursary-pdf";
 
+// ─── Schemas ────────────────────────────────────────────────────────────────
+
 const StudentSchema = z.object({
   studentName: z.string().trim().min(2, "Student name is required").max(120),
-  registrationNumber: z.string().trim().max(40).optional(),
+  admissionNumber: z.string().trim().max(40).optional(),
   dob: z.string().optional(),
   currentGrade: z.string().trim().min(1, "Grade / class is required").max(40),
   gender: z.string().optional(),
+  birthCertNumber: z.string().trim().max(40).optional(),
+  studentOutstanding: z.string().trim().max(500).optional(),
+  studentAnnualFee: z.string().optional(),
+  amountRequested: z.string().optional(),
+  receivedBursaryBefore: z.boolean().optional(),
+  previousBursaryAmount: z.string().optional(),
+  previousBursarySource: z.string().max(200).optional(),
 });
 
 const SchoolSchema = z.object({
@@ -34,93 +44,113 @@ const SchoolSchema = z.object({
   schoolCategory: z.string().min(1, "School category is required"),
   schoolCounty: z.string().min(1, "School county is required"),
   schoolSubCounty: z.string().min(1, "School sub-county is required"),
-  yearOfAdmission: z.string().trim().max(10).optional(),
 });
 
 const GuardianSchema = z.object({
-  guardianName: z.string().trim().min(2, "Guardian name is required").max(120),
-  guardianPhone: z.string().trim().min(7, "Guardian phone is required").max(20),
-  parentNationalId: z.string().trim().max(20).optional(),
-  amountRequested: z.coerce.number().min(0).max(2_000_000).optional(),
+  guardianName: z.string().trim().min(2, "Guardian / contact name is required").max(120),
+  guardianPhone: z.string().trim().min(7, "Phone contact is required").max(20),
 });
+
+const ConsentSchema = z.object({
+  dataConsent: z.literal(true, { errorMap: () => ({ message: "You must agree to the data policy before submitting" }) }),
+});
+
+// ─── Types ───────────────────────────────────────────────────────────────────
 
 type Form = {
   // Student
   studentName: string;
-  registrationNumber: string;
+  admissionNumber: string;
   dob: string;
   currentGrade: string;
   gender: string;
-  fatherAlive: boolean;
-  motherAlive: boolean;
   studentDisability: boolean;
   studentDisabilityDetail: string;
-  // Father (when alive)
-  fatherName: string;
-  fatherPhone: string;
-  fatherOccupation: string;
-  fatherNationalId: string;
-  // Mother (when alive)
-  motherName: string;
-  motherPhone: string;
-  motherOccupation: string;
-  motherNationalId: string;
+  birthCertNumber: string;
+  studentOutstanding: string;
+  studentAnnualFee: string;
+  amountRequested: string;
+  receivedBursaryBefore: boolean | null; // null = not answered yet
+  previousBursarySource: string;
+  previousBursaryAmount: string;
   // School
   schoolName: string;
   schoolCategory: string;
   schoolCounty: string;
   schoolSubCounty: string;
   yearOfAdmission: string;
-  studentOutstanding: string;
   schoolBankAccount: string;
-  // Parent
+  // Parents alive flags
+  fatherAlive: boolean;
+  motherAlive: boolean;
+  // Father
+  fatherName: string;
+  fatherPhone: string;
+  fatherNationalId: string;
+  fatherOccupation: string;
+  fatherDisability: boolean;
+  fatherDisabilityDetail: string;
+  // Mother
+  motherName: string;
+  motherPhone: string;
+  motherNationalId: string;
+  motherOccupation: string;
+  motherDisability: boolean;
+  motherDisabilityDetail: string;
+  // Guardian (always shown)
   guardianName: string;
   guardianPhone: string;
-  parentNationalId: string;
-  parentOccupation: string;
+  guardianNationalId: string;
+  guardianOccupation: string;
+  guardianDisability: boolean;
+  guardianDisabilityDetail: string;
+  // Household
   parentResidenceSubCounty: string;
   ward: string;
   pollingStation: string;
-  parentDisability: boolean;
-  parentDisabilityDetail: string;
   siblingsInSchool: string;
   totalFeePayable: string;
-  feeArrears: string;
   monthlyBudget: string;
-  estimatedFeeBalances: string;
-  amountRequested: string;
-  receivedBursaryBefore: boolean;
-  previousBursarySource: string;
-  previousBursaryAmount: string;
   reason: string;
+  // Consent
+  dataConsent: boolean;
 };
 
 const EMPTY: Form = {
-  studentName: "", registrationNumber: "", dob: "", currentGrade: "", gender: "",
-  fatherAlive: true, motherAlive: true, studentDisability: false, studentDisabilityDetail: "",
-  fatherName: "", fatherPhone: "", fatherOccupation: "", fatherNationalId: "",
-  motherName: "", motherPhone: "", motherOccupation: "", motherNationalId: "",
+  studentName: "", admissionNumber: "", dob: "", currentGrade: "", gender: "",
+  studentDisability: false, studentDisabilityDetail: "",
+  birthCertNumber: "", studentOutstanding: "", studentAnnualFee: "", amountRequested: "",
+  receivedBursaryBefore: null, previousBursarySource: "", previousBursaryAmount: "",
   schoolName: "", schoolCategory: "", schoolCounty: "", schoolSubCounty: "",
-  yearOfAdmission: "", studentOutstanding: "", schoolBankAccount: "",
-  guardianName: "", guardianPhone: "", parentNationalId: "", parentOccupation: "",
-  parentResidenceSubCounty: "", ward: "", pollingStation: "", parentDisability: false,
-  parentDisabilityDetail: "", siblingsInSchool: "",
-  totalFeePayable: "", feeArrears: "", monthlyBudget: "",
-  estimatedFeeBalances: "",
-  amountRequested: "",
-  receivedBursaryBefore: false, previousBursarySource: "", previousBursaryAmount: "",
-  reason: "",
+  yearOfAdmission: "", schoolBankAccount: "",
+  fatherAlive: true, motherAlive: true,
+  fatherName: "", fatherPhone: "", fatherNationalId: "", fatherOccupation: "",
+  fatherDisability: false, fatherDisabilityDetail: "",
+  motherName: "", motherPhone: "", motherNationalId: "", motherOccupation: "",
+  motherDisability: false, motherDisabilityDetail: "",
+  guardianName: "", guardianPhone: "", guardianNationalId: "", guardianOccupation: "",
+  guardianDisability: false, guardianDisabilityDetail: "",
+  parentResidenceSubCounty: "", ward: "", pollingStation: "",
+  siblingsInSchool: "", totalFeePayable: "", monthlyBudget: "", reason: "",
+  dataConsent: false,
 };
 
 const GRADES = [
-  "Grade 10", "Form 3", "Form 4", "TVET / College", "University",
+  "Grade 10", "Form 2", "Form 3", "Form 4",
+  "TVET / College", "University / Degree",
 ];
+
 const SCHOOL_CATEGORIES = [
   { v: "C1", l: "C1 — National" },
   { v: "C2", l: "C2 — Extra-County" },
   { v: "C3", l: "C3 — County" },
   { v: "C4", l: "C4 — Sub-County / Day" },
+  { v: "Private", l: "Private" },
+  { v: "TVET", l: "TVET / Vocational" },
+  { v: "University", l: "University" },
 ];
+
+// ─── Main component ───────────────────────────────────────────────────────────
 
 export function BursaryApplicationDialog({ trigger }: { trigger: ReactNode }) {
   const [open, setOpen] = useState(false);
@@ -141,6 +171,12 @@ export function BursaryApplicationDialog({ trigger }: { trigger: ReactNode }) {
       if (step === 1) StudentSchema.parse(form);
       else if (step === 2) SchoolSchema.parse(form);
       else if (step === 3) GuardianSchema.parse(form);
+      else if (step === 4) {
+        if (!form.dataConsent) {
+          toast.error("You must agree to the data policy before submitting");
+          return false;
+        }
+      }
       return true;
     } catch (e) {
       if (e instanceof z.ZodError) toast.error(e.issues[0]?.message ?? "Please complete required fields");
@@ -151,11 +187,15 @@ export function BursaryApplicationDialog({ trigger }: { trigger: ReactNode }) {
   const reset = () => { setForm(EMPTY); setStep(1); setResult(null); };
 
   const submit = async () => {
+    if (!form.dataConsent) {
+      toast.error("You must agree to the data policy before submitting");
+      return;
+    }
     setSubmitting(true);
     try {
       const payload = {
         student_name: form.studentName,
-        registration_number: form.registrationNumber || null,
+        registration_number: form.admissionNumber || null,
         dob: form.dob || null,
         current_grade: form.currentGrade,
         gender: form.gender || null,
@@ -180,20 +220,18 @@ export function BursaryApplicationDialog({ trigger }: { trigger: ReactNode }) {
         school_bank_account: form.schoolBankAccount || null,
         guardian_name: form.guardianName,
         guardian_phone: form.guardianPhone,
-        parent_national_id: form.parentNationalId || null,
-        parent_occupation: form.parentOccupation || null,
+        parent_national_id: form.guardianNationalId || null,
+        parent_occupation: form.guardianOccupation || null,
         parent_residence_sub_county: form.parentResidenceSubCounty || null,
         ward: form.ward || null,
         polling_station: form.pollingStation || null,
-        parent_disability: form.parentDisability,
-        parent_disability_detail: form.parentDisabilityDetail || null,
+        parent_disability: form.guardianDisability,
+        parent_disability_detail: form.guardianDisabilityDetail || null,
         siblings_in_school: form.siblingsInSchool ? Number(form.siblingsInSchool) : 0,
         total_fee_payable: form.totalFeePayable ? Number(form.totalFeePayable) : null,
-        fee_arrears: form.feeArrears ? Number(form.feeArrears) : null,
         monthly_budget: form.monthlyBudget ? Number(form.monthlyBudget) : null,
-        estimated_fee_balances: form.estimatedFeeBalances ? Number(form.estimatedFeeBalances) : 0,
         amount_requested: form.amountRequested ? Number(form.amountRequested) : 0,
-        received_bursary_before: form.receivedBursaryBefore,
+        received_bursary_before: form.receivedBursaryBefore ?? false,
         previous_bursary_source: form.receivedBursaryBefore ? (form.previousBursarySource || null) : null,
         previous_bursary_amount: form.receivedBursaryBefore && form.previousBursaryAmount ? Number(form.previousBursaryAmount) : null,
         reason: form.reason || null,
@@ -219,7 +257,7 @@ export function BursaryApplicationDialog({ trigger }: { trigger: ReactNode }) {
     generateBursaryPdf({
       reference: result.reference,
       student_name: form.studentName,
-      registration_number: form.registrationNumber,
+      registration_number: form.admissionNumber,
       dob: form.dob,
       gender: form.gender,
       current_grade: form.currentGrade,
@@ -244,20 +282,20 @@ export function BursaryApplicationDialog({ trigger }: { trigger: ReactNode }) {
       school_bank_account: form.schoolBankAccount,
       guardian_name: form.guardianName,
       guardian_phone: form.guardianPhone,
-      parent_national_id: form.parentNationalId,
-      parent_occupation: form.parentOccupation,
+      parent_national_id: form.guardianNationalId,
+      parent_occupation: form.guardianOccupation,
       parent_residence_sub_county: form.parentResidenceSubCounty,
       ward: form.ward,
       polling_station: form.pollingStation,
-      parent_disability: form.parentDisability,
-      parent_disability_detail: form.parentDisabilityDetail,
+      parent_disability: form.guardianDisability,
+      parent_disability_detail: form.guardianDisabilityDetail,
       siblings_in_school: form.siblingsInSchool ? Number(form.siblingsInSchool) : 0,
       total_fee_payable: form.totalFeePayable ? Number(form.totalFeePayable) : 0,
-      fee_arrears: form.feeArrears ? Number(form.feeArrears) : 0,
+      fee_arrears: 0,
       monthly_budget: form.monthlyBudget ? Number(form.monthlyBudget) : 0,
-      estimated_fee_balances: form.estimatedFeeBalances ? Number(form.estimatedFeeBalances) : 0,
+      estimated_fee_balances: 0,
       amount_requested: form.amountRequested ? Number(form.amountRequested) : 0,
-      received_bursary_before: form.receivedBursaryBefore,
+      received_bursary_before: form.receivedBursaryBefore ?? false,
       previous_bursary_source: form.receivedBursaryBefore ? form.previousBursarySource : "",
       previous_bursary_amount: form.receivedBursaryBefore && form.previousBursaryAmount ? Number(form.previousBursaryAmount) : 0,
       reason: form.reason,
@@ -274,7 +312,7 @@ export function BursaryApplicationDialog({ trigger }: { trigger: ReactNode }) {
             Moha Education Kitty — Bursary Application
           </DialogTitle>
           <DialogDescription>
-            Ward Bursary Application Form — Term 2 (2026/2027). Complete the three sections and download
+            Ward Bursary Application Form — Term 2 (2026/2027). Complete all four sections and download
             your application form to sign and submit at the Moha Coordination Office, Kiamako-Mathare.
           </DialogDescription>
         </DialogHeader>
@@ -301,26 +339,20 @@ export function BursaryApplicationDialog({ trigger }: { trigger: ReactNode }) {
           <>
             <Stepper step={step} />
 
+            {/* ── STEP 1: STUDENT ─────────────────────────────────────────── */}
             {step === 1 && (
-              <div className="space-y-4">
+              <div className="space-y-5">
                 <SectionLabel icon={User}>Student's Details</SectionLabel>
+
                 <div className="grid sm:grid-cols-2 gap-4">
                   <Field label="Student name *">
-                    <Input value={form.studentName} onChange={(e) => set("studentName", e.target.value)} />
+                    <Input value={form.studentName} onChange={(e) => set("studentName", e.target.value)} placeholder="Full legal name" />
                   </Field>
-                  <Field label="Registration / Admission no.">
-                    <Input value={form.registrationNumber} onChange={(e) => set("registrationNumber", e.target.value)} />
+                  <Field label="Admission / Registration number">
+                    <Input value={form.admissionNumber} onChange={(e) => set("admissionNumber", e.target.value)} placeholder="e.g. ADM/2024/001" />
                   </Field>
                   <Field label="Date of birth">
                     <Input type="date" value={form.dob} onChange={(e) => set("dob", e.target.value)} />
-                  </Field>
-                  <Field label="Grade / Class *">
-                    <Select value={form.currentGrade} onValueChange={(v) => set("currentGrade", v)}>
-                      <SelectTrigger><SelectValue placeholder="Select grade" /></SelectTrigger>
-                      <SelectContent>
-                        {GRADES.map((g) => <SelectItem key={g} value={g}>{g}</SelectItem>)}
-                      </SelectContent>
-                    </Select>
                   </Field>
                   <Field label="Gender">
                     <Select value={form.gender} onValueChange={(v) => set("gender", v)}>
@@ -331,81 +363,94 @@ export function BursaryApplicationDialog({ trigger }: { trigger: ReactNode }) {
                       </SelectContent>
                     </Select>
                   </Field>
+                  <Field label="Grade / Class *">
+                    <Select value={form.currentGrade} onValueChange={(v) => set("currentGrade", v)}>
+                      <SelectTrigger><SelectValue placeholder="Select grade" /></SelectTrigger>
+                      <SelectContent className="max-h-72">
+                        {GRADES.map((g) => <SelectItem key={g} value={g}>{g}</SelectItem>)}
+                      </SelectContent>
+                    </Select>
+                  </Field>
+                  <Field label="Birth certificate number">
+                    <Input value={form.birthCertNumber} onChange={(e) => set("birthCertNumber", e.target.value)} placeholder="As on birth certificate" />
+                  </Field>
                 </div>
 
+                {/* Disability toggle */}
                 <div className="rounded-lg border border-border bg-muted/30 p-4 space-y-3">
-                  <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                    Parents — alive / deceased
-                  </p>
-                  <div className="grid grid-cols-2 gap-3">
-                    <CheckboxRow label="Father alive" checked={form.fatherAlive} onChange={(v) => set("fatherAlive", v)} />
-                    <CheckboxRow label="Mother alive" checked={form.motherAlive} onChange={(v) => set("motherAlive", v)} />
+                  <div className="flex items-center justify-between">
+                    <Label htmlFor="studentDisabilityToggle" className="text-sm font-semibold cursor-pointer">
+                      Student lives with a disability
+                    </Label>
+                    <Switch
+                      id="studentDisabilityToggle"
+                      checked={form.studentDisability}
+                      onCheckedChange={(v) => set("studentDisability", v)}
+                    />
                   </div>
-                </div>
-
-                {form.fatherAlive && (
-                  <div className="rounded-lg border border-border bg-muted/30 p-4 space-y-3">
-                    <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                      Father's details
-                    </p>
-                    <div className="grid sm:grid-cols-2 gap-4">
-                      <Field label="Father's name">
-                        <Input value={form.fatherName} onChange={(e) => set("fatherName", e.target.value)} />
-                      </Field>
-                      <Field label="Father's phone">
-                        <Input value={form.fatherPhone} onChange={(e) => set("fatherPhone", e.target.value)} placeholder="07XX XXX XXX" />
-                      </Field>
-                      <Field label="Father's occupation">
-                        <Input value={form.fatherOccupation} onChange={(e) => set("fatherOccupation", e.target.value)} />
-                      </Field>
-                      <Field label="Father's national ID">
-                        <Input value={form.fatherNationalId} onChange={(e) => set("fatherNationalId", e.target.value)} />
-                      </Field>
-                    </div>
-                  </div>
-                )}
-
-                {form.motherAlive && (
-                  <div className="rounded-lg border border-border bg-muted/30 p-4 space-y-3">
-                    <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                      Mother's details
-                    </p>
-                    <div className="grid sm:grid-cols-2 gap-4">
-                      <Field label="Mother's name">
-                        <Input value={form.motherName} onChange={(e) => set("motherName", e.target.value)} />
-                      </Field>
-                      <Field label="Mother's phone">
-                        <Input value={form.motherPhone} onChange={(e) => set("motherPhone", e.target.value)} placeholder="07XX XXX XXX" />
-                      </Field>
-                      <Field label="Mother's occupation">
-                        <Input value={form.motherOccupation} onChange={(e) => set("motherOccupation", e.target.value)} />
-                      </Field>
-                      <Field label="Mother's national ID">
-                        <Input value={form.motherNationalId} onChange={(e) => set("motherNationalId", e.target.value)} />
-                      </Field>
-                    </div>
-                  </div>
-                )}
-
-
-                <div className="rounded-lg border border-border bg-muted/30 p-4 space-y-3">
-                  <CheckboxRow
-                    label="Student lives with a disability"
-                    checked={form.studentDisability}
-                    onChange={(v) => set("studentDisability", v)}
-                  />
                   {form.studentDisability && (
                     <Field label="Please specify (NCPWD card / nature of disability)">
-                      <Input
-                        value={form.studentDisabilityDetail}
-                        onChange={(e) => set("studentDisabilityDetail", e.target.value)}
-                      />
+                      <Input value={form.studentDisabilityDetail} onChange={(e) => set("studentDisabilityDetail", e.target.value)} />
                     </Field>
+                  )}
+                </div>
+
+                <div className="grid sm:grid-cols-2 gap-4">
+                  <Field label="Student's outstanding ability / achievement">
+                    <Textarea
+                      rows={3}
+                      value={form.studentOutstanding}
+                      onChange={(e) => set("studentOutstanding", e.target.value)}
+                      placeholder="Academic performance, talent, conduct…"
+                      maxLength={500}
+                    />
+                  </Field>
+                  <div className="space-y-4">
+                    <Field label="Student annual fee payable (KSh)">
+                      <Input type="number" min="0" value={form.studentAnnualFee} onChange={(e) => set("studentAnnualFee", e.target.value)} placeholder="0" />
+                    </Field>
+                    <Field label="Amount applying for (KSh)">
+                      <Input type="number" min="0" value={form.amountRequested} onChange={(e) => set("amountRequested", e.target.value)} placeholder="0" />
+                    </Field>
+                  </div>
+                </div>
+
+                {/* Bursary history — Yes/No checkboxes */}
+                <div className="rounded-lg border border-border bg-muted/30 p-4 space-y-3">
+                  <p className="text-sm font-semibold text-foreground">
+                    Have you ever received a Bursary or support from Moha Foundation or any other public source in the last 6 months?
+                  </p>
+                  <div className="flex gap-6">
+                    <label className="flex items-center gap-2 cursor-pointer text-sm font-medium">
+                      <Checkbox
+                        checked={form.receivedBursaryBefore === true}
+                        onCheckedChange={() => set("receivedBursaryBefore", true)}
+                      />
+                      Yes
+                    </label>
+                    <label className="flex items-center gap-2 cursor-pointer text-sm font-medium">
+                      <Checkbox
+                        checked={form.receivedBursaryBefore === false}
+                        onCheckedChange={() => set("receivedBursaryBefore", false)}
+                      />
+                      No
+                    </label>
+                  </div>
+                  {form.receivedBursaryBefore === true && (
+                    <div className="grid sm:grid-cols-2 gap-4 pt-1">
+                      <Field label="If yes, state the source (e.g. Moha Foundation, NG-CDF, Equity Wings)">
+                        <Input value={form.previousBursarySource} onChange={(e) => set("previousBursarySource", e.target.value)} />
+                      </Field>
+                      <Field label="Amount received (KSh)">
+                        <Input type="number" min="0" value={form.previousBursaryAmount} onChange={(e) => set("previousBursaryAmount", e.target.value)} placeholder="0" />
+                      </Field>
+                    </div>
                   )}
                 </div>
               </div>
             )}
 
+            {/* ── STEP 2: SCHOOL ──────────────────────────────────────────── */}
             {step === 2 && (
               <div className="space-y-4">
                 <SectionLabel icon={School}>School's Details</SectionLabel>
@@ -449,54 +494,95 @@ export function BursaryApplicationDialog({ trigger }: { trigger: ReactNode }) {
                     </Select>
                   </Field>
                   <Field label="Year of admission">
-                    <Input
-                      value={form.yearOfAdmission}
-                      onChange={(e) => set("yearOfAdmission", e.target.value)}
-                      placeholder="e.g. 2024"
-                    />
+                    <Input value={form.yearOfAdmission} onChange={(e) => set("yearOfAdmission", e.target.value)} placeholder="e.g. 2024" />
                   </Field>
                   <Field label="School bank account">
-                    <Input
-                      value={form.schoolBankAccount}
-                      onChange={(e) => set("schoolBankAccount", e.target.value)}
-                      placeholder="Bank · Branch · A/C No."
-                    />
+                    <Input value={form.schoolBankAccount} onChange={(e) => set("schoolBankAccount", e.target.value)} placeholder="Bank · Branch · A/C No." />
                   </Field>
-                  <div className="sm:col-span-2">
-                    <Field label="Outstanding of the student (achievements, performance, conduct)">
-                      <Textarea
-                        rows={3}
-                        value={form.studentOutstanding}
-                        onChange={(e) => set("studentOutstanding", e.target.value)}
-                        maxLength={500}
-                      />
-                    </Field>
-                  </div>
                 </div>
               </div>
             )}
 
+            {/* ── STEP 3: PARENT / GUARDIAN ───────────────────────────────── */}
             {step === 3 && (
-              <div className="space-y-4">
+              <div className="space-y-5">
                 <SectionLabel icon={Users}>Parent / Guardian's Details</SectionLabel>
+
+                {/* Parent alive flags */}
+                <div className="rounded-lg border border-border bg-muted/30 p-4 space-y-3">
+                  <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                    Parents — alive / deceased
+                  </p>
+                  <div className="grid grid-cols-2 gap-3">
+                    <CheckboxRow label="Father alive" checked={form.fatherAlive} onChange={(v) => set("fatherAlive", v)} />
+                    <CheckboxRow label="Mother alive" checked={form.motherAlive} onChange={(v) => set("motherAlive", v)} />
+                  </div>
+                </div>
+
+                {/* Father */}
+                {form.fatherAlive && (
+                  <div className="rounded-lg border border-border bg-muted/30 p-4 space-y-3">
+                    <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Father's Details</p>
+                    <div className="grid sm:grid-cols-2 gap-4">
+                      <Field label="Name"><Input value={form.fatherName} onChange={(e) => set("fatherName", e.target.value)} /></Field>
+                      <Field label="Phone contact"><Input value={form.fatherPhone} onChange={(e) => set("fatherPhone", e.target.value)} placeholder="07XX XXX XXX" /></Field>
+                      <Field label="National ID"><Input value={form.fatherNationalId} onChange={(e) => set("fatherNationalId", e.target.value)} /></Field>
+                      <Field label="Occupation"><Input value={form.fatherOccupation} onChange={(e) => set("fatherOccupation", e.target.value)} /></Field>
+                    </div>
+                    <div className="flex items-center justify-between pt-1">
+                      <Label className="text-sm font-semibold cursor-pointer">Father lives with a disability</Label>
+                      <Switch checked={form.fatherDisability} onCheckedChange={(v) => set("fatherDisability", v)} />
+                    </div>
+                    {form.fatherDisability && (
+                      <Field label="Please specify"><Input value={form.fatherDisabilityDetail} onChange={(e) => set("fatherDisabilityDetail", e.target.value)} /></Field>
+                    )}
+                  </div>
+                )}
+
+                {/* Mother */}
+                {form.motherAlive && (
+                  <div className="rounded-lg border border-border bg-muted/30 p-4 space-y-3">
+                    <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Mother's Details</p>
+                    <div className="grid sm:grid-cols-2 gap-4">
+                      <Field label="Name"><Input value={form.motherName} onChange={(e) => set("motherName", e.target.value)} /></Field>
+                      <Field label="Phone contact"><Input value={form.motherPhone} onChange={(e) => set("motherPhone", e.target.value)} placeholder="07XX XXX XXX" /></Field>
+                      <Field label="National ID"><Input value={form.motherNationalId} onChange={(e) => set("motherNationalId", e.target.value)} /></Field>
+                      <Field label="Occupation"><Input value={form.motherOccupation} onChange={(e) => set("motherOccupation", e.target.value)} /></Field>
+                    </div>
+                    <div className="flex items-center justify-between pt-1">
+                      <Label className="text-sm font-semibold cursor-pointer">Mother lives with a disability</Label>
+                      <Switch checked={form.motherDisability} onCheckedChange={(v) => set("motherDisability", v)} />
+                    </div>
+                    {form.motherDisability && (
+                      <Field label="Please specify"><Input value={form.motherDisabilityDetail} onChange={(e) => set("motherDisabilityDetail", e.target.value)} /></Field>
+                    )}
+                  </div>
+                )}
+
+                {/* Guardian */}
+                <div className="rounded-lg border border-border bg-muted/30 p-4 space-y-3">
+                  <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                    Guardian's Details <span className="text-[10px] normal-case text-muted-foreground">(Primary contact person if different from above)</span>
+                  </p>
+                  <div className="grid sm:grid-cols-2 gap-4">
+                    <Field label="Name *"><Input value={form.guardianName} onChange={(e) => set("guardianName", e.target.value)} placeholder="Full name" /></Field>
+                    <Field label="Phone contact *"><Input value={form.guardianPhone} onChange={(e) => set("guardianPhone", e.target.value)} placeholder="07XX XXX XXX" /></Field>
+                    <Field label="National ID"><Input value={form.guardianNationalId} onChange={(e) => set("guardianNationalId", e.target.value)} /></Field>
+                    <Field label="Occupation"><Input value={form.guardianOccupation} onChange={(e) => set("guardianOccupation", e.target.value)} /></Field>
+                  </div>
+                  <div className="flex items-center justify-between pt-1">
+                    <Label className="text-sm font-semibold cursor-pointer">Guardian lives with a disability</Label>
+                    <Switch checked={form.guardianDisability} onCheckedChange={(v) => set("guardianDisability", v)} />
+                  </div>
+                  {form.guardianDisability && (
+                    <Field label="Please specify"><Input value={form.guardianDisabilityDetail} onChange={(e) => set("guardianDisabilityDetail", e.target.value)} /></Field>
+                  )}
+                </div>
+
+                {/* Household & Residence */}
                 <div className="grid sm:grid-cols-2 gap-4">
-                  <Field label="Parent / Guardian name *">
-                    <Input value={form.guardianName} onChange={(e) => set("guardianName", e.target.value)} />
-                  </Field>
-                  <Field label="Phone contact *">
-                    <Input value={form.guardianPhone} onChange={(e) => set("guardianPhone", e.target.value)} placeholder="07XX XXX XXX" />
-                  </Field>
-                  <Field label="National ID">
-                    <Input value={form.parentNationalId} onChange={(e) => set("parentNationalId", e.target.value)} />
-                  </Field>
-                  <Field label="Occupation">
-                    <Input value={form.parentOccupation} onChange={(e) => set("parentOccupation", e.target.value)} />
-                  </Field>
                   <Field label="Residential sub-county">
-                    <Input
-                      value={form.parentResidenceSubCounty}
-                      onChange={(e) => set("parentResidenceSubCounty", e.target.value)}
-                    />
+                    <Input value={form.parentResidenceSubCounty} onChange={(e) => set("parentResidenceSubCounty", e.target.value)} />
                   </Field>
                   <Field label="Ward">
                     <Select value={form.ward} onValueChange={(v) => set("ward", v)}>
@@ -509,89 +595,15 @@ export function BursaryApplicationDialog({ trigger }: { trigger: ReactNode }) {
                   <Field label="Polling station">
                     <Input value={form.pollingStation} onChange={(e) => set("pollingStation", e.target.value)} />
                   </Field>
-                  <Field label="Children in High School / University">
-                    <Input
-                      type="number" min="0"
-                      value={form.siblingsInSchool}
-                      onChange={(e) => set("siblingsInSchool", e.target.value)}
-                    />
+                  <Field label="Number of children in school / University">
+                    <Input type="number" min="0" value={form.siblingsInSchool} onChange={(e) => set("siblingsInSchool", e.target.value)} placeholder="0" />
                   </Field>
-                  <Field label="Total fee payable — all children (KSh)">
-                    <Input
-                      type="number" min="0"
-                      value={form.totalFeePayable}
-                      onChange={(e) => set("totalFeePayable", e.target.value)}
-                    />
+                  <Field label="Total fee payable per annum — all children (KSh)">
+                    <Input type="number" min="0" value={form.totalFeePayable} onChange={(e) => set("totalFeePayable", e.target.value)} placeholder="0" />
                   </Field>
-                  <Field label="Fee arrears — all children (KSh)">
-                    <Input
-                      type="number" min="0"
-                      value={form.feeArrears}
-                      onChange={(e) => set("feeArrears", e.target.value)}
-                    />
+                  <Field label="Monthly budget (KSh)">
+                    <Input type="number" min="0" value={form.monthlyBudget} onChange={(e) => set("monthlyBudget", e.target.value)} placeholder="0" />
                   </Field>
-                  <Field label="Parent / Guardian monthly budget (KSh)">
-                    <Input
-                      type="number" min="0"
-                      value={form.monthlyBudget}
-                      onChange={(e) => set("monthlyBudget", e.target.value)}
-                    />
-                  </Field>
-                  <Field label="Estimated total fee balances (all children, KSh)">
-                    <Input
-                      type="number" min="0"
-                      value={form.estimatedFeeBalances}
-                      onChange={(e) => set("estimatedFeeBalances", e.target.value)}
-                    />
-                  </Field>
-                  <Field label="Amount applying for (KSh)">
-                    <Input
-                      type="number" min="0"
-                      value={form.amountRequested}
-                      onChange={(e) => set("amountRequested", e.target.value)}
-                    />
-                  </Field>
-                </div>
-
-                <div className="rounded-lg border border-border bg-muted/30 p-4 space-y-3">
-                  <CheckboxRow
-                    label="Has the parent / guardian previously received a bursary (from Moha Foundation or any other)?"
-                    checked={form.receivedBursaryBefore}
-                    onChange={(v) => set("receivedBursaryBefore", v)}
-                  />
-                  {form.receivedBursaryBefore && (
-                    <div className="grid sm:grid-cols-2 gap-4">
-                      <Field label="Source (e.g. Moha Foundation, NG-CDF, Equity Wings)">
-                        <Input
-                          value={form.previousBursarySource}
-                          onChange={(e) => set("previousBursarySource", e.target.value)}
-                        />
-                      </Field>
-                      <Field label="Amount received (KSh)">
-                        <Input
-                          type="number" min="0"
-                          value={form.previousBursaryAmount}
-                          onChange={(e) => set("previousBursaryAmount", e.target.value)}
-                        />
-                      </Field>
-                    </div>
-                  )}
-                </div>
-
-                <div className="rounded-lg border border-border bg-muted/30 p-4 space-y-3">
-                  <CheckboxRow
-                    label="Parent / Guardian lives with a disability"
-                    checked={form.parentDisability}
-                    onChange={(v) => set("parentDisability", v)}
-                  />
-                  {form.parentDisability && (
-                    <Field label="Please specify">
-                      <Input
-                        value={form.parentDisabilityDetail}
-                        onChange={(e) => set("parentDisabilityDetail", e.target.value)}
-                      />
-                    </Field>
-                  )}
                 </div>
 
                 <Field label="Brief description of reason for application">
@@ -606,35 +618,62 @@ export function BursaryApplicationDialog({ trigger }: { trigger: ReactNode }) {
               </div>
             )}
 
+            {/* ── STEP 4: REVIEW & CONSENT ─────────────────────────────────── */}
             {step === 4 && (
-              <div className="space-y-3 text-sm">
-                <h4 className="font-display font-bold text-base">Review your application</h4>
-                <Row label="Student" value={`${form.studentName} · ${form.currentGrade}`} />
-                <Row label="Reg. No." value={form.registrationNumber} />
-                <Row label="School" value={`${form.schoolName} (${form.schoolCategory || "—"})`} />
-                <Row label="School location" value={`${form.schoolCounty || "—"} / ${form.schoolSubCounty || "—"}`} />
-                <Row label="Guardian" value={`${form.guardianName} · ${form.guardianPhone}`} />
-                <Row label="Parent ID" value={form.parentNationalId} />
-                <Row label="Ward / Polling" value={`${form.ward || "—"} · ${form.pollingStation || "—"}`} />
-                <Row label="Children in school" value={form.siblingsInSchool || "0"} />
-                <Row
-                  label="Fee balances"
-                  value={form.estimatedFeeBalances ? `KSh ${Number(form.estimatedFeeBalances).toLocaleString()}` : "—"}
-                />
-                <Row
-                  label="Amount requested"
-                  value={form.amountRequested ? `KSh ${Number(form.amountRequested).toLocaleString()}` : "—"}
-                />
-                {form.reason && (
-                  <div className="pt-2">
-                    <p className="text-xs text-muted-foreground mb-1">Reason</p>
-                    <p className="text-foreground whitespace-pre-line">{form.reason}</p>
+              <div className="space-y-4">
+                <SectionLabel icon={ShieldCheck}>Review & Data Consent</SectionLabel>
+
+                <div className="space-y-1.5 text-sm">
+                  <Row label="Student" value={`${form.studentName} · ${form.currentGrade}`} />
+                  <Row label="Admission No." value={form.admissionNumber} />
+                  <Row label="Birth Cert No." value={form.birthCertNumber} />
+                  <Row label="School" value={`${form.schoolName} (${form.schoolCategory || "—"})`} />
+                  <Row label="School location" value={`${form.schoolCounty || "—"} / ${form.schoolSubCounty || "—"}`} />
+                  <Row label="Annual fee" value={form.studentAnnualFee ? `KSh ${Number(form.studentAnnualFee).toLocaleString()}` : "—"} />
+                  <Row label="Amount requested" value={form.amountRequested ? `KSh ${Number(form.amountRequested).toLocaleString()}` : "—"} />
+                  <Row label="Guardian" value={`${form.guardianName} · ${form.guardianPhone}`} />
+                  <Row label="Ward / Polling" value={`${form.ward || "—"} · ${form.pollingStation || "—"}`} />
+                  <Row label="Children in school" value={form.siblingsInSchool || "0"} />
+                  <Row label="Total annual fee (all)" value={form.totalFeePayable ? `KSh ${Number(form.totalFeePayable).toLocaleString()}` : "—"} />
+                  <Row label="Monthly budget" value={form.monthlyBudget ? `KSh ${Number(form.monthlyBudget).toLocaleString()}` : "—"} />
+                  <Row label="Previous bursary" value={form.receivedBursaryBefore === null ? "Not answered" : form.receivedBursaryBefore ? `Yes — ${form.previousBursarySource || "—"} (KSh ${Number(form.previousBursaryAmount || 0).toLocaleString()})` : "No"} />
+                </div>
+
+                {/* Data Policy / Consent */}
+                <div className="rounded-xl border-2 border-gold/40 bg-gold/5 p-5 space-y-3">
+                  <div className="flex items-center gap-2 mb-1">
+                    <ShieldCheck className="h-5 w-5 text-gold shrink-0" />
+                    <h4 className="font-display font-bold text-base text-foreground">Data Policy & Consent</h4>
                   </div>
-                )}
-                <p className="text-xs text-muted-foreground pt-2 border-t border-border">
-                  After submission you'll be able to download a pre-filled PDF form to sign and submit
-                  alongside your supporting documents.
-                </p>
+                  <div className="text-sm text-muted-foreground space-y-2 leading-relaxed">
+                    <p>
+                      The personal information collected in this form (including names, identification numbers,
+                      contact details, and household information) will be used exclusively for the purpose of
+                      evaluating and processing your bursary application with the <strong className="text-foreground">Moha Education Kitty / Moha Foundation</strong>.
+                    </p>
+                    <p>
+                      Your data will be stored securely and will <strong className="text-foreground">not</strong> be shared
+                      with third parties without your consent, except where required by law. You have the right
+                      to request access to or deletion of your data at any time by contacting us at
+                      the Moha Coordination Office, Kiamako-Mathare or via <em>hello@mohadelivers.com</em>.
+                    </p>
+                    <p>
+                      By submitting this application, you confirm that the information provided is true and accurate
+                      to the best of your knowledge.
+                    </p>
+                  </div>
+                  <label className="flex items-start gap-3 cursor-pointer group mt-2">
+                    <Checkbox
+                      checked={form.dataConsent}
+                      onCheckedChange={(v) => set("dataConsent", Boolean(v))}
+                      className="mt-0.5 shrink-0"
+                    />
+                    <span className="text-sm font-semibold text-foreground group-hover:text-primary transition-colors">
+                      I have read and understood the data policy above. I consent to the collection and use of my
+                      personal information for bursary application processing purposes. *
+                    </span>
+                  </label>
+                </div>
               </div>
             )}
 
@@ -649,7 +688,7 @@ export function BursaryApplicationDialog({ trigger }: { trigger: ReactNode }) {
                   Next <ArrowRight className="h-4 w-4" />
                 </Button>
               ) : (
-                <Button variant="hero" onClick={submit} disabled={submitting}>
+                <Button variant="hero" onClick={submit} disabled={submitting || !form.dataConsent}>
                   {submitting ? "Submitting…" : "Submit Application"}
                 </Button>
               )}
@@ -660,6 +699,8 @@ export function BursaryApplicationDialog({ trigger }: { trigger: ReactNode }) {
     </Dialog>
   );
 }
+
+// ─── Sub-components ───────────────────────────────────────────────────────────
 
 function Stepper({ step }: { step: number }) {
   const labels = ["Student", "School", "Guardian", "Review"];
@@ -717,7 +758,7 @@ function CheckboxRow({ label, checked, onChange }: { label: string; checked: boo
 function Row({ label, value }: { label: string; value: string }) {
   return (
     <div className="flex justify-between gap-3 border-b border-border py-1.5">
-      <span className="text-muted-foreground">{label}</span>
+      <span className="text-muted-foreground shrink-0">{label}</span>
       <span className="font-semibold text-foreground text-right">{value || "—"}</span>
     </div>
   );

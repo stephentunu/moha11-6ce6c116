@@ -4,6 +4,7 @@ import { motion } from "framer-motion";
 import { Vote, TrendingUp, CheckCircle2, MapPin, ChevronDown, Star } from "lucide-react";
 import { PageHero } from "@/components/PageHero";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   Select,
   SelectContent,
@@ -40,10 +41,10 @@ export const Route = createFileRoute("/polling")({
   component: PollingPage,
 });
 
-const RATING_OPTIONS: { id: "best" | "fair" | "worst"; label: string; color: string }[] = [
-  { id: "best", label: "Best", color: "text-emerald-600" },
-  { id: "fair", label: "Fairly", color: "text-amber-600" },
-  { id: "worst", label: "Worst", color: "text-rose-600" },
+const RATING_OPTIONS: { id: "best" | "fair" | "worst"; label: string; color: string; bg: string; border: string }[] = [
+  { id: "best",  label: "Best",   color: "text-emerald-600", bg: "bg-emerald-50", border: "border-emerald-400" },
+  { id: "fair",  label: "Fairly", color: "text-amber-600",   bg: "bg-amber-50",   border: "border-amber-400"   },
+  { id: "worst", label: "Worst",  color: "text-rose-600",    bg: "bg-rose-50",    border: "border-rose-400"    },
 ];
 
 function isServicePoll(p: Poll) {
@@ -125,26 +126,27 @@ function PollingPage() {
             </div>
           </div>
 
-          {/* Service rating dropdowns */}
+          {/* Service rating — Best / Fairly / Worst as accordion headers */}
           {servicePolls.length > 0 && (
             <div className="bg-card border border-border rounded-2xl p-5 md:p-6 mb-8 shadow-elegant">
-              <div className="flex items-start gap-3 mb-4">
+              <div className="flex items-start gap-3 mb-5">
                 <div className="h-10 w-10 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
                   <Star className="h-5 w-5 text-primary" />
                 </div>
                 <div>
                   <h3 className="text-lg md:text-xl font-display font-bold text-foreground">
-                    Rate Moha's services
+                    Rate how the following services are offered in Mathare by the Government and people's Representatives
                   </h3>
                   <p className="text-xs text-muted-foreground mt-1">
-                    Pick a rating below, then tap the service you want to rate.
+                    Click a rating, then tick the services it applies to. One vote per service per device.
                   </p>
                 </div>
               </div>
 
-              <div className="space-y-2">
+              {/* Three rating headers in the same row */}
+              <div className="grid grid-cols-3 gap-3">
                 {RATING_OPTIONS.map((rating) => (
-                  <RatingDropdown
+                  <RatingAccordion
                     key={rating.id}
                     rating={rating}
                     polls={servicePolls}
@@ -154,6 +156,12 @@ function PollingPage() {
                   />
                 ))}
               </div>
+
+              {!ward && (
+                <p className="mt-3 text-xs text-muted-foreground text-center">
+                  ↑ Select your ward above to unlock voting.
+                </p>
+              )}
             </div>
           )}
 
@@ -239,14 +247,19 @@ function PollingPage() {
   );
 }
 
-function RatingDropdown({
+// ─── RatingAccordion ──────────────────────────────────────────────────────────
+// Each rating option (Best / Fairly / Worst) is its own collapsible header.
+// All three sit side-by-side in a row. Opening one reveals a checklist of
+// services the voter can tick.
+
+function RatingAccordion({
   rating,
   polls,
   voted,
   ward,
   onVote,
 }: {
-  rating: { id: "best" | "fair" | "worst"; label: string; color: string };
+  rating: { id: "best" | "fair" | "worst"; label: string; color: string; bg: string; border: string };
   polls: Poll[];
   voted: Record<string, string>;
   ward: string;
@@ -254,66 +267,81 @@ function RatingDropdown({
 }) {
   const [open, setOpen] = useState(false);
   const locked = !ward;
-  const countForRating = polls.filter((p) => voted[p.id] === rating.id).length;
+  const countVoted = polls.filter((p) => voted[p.id] === rating.id).length;
 
   return (
     <Collapsible open={open} onOpenChange={setOpen}>
       <CollapsibleTrigger
         className={cn(
-          "w-full flex items-center justify-between gap-3 px-4 py-3 rounded-xl border-2 transition-all",
-          "border-border hover:border-primary hover:bg-primary/5",
-          open && "border-primary bg-primary/5",
+          "w-full flex flex-col items-center justify-center gap-1.5 px-3 py-4 rounded-xl border-2 transition-all",
+          "border-border hover:bg-muted/40",
+          open && rating.border,
+          open && rating.bg,
         )}
       >
-        <span className="flex items-center gap-3">
-          <Star className={cn("h-5 w-5", rating.color)} />
-          <span className="font-display font-bold text-base text-foreground">{rating.label}</span>
-          {countForRating > 0 && (
-            <span className="text-[10px] font-bold uppercase tracking-widest text-gold bg-gold/10 px-2 py-0.5 rounded-full">
-              {countForRating} rated
-            </span>
-          )}
+        <span className={cn("text-base md:text-lg font-display font-bold", rating.color)}>
+          {rating.label}
         </span>
-        <ChevronDown className={cn("h-4 w-4 transition-transform", open && "rotate-180")} />
+        {countVoted > 0 && (
+          <span className={cn("text-[10px] font-bold uppercase tracking-widest px-2 py-0.5 rounded-full", rating.bg, rating.color)}>
+            {countVoted} voted
+          </span>
+        )}
+        <ChevronDown className={cn("h-4 w-4 text-muted-foreground transition-transform", open && "rotate-180")} />
       </CollapsibleTrigger>
+
       <CollapsibleContent>
-        <div className="pl-3 pr-1 pt-3 pb-2 space-y-2">
+        <div className="mt-2 rounded-xl border border-border overflow-hidden">
           {locked && (
-            <p className="text-xs text-muted-foreground px-2">
+            <p className="px-4 py-3 text-xs text-muted-foreground">
               Select your ward above to unlock voting.
             </p>
           )}
           {polls.map((p) => {
             const userVote = voted[p.id];
-            const voted_here = userVote === rating.id;
-            const voted_else = userVote && userVote !== rating.id;
+            const votedThisRating = userVote === rating.id;
+            const votedOtherRating = !!userVote && userVote !== rating.id;
             const service = serviceNameFromQuestion(p.question);
+            const disabled = locked || votedOtherRating;
+
             return (
-              <button
+              <label
                 key={p.id}
-                onClick={() => onVote(p.id, rating.id)}
-                disabled={locked || !!userVote}
                 className={cn(
-                  "w-full text-left rounded-lg border px-3 py-2.5 flex items-center justify-between gap-2 transition-all",
-                  voted_here
-                    ? "border-gold bg-gold/10"
-                    : voted_else
-                      ? "border-border opacity-60 cursor-not-allowed"
-                      : locked
-                        ? "border-border opacity-60 cursor-not-allowed"
-                        : "border-border hover:border-primary hover:bg-primary/5",
+                  "flex items-center gap-3 px-4 py-3 border-b border-border last:border-0 transition-colors",
+                  disabled
+                    ? "opacity-50 cursor-not-allowed bg-muted/20"
+                    : votedThisRating
+                      ? cn("cursor-default", rating.bg)
+                      : "cursor-pointer hover:bg-muted/30",
                 )}
               >
-                <span className="text-sm font-medium text-foreground flex items-center gap-2">
-                  {voted_here && <CheckCircle2 className="h-3.5 w-3.5 text-gold" />}
+                <Checkbox
+                  checked={votedThisRating}
+                  onCheckedChange={() => {
+                    if (!disabled && !userVote) onVote(p.id, rating.id);
+                  }}
+                  disabled={disabled || !!userVote}
+                  className={cn(
+                    rating.id === "best"
+                      ? "data-[state=checked]:bg-emerald-600 data-[state=checked]:border-emerald-600"
+                      : rating.id === "fair"
+                        ? "data-[state=checked]:bg-amber-500 data-[state=checked]:border-amber-500"
+                        : "data-[state=checked]:bg-rose-600 data-[state=checked]:border-rose-600",
+                  )}
+                />
+                <span className="text-sm font-medium text-foreground leading-tight flex-1">
                   {service}
                 </span>
-                {voted_else && (
-                  <span className="text-[10px] font-semibold text-muted-foreground uppercase">
+                {votedThisRating && (
+                  <CheckCircle2 className={cn("h-4 w-4 shrink-0", rating.color)} />
+                )}
+                {votedOtherRating && (
+                  <span className="text-[10px] font-semibold text-muted-foreground uppercase shrink-0">
                     Rated {RATING_OPTIONS.find((r) => r.id === userVote)?.label}
                   </span>
                 )}
-              </button>
+              </label>
             );
           })}
         </div>

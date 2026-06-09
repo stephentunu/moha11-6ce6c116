@@ -34,6 +34,7 @@ import {
   Home,
   Settings,
   Sofa,
+  ShieldCheck,
 } from "lucide-react";
 import { PageHero } from "@/components/PageHero";
 import { Button } from "@/components/ui/button";
@@ -171,6 +172,7 @@ type FormState = {
   tillPaybillNumber: string;
   nearestTransport: string;
   deliveryAvailable: boolean;
+  dataConsent: boolean;
 };
 
 const EMPTY_FORM: FormState = {
@@ -189,6 +191,7 @@ const EMPTY_FORM: FormState = {
   tillPaybillNumber: "",
   nearestTransport: "",
   deliveryAvailable: false,
+  dataConsent: false,
 };
 
 function AdvertisePage() {
@@ -734,6 +737,7 @@ function RegistrationDialog({
     }
     if (s === 3) {
       if (form.imageUrls.length === 0) return "Please upload at least one photo";
+      if (!form.dataConsent) return "Please read and accept the Data Policy before publishing";
     }
     return null;
   };
@@ -987,6 +991,32 @@ function RegistrationDialog({
                   <p><span className="text-muted-foreground">Payments:</span> {form.paymentMethods.map((m) => PAYMENT_LABELS[m]).join(", ") || "—"}</p>
                   <p><span className="text-muted-foreground">Delivery:</span> {form.deliveryAvailable ? "Yes" : "No"}</p>
                 </div>
+
+                {/* Data Policy & Consent */}
+                <div className="rounded-xl border-2 border-gold/40 bg-gold/5 p-4 space-y-3">
+                  <div className="flex items-center gap-2">
+                    <ShieldCheck className="h-5 w-5 text-gold shrink-0" />
+                    <h4 className="font-display font-bold text-sm text-foreground">Data Policy & Consent</h4>
+                  </div>
+                  <p className="text-xs text-muted-foreground leading-relaxed">
+                    The information you provide will be displayed publicly on the Mathare Business Hub to connect you
+                    with customers. Your name, business details, and contact information will be visible to visitors of
+                    this platform. We do not sell your data to third parties. You may request removal of your listing at
+                    any time by contacting us at <em>hello@mohadelivers.com</em> or the Moha Coordination Office, Kiamako-Mathare.
+                    By publishing, you confirm that the information is accurate and that you have the right to list this business.
+                  </p>
+                  <label className="flex items-start gap-3 cursor-pointer group">
+                    <Checkbox
+                      checked={form.dataConsent}
+                      onCheckedChange={(v) => update("dataConsent", Boolean(v))}
+                      className="mt-0.5 shrink-0"
+                    />
+                    <span className="text-xs font-semibold text-foreground group-hover:text-primary transition-colors">
+                      I have read and understood the data policy. I consent to my business information being displayed
+                      publicly on the Mathare Business Hub. *
+                    </span>
+                  </label>
+                </div>
               </motion.div>
             )}
           </AnimatePresence>
@@ -1004,7 +1034,7 @@ function RegistrationDialog({
                 Next <ChevronRight className="h-4 w-4" />
               </Button>
             ) : (
-              <Button type="submit" variant="hero">
+              <Button type="submit" variant="hero" disabled={!form.dataConsent}>
                 <CheckCircle2 className="h-4 w-4" /> Publish My Business
               </Button>
             )}

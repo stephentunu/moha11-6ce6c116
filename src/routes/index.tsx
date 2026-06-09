@@ -367,7 +367,7 @@ function HomePage() {
             <div className="mt-10 flex flex-wrap gap-4">
               <Button asChild variant="hero" size="lg">
                 <Link to="/foundations">
-                  Meet the Foundations <Users className="h-5 w-5" />
+                  Meet the Foundation <Users className="h-5 w-5" />
                 </Link>
               </Button>
               <Button
