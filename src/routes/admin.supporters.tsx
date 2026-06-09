@@ -269,9 +269,17 @@ function AdminSupportersPage() {
     if (error) toast.error(error.message);
   };
 
-  const remove = async (id: string) => {
+  const remove = async (id: string, name: string) => {
+    if (!window.confirm(`Remove "${name}" from supporters? This cannot be undone.`)) return;
     const { error } = await supabase.from("supporters" as never).delete().eq("id", id);
-    if (error) toast.error(error.message);
+    if (error) {
+      toast.error(error.message);
+      return;
+    }
+    // Optimistically remove from local state immediately, then re-sync from DB
+    setList((prev) => prev.filter((s) => s.id !== id));
+    toast.success(`${name} removed`);
+    load();
   };
 
   return (
@@ -443,7 +451,7 @@ function AdminSupportersPage() {
                     <Button size="sm" variant="outline" onClick={() => toggleOpt(s)}>
                       {s.opted_out ? <BellRing className="h-3.5 w-3.5" /> : <BellOff className="h-3.5 w-3.5" />}
                     </Button>
-                    <Button size="sm" variant="outline" onClick={() => remove(s.id)}>
+                    <Button size="sm" variant="outline" onClick={() => remove(s.id, s.name)}>
                       <Trash2 className="h-3.5 w-3.5" />
                     </Button>
                   </td>

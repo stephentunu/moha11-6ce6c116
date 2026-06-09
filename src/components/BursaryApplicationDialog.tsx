@@ -69,6 +69,7 @@ type Form = {
   birthCertNumber: string;
   studentOutstanding: string;
   studentAnnualFee: string;
+  outstandingBalance: string;
   amountRequested: string;
   receivedBursaryBefore: boolean | null; // null = not answered yet
   previousBursarySource: string;
@@ -119,7 +120,7 @@ type Form = {
 const EMPTY: Form = {
   studentName: "", admissionNumber: "", dob: "", currentGrade: "", gender: "",
   studentDisability: false, studentDisabilityDetail: "",
-  birthCertNumber: "", studentOutstanding: "", studentAnnualFee: "", amountRequested: "",
+  birthCertNumber: "", studentOutstanding: "", studentAnnualFee: "", outstandingBalance: "", amountRequested: "",
   receivedBursaryBefore: null, previousBursarySource: "", previousBursaryAmount: "",
   schoolName: "", schoolCategory: "", schoolCounty: "", schoolSubCounty: "",
   yearOfAdmission: "", schoolBankAccount: "",
@@ -136,8 +137,8 @@ const EMPTY: Form = {
 };
 
 const GRADES = [
-  "Grade 10", "Form 2", "Form 3", "Form 4",
-  "TVET / College", "University / Degree",
+  "Grade 10", "Form 3", "Form 4",
+  "TVET / College", "University / Degree", "Other",
 ];
 
 const SCHOOL_CATEGORIES = [
@@ -158,18 +159,45 @@ export function BursaryApplicationDialog({ trigger }: { trigger: ReactNode }) {
   const [form, setForm] = useState<Form>(EMPTY);
   const [submitting, setSubmitting] = useState(false);
   const [result, setResult] = useState<{ reference: string } | null>(null);
+  const [checkingCert, setCheckingCert] = useState(false);
+  const [certError, setCertError] = useState("");
 
-  const set = <K extends keyof Form>(k: K, v: Form[K]) => setForm((f) => ({ ...f, [k]: v }));
+  const set = <K extends keyof Form>(k: K, v: Form[K]) => {
+    setForm((f) => ({ ...f, [k]: v }));
+    if (k === "birthCertNumber") setCertError("");
+  };
 
   const schoolSubCounties = useMemo(
     () => (form.schoolCounty ? KENYA_COUNTIES[form.schoolCounty] ?? [] : []),
     [form.schoolCounty],
   );
 
-  const validateStep = (): boolean => {
+  const validateStep = async (): Promise<boolean> => {
     try {
-      if (step === 1) StudentSchema.parse(form);
-      else if (step === 2) SchoolSchema.parse(form);
+      if (step === 1) {
+        StudentSchema.parse(form);
+        // Duplicate birth certificate check
+        if (form.birthCertNumber.trim()) {
+          setCheckingCert(true);
+          const { data, error } = await supabase
+            .from("bursary_applications" as never)
+            .select("id, student_name")
+            .eq("birth_cert_number" as never, form.birthCertNumber.trim())
+            .limit(1);
+          setCheckingCert(false);
+          if (error) {
+            toast.error("Could not verify birth certificate number. Please try again.");
+            return false;
+          }
+          const existing = data as unknown as { id: string; student_name: string }[];
+          if (existing && existing.length > 0) {
+            const msg = `Birth certificate number "${form.birthCertNumber.trim()}" has already been used in a previous application (${existing[0].student_name}). Each student can only apply once per cycle.`;
+            setCertError(msg);
+            toast.error(msg);
+            return false;
+          }
+        }
+      } else if (step === 2) SchoolSchema.parse(form);
       else if (step === 3) GuardianSchema.parse(form);
       else if (step === 4) {
         if (!form.dataConsent) {
@@ -184,7 +212,7 @@ export function BursaryApplicationDialog({ trigger }: { trigger: ReactNode }) {
     }
   };
 
-  const reset = () => { setForm(EMPTY); setStep(1); setResult(null); };
+  const reset = () => { setForm(EMPTY); setStep(1); setResult(null); setCertError(""); };
 
   const submit = async () => {
     if (!form.dataConsent) {
@@ -199,6 +227,7 @@ export function BursaryApplicationDialog({ trigger }: { trigger: ReactNode }) {
         dob: form.dob || null,
         current_grade: form.currentGrade,
         gender: form.gender || null,
+        birth_cert_number: form.birthCertNumber.trim() || null,
         father_alive: form.fatherAlive,
         mother_alive: form.motherAlive,
         father_name: form.fatherAlive ? (form.fatherName || null) : null,
@@ -231,6 +260,7 @@ export function BursaryApplicationDialog({ trigger }: { trigger: ReactNode }) {
         total_fee_payable: form.totalFeePayable ? Number(form.totalFeePayable) : null,
         monthly_budget: form.monthlyBudget ? Number(form.monthlyBudget) : null,
         amount_requested: form.amountRequested ? Number(form.amountRequested) : 0,
+        outstanding_balance: form.outstandingBalance ? Number(form.outstandingBalance) : null,
         received_bursary_before: form.receivedBursaryBefore ?? false,
         previous_bursary_source: form.receivedBursaryBefore ? (form.previousBursarySource || null) : null,
         previous_bursary_amount: form.receivedBursaryBefore && form.previousBursaryAmount ? Number(form.previousBursaryAmount) : null,
@@ -292,6 +322,7 @@ export function BursaryApplicationDialog({ trigger }: { trigger: ReactNode }) {
       siblings_in_school: form.siblingsInSchool ? Number(form.siblingsInSchool) : 0,
       total_fee_payable: form.totalFeePayable ? Number(form.totalFeePayable) : 0,
       fee_arrears: 0,
+      outstanding_balance: form.outstandingBalance ? Number(form.outstandingBalance) : 0,
       monthly_budget: form.monthlyBudget ? Number(form.monthlyBudget) : 0,
       estimated_fee_balances: 0,
       amount_requested: form.amountRequested ? Number(form.amountRequested) : 0,
@@ -372,7 +403,18 @@ export function BursaryApplicationDialog({ trigger }: { trigger: ReactNode }) {
                     </Select>
                   </Field>
                   <Field label="Birth certificate number">
-                    <Input value={form.birthCertNumber} onChange={(e) => set("birthCertNumber", e.target.value)} placeholder="As on birth certificate" />
+                    <Input
+                      value={form.birthCertNumber}
+                      onChange={(e) => set("birthCertNumber", e.target.value)}
+                      placeholder="As on birth certificate"
+                      className={certError ? "border-rose-500 focus-visible:ring-rose-500" : ""}
+                    />
+                    {certError && (
+                      <p className="text-xs text-rose-600 mt-1 flex items-start gap-1.5">
+                        <span className="shrink-0 mt-0.5">⚠</span>
+                        {certError}
+                      </p>
+                    )}
                   </Field>
                 </div>
 
@@ -408,6 +450,9 @@ export function BursaryApplicationDialog({ trigger }: { trigger: ReactNode }) {
                   <div className="space-y-4">
                     <Field label="Student annual fee payable (KSh)">
                       <Input type="number" min="0" value={form.studentAnnualFee} onChange={(e) => set("studentAnnualFee", e.target.value)} placeholder="0" />
+                    </Field>
+                    <Field label="Student's outstanding fee balance (KSh)">
+                      <Input type="number" min="0" value={form.outstandingBalance} onChange={(e) => set("outstandingBalance", e.target.value)} placeholder="0" />
                     </Field>
                     <Field label="Amount applying for (KSh)">
                       <Input type="number" min="0" value={form.amountRequested} onChange={(e) => set("amountRequested", e.target.value)} placeholder="0" />
@@ -630,6 +675,7 @@ export function BursaryApplicationDialog({ trigger }: { trigger: ReactNode }) {
                   <Row label="School" value={`${form.schoolName} (${form.schoolCategory || "—"})`} />
                   <Row label="School location" value={`${form.schoolCounty || "—"} / ${form.schoolSubCounty || "—"}`} />
                   <Row label="Annual fee" value={form.studentAnnualFee ? `KSh ${Number(form.studentAnnualFee).toLocaleString()}` : "—"} />
+                  <Row label="Outstanding balance" value={form.outstandingBalance ? `KSh ${Number(form.outstandingBalance).toLocaleString()}` : "—"} />
                   <Row label="Amount requested" value={form.amountRequested ? `KSh ${Number(form.amountRequested).toLocaleString()}` : "—"} />
                   <Row label="Guardian" value={`${form.guardianName} · ${form.guardianPhone}`} />
                   <Row label="Ward / Polling" value={`${form.ward || "—"} · ${form.pollingStation || "—"}`} />
@@ -684,8 +730,8 @@ export function BursaryApplicationDialog({ trigger }: { trigger: ReactNode }) {
                 </Button>
               )}
               {step < 4 ? (
-                <Button variant="hero" onClick={() => { if (validateStep()) setStep((s) => s + 1); }}>
-                  Next <ArrowRight className="h-4 w-4" />
+                <Button variant="hero" onClick={async () => { if (await validateStep()) setStep((s) => s + 1); }} disabled={checkingCert}>
+                  {checkingCert ? "Checking…" : <>Next <ArrowRight className="h-4 w-4" /></>}
                 </Button>
               ) : (
                 <Button variant="hero" onClick={submit} disabled={submitting || !form.dataConsent}>
