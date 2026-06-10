@@ -138,7 +138,7 @@ const EMPTY: Form = {
 
 const GRADES = [
   "Grade 10", "Form 3", "Form 4",
-  "TVET / College", "University / Degree", "Other",
+  "TVET / College", "University / Degree",
 ];
 
 const SCHOOL_CATEGORIES = [
@@ -159,13 +159,8 @@ export function BursaryApplicationDialog({ trigger }: { trigger: ReactNode }) {
   const [form, setForm] = useState<Form>(EMPTY);
   const [submitting, setSubmitting] = useState(false);
   const [result, setResult] = useState<{ reference: string } | null>(null);
-  const [checkingCert, setCheckingCert] = useState(false);
-  const [certError, setCertError] = useState("");
 
-  const set = <K extends keyof Form>(k: K, v: Form[K]) => {
-    setForm((f) => ({ ...f, [k]: v }));
-    if (k === "birthCertNumber") setCertError("");
-  };
+  const set = <K extends keyof Form>(k: K, v: Form[K]) => setForm((f) => ({ ...f, [k]: v }));
 
   const schoolSubCounties = useMemo(
     () => (form.schoolCounty ? KENYA_COUNTIES[form.schoolCounty] ?? [] : []),
@@ -174,30 +169,8 @@ export function BursaryApplicationDialog({ trigger }: { trigger: ReactNode }) {
 
   const validateStep = async (): Promise<boolean> => {
     try {
-      if (step === 1) {
-        StudentSchema.parse(form);
-        // Duplicate birth certificate check
-        if (form.birthCertNumber.trim()) {
-          setCheckingCert(true);
-          const { data, error } = await supabase
-            .from("bursary_applications" as never)
-            .select("id, student_name")
-            .eq("birth_cert_number" as never, form.birthCertNumber.trim())
-            .limit(1);
-          setCheckingCert(false);
-          if (error) {
-            toast.error("Could not verify birth certificate number. Please try again.");
-            return false;
-          }
-          const existing = data as unknown as { id: string; student_name: string }[];
-          if (existing && existing.length > 0) {
-            const msg = `Birth certificate number "${form.birthCertNumber.trim()}" has already been used in a previous application (${existing[0].student_name}). Each student can only apply once per cycle.`;
-            setCertError(msg);
-            toast.error(msg);
-            return false;
-          }
-        }
-      } else if (step === 2) SchoolSchema.parse(form);
+      if (step === 1) StudentSchema.parse(form);
+      else if (step === 2) SchoolSchema.parse(form);
       else if (step === 3) GuardianSchema.parse(form);
       else if (step === 4) {
         if (!form.dataConsent) {
@@ -212,7 +185,7 @@ export function BursaryApplicationDialog({ trigger }: { trigger: ReactNode }) {
     }
   };
 
-  const reset = () => { setForm(EMPTY); setStep(1); setResult(null); setCertError(""); };
+  const reset = () => { setForm(EMPTY); setStep(1); setResult(null); };
 
   const submit = async () => {
     if (!form.dataConsent) {
@@ -407,14 +380,7 @@ export function BursaryApplicationDialog({ trigger }: { trigger: ReactNode }) {
                       value={form.birthCertNumber}
                       onChange={(e) => set("birthCertNumber", e.target.value)}
                       placeholder="As on birth certificate"
-                      className={certError ? "border-rose-500 focus-visible:ring-rose-500" : ""}
                     />
-                    {certError && (
-                      <p className="text-xs text-rose-600 mt-1 flex items-start gap-1.5">
-                        <span className="shrink-0 mt-0.5">⚠</span>
-                        {certError}
-                      </p>
-                    )}
                   </Field>
                 </div>
 
@@ -730,8 +696,8 @@ export function BursaryApplicationDialog({ trigger }: { trigger: ReactNode }) {
                 </Button>
               )}
               {step < 4 ? (
-                <Button variant="hero" onClick={async () => { if (await validateStep()) setStep((s) => s + 1); }} disabled={checkingCert}>
-                  {checkingCert ? "Checking…" : <>Next <ArrowRight className="h-4 w-4" /></>}
+                <Button variant="hero" onClick={async () => { if (await validateStep()) setStep((s) => s + 1); }}>
+                  Next <ArrowRight className="h-4 w-4" />
                 </Button>
               ) : (
                 <Button variant="hero" onClick={submit} disabled={submitting || !form.dataConsent}>
