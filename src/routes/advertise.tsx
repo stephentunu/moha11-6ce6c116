@@ -113,6 +113,8 @@ const CATEGORIES = [
   { value: "Health -Pharmacies, Chemicals, Fitness Centres & Related", icon: Stethoscope },
   { value: "Home Accessories – Juakali, Garden, Kitchen, Furniture & Related", icon: Sofa },
   { value: "Machinery and Spare Shops – Cars, Motorbikes, Electronics & Related", icon: Settings },
+  { value: "Photography – Portraits, Events, Passports & Related", icon: Sparkles },
+  { value: "Artwork and Drawing – Paintings, Illustrations, Graphic Design & Related", icon: Monitor },
   { value: "Property and Houses to Rent, Sale or Lease", icon: Home },
   { value: "Services – Repairs, Cleaning, Transport, Garage, Printing & Related", icon: Wrench },
 ] as const;

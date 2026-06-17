@@ -309,6 +309,22 @@ const foundations: Foundation[] = [
 function FoundationsPage() {
   const [content] = useContent();
   const title = (content.foundationsHeadline || "").replace(/Foundations/gi, "Foundation");
+
+  // Compute whether the 10-day bursary window is currently open
+  const bursaryWindowOpen = (() => {
+    if (!content.bursaryWindowStart) return false;
+    const start = new Date(content.bursaryWindowStart);
+    const end = new Date(start);
+    end.setDate(end.getDate() + 10);
+    const now = new Date();
+    return now >= start && now <= end;
+  })();
+  const bursaryWindowEnd = (() => {
+    if (!content.bursaryWindowStart) return null;
+    const end = new Date(content.bursaryWindowStart);
+    end.setDate(end.getDate() + 10);
+    return end;
+  })();
   return (
     <>
       <PageHero
@@ -374,16 +390,26 @@ function FoundationsPage() {
 
                 {f.title.startsWith("Bursaries") && (
                   <div className="mt-6">
-                    <BursaryApplicationDialog
-                      trigger={
-                        <Button variant="hero" size="lg">
-                          Apply for a Bursary <ArrowRight className="h-5 w-5" />
-                        </Button>
-                      }
-                    />
-                    <p className="mt-2 text-xs text-muted-foreground">
-                      4-step application · You'll receive an SMS update on your application status.
-                    </p>
+                    {bursaryWindowOpen ? (
+                      <>
+                        <BursaryApplicationDialog
+                          trigger={
+                            <Button variant="hero" size="lg">
+                              Apply for bursary <ArrowRight className="h-5 w-5" />
+                            </Button>
+                          }
+                        />
+                        <p className="mt-2 text-xs text-muted-foreground">
+                          4-step application · Window closes{" "}
+                          {bursaryWindowEnd?.toLocaleDateString("en-KE", { day: "numeric", month: "long", year: "numeric" })}.
+                        </p>
+                      </>
+                    ) : (
+                      <div className="rounded-xl border-2 border-amber-300 bg-amber-50 px-5 py-4 text-sm text-amber-800 font-medium">
+                        <p className="font-bold text-base mb-1">Applications are currently closed</p>
+                        <p>The bursary application window is not open at the moment. Check back soon or follow our social media for the next opening date.</p>
+                      </div>
+                    )}
                   </div>
                 )}
 

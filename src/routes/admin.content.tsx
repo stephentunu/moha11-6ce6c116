@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useRef, useState, type ChangeEvent } from "react";
-import { Save, Upload, ImageIcon, RotateCcw, Home, Target, HeartHandshake } from "lucide-react";
+import { Save, Upload, ImageIcon, RotateCcw, Home, Target, HeartHandshake, GraduationCap } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -175,6 +175,48 @@ function AdminContentPage() {
                 maxLength={200}
               />
             </Field>
+          </div>
+        </Section>
+
+        {/* Bursary Application Window */}
+        <Section icon={GraduationCap} title="Bursary Application Window">
+          <div className="space-y-3">
+            <p className="text-sm text-muted-foreground">
+              Set the start date for the bursary application window. Applications will automatically
+              close <strong>10 days</strong> after the start date. Leave blank to close the window.
+            </p>
+            <Field label="Application window start date">
+              <Input
+                type="date"
+                value={draft.bursaryWindowStart || ""}
+                onChange={(e) => update("bursaryWindowStart", e.target.value)}
+              />
+            </Field>
+            {draft.bursaryWindowStart && (() => {
+              const start = new Date(draft.bursaryWindowStart);
+              const end = new Date(start);
+              end.setDate(end.getDate() + 10);
+              const now = new Date();
+              const open = now >= start && now <= end;
+              return (
+                <div className={`rounded-lg border px-4 py-3 text-sm font-semibold ${open ? "border-emerald-300 bg-emerald-50 text-emerald-700" : "border-rose-300 bg-rose-50 text-rose-700"}`}>
+                  {open
+                    ? `✓ Window OPEN — closes ${end.toLocaleDateString("en-KE", { day: "numeric", month: "long", year: "numeric" })}`
+                    : now < start
+                      ? `Window opens ${start.toLocaleDateString("en-KE", { day: "numeric", month: "long", year: "numeric" })}`
+                      : `Window CLOSED — ended ${end.toLocaleDateString("en-KE", { day: "numeric", month: "long", year: "numeric" })}`
+                  }
+                </div>
+              );
+            })()}
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => update("bursaryWindowStart", "")}
+              disabled={!draft.bursaryWindowStart}
+            >
+              Clear / Close window
+            </Button>
           </div>
         </Section>
 

@@ -351,3 +351,258 @@ function checkbox(doc: jsPDF, x: number, y: number, label: string) {
   doc.setFontSize(9);
   doc.text(label, x + 5, y + 3.2);
 }
+
+// ─── BROADSHEET PDF ───────────────────────────────────────────────────────────
+
+export type BroadsheetRow = {
+  reference: string;
+  student_name: string;
+  registration_number?: string | null;
+  current_grade: string;
+  gender?: string | null;
+  guardian_name: string;
+  guardian_phone: string;
+  ward?: string | null;
+  amount_requested?: number | null;
+  school_name: string;
+  school_category?: string | null;
+  school_bank_account?: string | null;
+};
+
+export function generateBroadsheetPdf(rows: BroadsheetRow[], title = "Approved Bursary Awards — Broadsheet") {
+  const doc = new jsPDF({ unit: "mm", format: "a4", orientation: "landscape" });
+  const W = 297;
+  const M = 10;
+  const PAGE_H = 210;
+  const FOOTER_H = 12;
+  const USABLE_H = PAGE_H - FOOTER_H;
+
+  const generated = new Date().toLocaleString("en-KE");
+
+  // Group by school, sorted alphabetically
+  const bySchool = new Map<string, BroadsheetRow[]>();
+  const sorted = [...rows].sort((a, b) =>
+    a.school_name.localeCompare(b.school_name) || a.student_name.localeCompare(b.student_name)
+  );
+  for (const r of sorted) {
+    const key = r.school_name.toUpperCase().trim();
+    if (!bySchool.has(key)) bySchool.set(key, []);
+    bySchool.get(key)!.push(r);
+  }
+
+  let page = 1;
+  let y = 0;
+
+  const addPageHeader = () => {
+    // Dark green header bar
+    doc.setFillColor(20, 83, 45);
+    doc.rect(0, 0, W, 18, "F");
+    doc.setTextColor(255, 255, 255);
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(13);
+    doc.text("MOHA EDUCATION KITTY — CONSTITUENCY BURSARY AWARD BROADSHEET", M, 8);
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(8);
+    doc.text(title, M, 14);
+    doc.text(`Generated: ${generated}  |  Page ${page}`, W - M, 14, { align: "right" });
+    doc.setTextColor(0, 0, 0);
+    y = 22;
+  };
+
+  const addPageFooter = () => {
+    doc.setFontSize(7);
+    doc.setTextColor(140, 140, 140);
+    doc.text(
+      `Moha Education Kitty • Kiamaiko-Mathare • ${title} • Confidential`,
+      W / 2, PAGE_H - 4, { align: "center" }
+    );
+    doc.setTextColor(0, 0, 0);
+  };
+
+  const newPage = () => {
+    addPageFooter();
+    doc.addPage();
+    page++;
+    addPageHeader();
+  };
+
+  const checkY = (needed: number) => {
+    if (y + needed > USABLE_H) newPage();
+  };
+
+  // Column widths (landscape A4 = 297mm, margins = 10mm each side → 277mm usable)
+  const cols = {
+    no:    { x: M,       w: 9  },
+    ref:   { x: M+9,     w: 22 },
+    name:  { x: M+31,    w: 50 },
+    grade: { x: M+81,    w: 22 },
+    gender:{ x: M+103,   w: 16 },
+    guardian:{ x: M+119, w: 45 },
+    phone: { x: M+164,   w: 30 },
+    ward:  { x: M+194,   w: 30 },
+    amount:{ x: M+224,   w: 28 },
+    bank:  { x: M+252,   w: 35 },
+  };
+  const ROW_H = 7;
+  const HEAD_H = 8;
+
+  const drawTableHeader = () => {
+    doc.setFillColor(212, 175, 55); // gold
+    doc.rect(M, y, W - 2*M, HEAD_H, "F");
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(7);
+    doc.setTextColor(20, 30, 20);
+    const headers: [string, keyof typeof cols][] = [
+      ["#", "no"], ["REF", "ref"], ["STUDENT NAME", "name"], ["GRADE", "grade"],
+      ["GENDER", "gender"], ["GUARDIAN / PARENT", "guardian"], ["PHONE", "phone"],
+      ["WARD", "ward"], ["AMOUNT (KSh)", "amount"], ["SCHOOL BANK A/C", "bank"]
+    ];
+    for (const [label, col] of headers) {
+      doc.text(label, cols[col].x + 1.5, y + 5.5);
+    }
+    doc.setTextColor(0, 0, 0);
+    y += HEAD_H;
+  };
+
+  const drawRow = (r: BroadsheetRow, idx: number, serial: number, shade: boolean) => {
+    if (shade) {
+      doc.setFillColor(245, 245, 245);
+      doc.rect(M, y, W - 2*M, ROW_H, "F");
+    }
+    doc.setDrawColor(210, 210, 210);
+    doc.rect(M, y, W - 2*M, ROW_H);
+
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(7.5);
+
+    const cell = (text: string, col: keyof typeof cols) => {
+      const t = doc.splitTextToSize(text || "—", cols[col].w - 2);
+      doc.text(String(t[0] ?? "—"), cols[col].x + 1.5, y + 4.5);
+    };
+
+    cell(String(serial), "no");
+    cell(r.reference, "ref");
+
+    // Student name bold
+    doc.setFont("helvetica", "bold");
+    cell(r.student_name, "name");
+    doc.setFont("helvetica", "normal");
+
+    cell(r.current_grade, "grade");
+    cell(r.gender || "—", "gender");
+    cell(r.guardian_name, "guardian");
+    cell(r.guardian_phone, "phone");
+    cell(r.ward || "—", "ward");
+    cell(r.amount_requested ? `KSh ${Number(r.amount_requested).toLocaleString()}` : "—", "amount");
+    cell(r.school_bank_account || "—", "bank");
+
+    y += ROW_H;
+  };
+
+  const drawSchoolTotal = (schoolRows: BroadsheetRow[]) => {
+    const total = schoolRows.reduce((s, r) => s + (r.amount_requested ?? 0), 0);
+    doc.setFillColor(235, 245, 235);
+    doc.rect(M, y, W - 2*M, 7, "F");
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(8);
+    doc.setTextColor(20, 83, 45);
+    doc.text(`School Sub-total — ${schoolRows.length} student(s)`, M + 2, y + 5);
+    doc.text(`KSh ${total.toLocaleString()}`, cols.amount.x + 1.5, y + 5);
+    doc.setTextColor(0, 0, 0);
+    y += 8;
+  };
+
+  // ── Start rendering ──────────────────────────────────────────────────────────
+
+  addPageHeader();
+
+  // Summary banner
+  const grandTotal = rows.reduce((s, r) => s + (r.amount_requested ?? 0), 0);
+  const schoolCount = bySchool.size;
+  doc.setFillColor(240, 247, 240);
+  doc.rect(M, y, W - 2*M, 11, "F");
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(9);
+  doc.setTextColor(20, 83, 45);
+  doc.text(
+    `Total Approved: ${rows.length} students  |  Schools: ${schoolCount}  |  Grand Total: KSh ${grandTotal.toLocaleString()}`,
+    W / 2, y + 7.5, { align: "center" }
+  );
+  doc.setTextColor(0, 0, 0);
+  y += 14;
+
+  let serial = 1;
+
+  for (const [schoolKey, schoolRows] of bySchool) {
+    // School name header
+    checkY(HEAD_H + ROW_H * 2 + 10); // ensure at least header + 2 rows fit before page break
+    doc.setFillColor(20, 83, 45);
+    doc.rect(M, y, W - 2*M, 8, "F");
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(9);
+    doc.setTextColor(255, 255, 255);
+    const category = schoolRows[0].school_category ? ` (${schoolRows[0].school_category})` : "";
+    doc.text(`${schoolKey}${category}`, M + 2, y + 5.5);
+    doc.text(`${schoolRows.length} student(s)`, W - M - 2, y + 5.5, { align: "right" });
+    doc.setTextColor(0, 0, 0);
+    y += 10;
+
+    drawTableHeader();
+
+    for (let i = 0; i < schoolRows.length; i++) {
+      checkY(ROW_H + 1);
+      drawRow(schoolRows[i], i, serial++, i % 2 === 1);
+    }
+
+    checkY(10);
+    drawSchoolTotal(schoolRows);
+    y += 4; // gap between schools
+  }
+
+  // Grand total footer block
+  checkY(18);
+  doc.setFillColor(20, 83, 45);
+  doc.rect(M, y, W - 2*M, 12, "F");
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(10);
+  doc.setTextColor(255, 255, 255);
+  doc.text(
+    `GRAND TOTAL — ${rows.length} Students across ${schoolCount} School(s) — KSh ${grandTotal.toLocaleString()}`,
+    W / 2, y + 8, { align: "center" }
+  );
+  doc.setTextColor(0, 0, 0);
+  y += 16;
+
+  // Authorisation block
+  checkY(40);
+  y += 4;
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(9);
+  doc.text("AUTHORISATION", M, y);
+  y += 6;
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(8.5);
+
+  const signatureLines = [
+    ["Prepared by", ""],
+    ["Verified by", ""],
+    ["Approved by (Coordinator)", ""],
+  ];
+  for (const [label] of signatureLines) {
+    doc.setFont("helvetica", "bold");
+    doc.text(`${label}:`, M, y);
+    doc.setFont("helvetica", "normal");
+    doc.setDrawColor(120, 120, 120);
+    doc.line(M + 35, y + 0.5, M + 100, y + 0.5);
+    doc.text("Signature:", M + 105, y);
+    doc.line(M + 125, y + 0.5, M + 180, y + 0.5);
+    doc.text("Date:", M + 185, y);
+    doc.line(M + 198, y + 0.5, M + 230, y + 0.5);
+    y += 9;
+  }
+
+  addPageFooter();
+
+  const safeTitle = title.replace(/[^a-z0-9]/gi, "-").slice(0, 40);
+  doc.save(`Moha-Broadsheet-${safeTitle}-${Date.now()}.pdf`);
+}

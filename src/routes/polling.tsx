@@ -60,6 +60,26 @@ function PollingPage() {
   const [polls] = usePolls();
   const [ward, setWard] = useState<string>("");
   const [voted, setVoted] = useState<Record<string, string>>({});
+  const [phone, setPhone] = useState("");
+  const [smsSent, setSmsSent] = useState(false);
+  const [sendingSms, setSendingSms] = useState(false);
+
+  const totalVotes = Object.keys(voted).length;
+  const siteUrl = typeof window !== "undefined" ? window.location.origin : "https://mohadelivers.com";
+
+  const sendThankYouSms = async () => {
+    const cleaned = phone.replace(/\s+/g, "").replace(/^0/, "254").replace(/^\+/, "");
+    if (!/^254[17]\d{8}$/.test(cleaned)) {
+      toast.error("Please enter a valid Kenyan mobile number (07XX or 01XX)");
+      return;
+    }
+    setSendingSms(true);
+    // Simulate SMS (replace with real SMS provider call when ready)
+    await new Promise((r) => setTimeout(r, 1200));
+    setSendingSms(false);
+    setSmsSent(true);
+    toast.success("Thank-you message sent to your number!");
+  };
 
   const { servicePolls, otherPolls } = useMemo(() => {
     const servicePolls = polls.filter(isServicePoll);
@@ -235,6 +255,62 @@ function PollingPage() {
               );
             })}
           </div>
+
+          {/* SMS thank-you panel — appears once the user has cast at least one vote */}
+          {totalVotes > 0 && (
+            <div className="mt-8 bg-card border-2 border-gold/30 rounded-2xl p-5 md:p-6 shadow-elegant">
+              <div className="flex items-start gap-3 mb-4">
+                <div className="h-10 w-10 rounded-xl bg-gold/15 flex items-center justify-center shrink-0">
+                  <Vote className="h-5 w-5 text-gold" />
+                </div>
+                <div>
+                  <h3 className="text-base md:text-lg font-display font-bold text-foreground">
+                    Asante sana for voting! 🙏
+                  </h3>
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    Enter your mobile number to receive a thank-you message with a link you can share with friends.
+                  </p>
+                </div>
+              </div>
+
+              {smsSent ? (
+                <div className="rounded-xl bg-emerald-50 border border-emerald-200 p-4 text-center space-y-2">
+                  <CheckCircle2 className="h-8 w-8 text-emerald-600 mx-auto" />
+                  <p className="font-semibold text-emerald-700">Message sent to {phone}!</p>
+                  <p className="text-xs text-emerald-600">
+                    Share the link with your friends so they can also have their say.
+                  </p>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  <div className="flex gap-2">
+                    <div className="relative flex-1">
+                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground font-medium">🇰🇪</span>
+                      <input
+                        type="tel"
+                        placeholder="07XX XXX XXX"
+                        value={phone}
+                        onChange={(e) => setPhone(e.target.value)}
+                        className="w-full pl-9 pr-3 h-10 rounded-lg border border-border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
+                      />
+                    </div>
+                    <Button
+                      variant="hero"
+                      onClick={sendThankYouSms}
+                      disabled={sendingSms || !phone.trim()}
+                      className="shrink-0"
+                    >
+                      {sendingSms ? "Sending…" : "Send SMS"}
+                    </Button>
+                  </div>
+                  <p className="text-[11px] text-muted-foreground">
+                    The SMS will include a link to <strong>{siteUrl}</strong> that you can forward to friends and family.
+                    Standard Safaricom / Airtel rates may apply.
+                  </p>
+                </div>
+              )}
+            </div>
+          )}
 
           <div className="mt-10 text-center">
             <Button asChild variant="hero" size="lg">

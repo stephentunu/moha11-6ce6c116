@@ -1,25 +1,22 @@
+
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
-import { GraduationCap, Send, Eye, Trash2, Download, Search } from "lucide-react";
-import { generateBursaryPdf } from "@/lib/bursary-pdf";
+import {
+  GraduationCap, Send, Eye, Trash2, Download, Search,
+  FileSpreadsheet, CheckCircle2, School, ArrowUpDown,
+  ChevronDown, ChevronRight, Users, Banknote,
+} from "lucide-react";
+import { generateBursaryPdf, generateBroadsheetPdf, type BroadsheetRow } from "@/lib/bursary-pdf";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
+  Dialog, DialogContent, DialogDescription, DialogFooter,
+  DialogHeader, DialogTitle,
 } from "@/components/ui/dialog";
 import { toast } from "sonner";
 import { Toaster } from "@/components/ui/sonner";
@@ -58,7 +55,6 @@ type Row = {
   mother_national_id: string | null;
   student_disability: boolean | null;
   student_disability_detail: string | null;
-
   school_name: string;
   school_category: string | null;
   school_county: string | null;
@@ -66,7 +62,6 @@ type Row = {
   year_of_admission: string | null;
   student_outstanding: string | null;
   school_bank_account: string | null;
-
   guardian_name: string;
   guardian_phone: string;
   parent_national_id: string | null;
@@ -86,7 +81,6 @@ type Row = {
   previous_bursary_source: string | null;
   previous_bursary_amount: number | null;
   reason: string | null;
-
   status: string;
   admin_notes: string | null;
   sms_last_sent_at: string | null;
@@ -95,14 +89,18 @@ type Row = {
 };
 
 const STATUS_COLORS: Record<string, string> = {
-  pending: "bg-amber-500/15 text-amber-700 dark:text-amber-400",
+  pending:   "bg-amber-500/15 text-amber-700 dark:text-amber-400",
   reviewing: "bg-blue-500/15 text-blue-700 dark:text-blue-400",
-  approved: "bg-emerald-500/15 text-emerald-700 dark:text-emerald-400",
-  rejected: "bg-rose-500/15 text-rose-700 dark:text-rose-400",
+  approved:  "bg-emerald-500/15 text-emerald-700 dark:text-emerald-400",
+  rejected:  "bg-rose-500/15 text-rose-700 dark:text-rose-400",
 };
+
+type Tab = "applications" | "broadsheet";
+type SortField = "student_name" | "school_name" | "ward" | "amount_requested" | "current_grade";
 
 function AdminBursariesPage() {
   const [rows, setRows] = useState<Row[]>([]);
+  const [tab, setTab] = useState<Tab>("applications");
   const [filter, setFilter] = useState<string>("all");
   const [search, setSearch] = useState("");
   const [selected, setSelected] = useState<Row | null>(null);
@@ -110,6 +108,10 @@ function AdminBursariesPage() {
   const [smsTarget, setSmsTarget] = useState<Row | null>(null);
   const [smsText, setSmsText] = useState("");
   const [smsBusy, setSmsBusy] = useState(false);
+  // Broadsheet controls
+  const [bsSort, setBsSort] = useState<SortField>("school_name");
+  const [bsOrder, setBsOrder] = useState<"asc" | "desc">("asc");
+  const [bsExpanded, setBsExpanded] = useState<Set<string>>(new Set());
 
   const load = async () => {
     const { data, error } = await supabase
@@ -129,24 +131,56 @@ function AdminBursariesPage() {
     return () => { supabase.removeChannel(ch); };
   }, []);
 
+  // ── Filtered list (Applications tab) ────────────────────────────────────────
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
     return rows.filter((r) => {
       if (filter !== "all" && r.status !== filter) return false;
       if (!q) return true;
-      const amount = r.amount_requested ? String(r.amount_requested) : "";
       return (
         r.student_name.toLowerCase().includes(q) ||
         (r.school_name || "").toLowerCase().includes(q) ||
-        (r.school_county || "").toLowerCase().includes(q) ||
-        (r.school_sub_county || "").toLowerCase().includes(q) ||
-        (r.parent_residence_sub_county || "").toLowerCase().includes(q) ||
         (r.ward || "").toLowerCase().includes(q) ||
         (r.reference || "").toLowerCase().includes(q) ||
-        amount.includes(q)
+        (r.guardian_name || "").toLowerCase().includes(q)
       );
     });
   }, [rows, filter, search]);
+
+  // ── Approved rows sorted for broadsheet ─────────────────────────────────────
+  const approvedRows = useMemo(() => {
+    const approved = rows.filter((r) => r.status === "approved");
+    return [...approved].sort((a, b) => {
+      let va: string | number = a[bsSort] ?? "";
+      let vb: string | number = b[bsSort] ?? "";
+      if (bsSort === "amount_requested") {
+        va = Number(va); vb = Number(vb);
+        return bsOrder === "asc" ? (va as number) - (vb as number) : (vb as number) - (va as number);
+      }
+      va = String(va).toLowerCase(); vb = String(vb).toLowerCase();
+      const cmp = (va as string).localeCompare(vb as string);
+      return bsOrder === "asc" ? cmp : -cmp;
+    });
+  }, [rows, bsSort, bsOrder]);
+
+  // Group approved by school (already sorted by school then name within each group)
+  const bySchool = useMemo(() => {
+    const base = [...approvedRows].sort(
+      (a, b) => a.school_name.localeCompare(b.school_name) || a.student_name.localeCompare(b.student_name)
+    );
+    const map = new Map<string, Row[]>();
+    for (const r of base) {
+      const key = r.school_name.trim();
+      if (!map.has(key)) map.set(key, []);
+      map.get(key)!.push(r);
+    }
+    return map;
+  }, [approvedRows]);
+
+  const grandTotal = useMemo(
+    () => approvedRows.reduce((s, r) => s + (r.amount_requested ?? 0), 0),
+    [approvedRows]
+  );
 
   const counts = useMemo(() => {
     const c = { all: rows.length, pending: 0, reviewing: 0, approved: 0, rejected: 0 };
@@ -154,13 +188,14 @@ function AdminBursariesPage() {
     return c;
   }, [rows]);
 
+  // ── Actions ──────────────────────────────────────────────────────────────────
   const updateStatus = async (id: string, status: string) => {
     const { error } = await supabase
       .from("bursary_applications" as never)
       .update({ status } as never)
       .eq("id", id);
     if (error) toast.error(error.message);
-    else toast.success(`Marked ${status}`);
+    else { toast.success(`Marked ${status}`); load(); }
   };
 
   const remove = async (id: string) => {
@@ -170,14 +205,12 @@ function AdminBursariesPage() {
       .delete()
       .eq("id", id);
     if (error) toast.error(error.message);
-    else toast.success("Deleted");
+    else { toast.success("Deleted"); load(); }
   };
 
   const openSms = (r: Row) => {
     setSmsTarget(r);
-    setSmsText(
-      `Hello ${r.guardian_name.split(" ")[0]}, regarding ${r.student_name}'s bursary application (Ref ${r.reference}): `,
-    );
+    setSmsText(`Hello ${r.guardian_name.split(" ")[0]}, regarding ${r.student_name}'s bursary application (Ref ${r.reference}): `);
     setSmsOpen(true);
   };
 
@@ -186,184 +219,476 @@ function AdminBursariesPage() {
     setSmsBusy(true);
     try {
       const res = await sendBursarySms({ data: { applicationId: smsTarget.id, message: smsText } });
-      if (res.simulated) toast.success(`SMS simulated to ${res.phone} (no provider creds)`);
+      if (res.simulated) toast.success(`SMS simulated to ${res.phone}`);
       else toast.success(`SMS sent to ${res.phone}`);
-      setSmsOpen(false);
-      setSmsText("");
-      setSmsTarget(null);
+      setSmsOpen(false); setSmsText(""); setSmsTarget(null);
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Failed to send SMS");
-    } finally {
-      setSmsBusy(false);
-    }
+    } finally { setSmsBusy(false); }
   };
 
+  const downloadBroadsheet = () => {
+    if (approvedRows.length === 0) {
+      toast.error("No approved applications to include in the broadsheet.");
+      return;
+    }
+    const bsRows: BroadsheetRow[] = approvedRows.map((r) => ({
+      reference: r.reference,
+      student_name: r.student_name,
+      registration_number: r.registration_number,
+      current_grade: r.current_grade,
+      gender: r.gender,
+      guardian_name: r.guardian_name,
+      guardian_phone: r.guardian_phone,
+      ward: r.ward,
+      amount_requested: r.amount_requested,
+      school_name: r.school_name,
+      school_category: r.school_category,
+      school_bank_account: r.school_bank_account,
+    }));
+    generateBroadsheetPdf(bsRows, `Moha Bursary Broadsheet — ${new Date().toLocaleDateString("en-KE")}`);
+    toast.success("Broadsheet PDF generated!");
+  };
+
+  const toggleSchool = (school: string) => {
+    setBsExpanded((prev) => {
+      const next = new Set(prev);
+      next.has(school) ? next.delete(school) : next.add(school);
+      return next;
+    });
+  };
+
+  const expandAll = () => setBsExpanded(new Set(bySchool.keys()));
+  const collapseAll = () => setBsExpanded(new Set());
+
+  // ── Render ───────────────────────────────────────────────────────────────────
   return (
     <AdminLayout title="Bursary Applications">
       <Toaster />
       <div className="space-y-6">
-        <div className="relative">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input
-            placeholder="Search by student name, school, location, amount, ward or reference number…"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="pl-9 h-11"
-          />
-        </div>
-        <div className="grid sm:grid-cols-5 gap-3">
-          {(["all", "pending", "reviewing", "approved", "rejected"] as const).map((k) => (
-            <button
-              key={k}
-              onClick={() => setFilter(k)}
-              className={`bg-card border-2 rounded-xl p-4 text-left transition-all ${
-                filter === k ? "border-primary shadow-elegant" : "border-border hover:border-primary/40"
-              }`}
-            >
-              <p className="text-xs uppercase tracking-wider text-muted-foreground">{k}</p>
-              <p className="text-2xl font-display font-bold mt-1">
-                {(counts as Record<string, number>)[k] ?? 0}
-              </p>
-            </button>
-          ))}
+
+        {/* Tab switcher */}
+        <div className="flex gap-1 bg-muted/50 border border-border rounded-xl p-1 w-fit">
+          <button
+            onClick={() => setTab("applications")}
+            className={`px-5 py-2 rounded-lg text-sm font-semibold transition-all ${
+              tab === "applications"
+                ? "bg-card shadow text-foreground"
+                : "text-muted-foreground hover:text-foreground"
+            }`}
+          >
+            <span className="flex items-center gap-2">
+              <GraduationCap className="h-4 w-4" /> All Applications
+            </span>
+          </button>
+          <button
+            onClick={() => setTab("broadsheet")}
+            className={`px-5 py-2 rounded-lg text-sm font-semibold transition-all ${
+              tab === "broadsheet"
+                ? "bg-card shadow text-foreground"
+                : "text-muted-foreground hover:text-foreground"
+            }`}
+          >
+            <span className="flex items-center gap-2">
+              <FileSpreadsheet className="h-4 w-4" /> Approved Broadsheet
+              {counts.approved > 0 && (
+                <span className="bg-emerald-500 text-white text-[10px] font-bold rounded-full px-1.5 py-0.5">
+                  {counts.approved}
+                </span>
+              )}
+            </span>
+          </button>
         </div>
 
-        {/* Desktop table */}
-        <div className="hidden md:block bg-card border border-border rounded-2xl overflow-hidden">
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead className="bg-muted/50 text-xs uppercase tracking-wider text-muted-foreground">
-                <tr>
-                  <th className="text-left px-4 py-3">Ref</th>
-                  <th className="text-left px-4 py-3">Student</th>
-                  <th className="text-left px-4 py-3">School / Grade</th>
-                  <th className="text-left px-4 py-3">Ward</th>
-                  <th className="text-right px-4 py-3">Amount</th>
-                  <th className="text-left px-4 py-3">Status</th>
-                  <th className="text-right px-4 py-3">Actions</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-border">
-                {filtered.length === 0 ? (
-                  <tr><td colSpan={7} className="text-center py-12 text-muted-foreground">
-                    <GraduationCap className="h-8 w-8 mx-auto mb-2 opacity-50" />
-                    No applications yet.
-                  </td></tr>
-                ) : (
-                  filtered.map((r) => (
-                    <tr key={r.id} className="hover:bg-muted/30">
-                      <td className="px-4 py-3 font-mono text-xs font-bold text-primary">{r.reference}</td>
-                      <td className="px-4 py-3">
-                        <p className="font-semibold">{r.student_name}</p>
-                        <p className="text-xs text-muted-foreground">{r.guardian_name} · {r.guardian_phone}</p>
-                      </td>
-                      <td className="px-4 py-3">
-                        <p>{r.school_name}</p>
-                        <p className="text-xs text-muted-foreground">{r.current_grade}</p>
-                      </td>
-                      <td className="px-4 py-3 text-muted-foreground">{r.ward || "—"}</td>
-                      <td className="px-4 py-3 text-right font-semibold">
-                        {r.amount_requested ? `KSh ${Number(r.amount_requested).toLocaleString()}` : "—"}
-                      </td>
-                      <td className="px-4 py-3">
-                        <Select value={r.status} onValueChange={(v) => updateStatus(r.id, v)}>
-                          <SelectTrigger className={`h-8 w-32 text-xs font-bold uppercase ${STATUS_COLORS[r.status] ?? ""}`}>
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="pending">Pending</SelectItem>
-                            <SelectItem value="reviewing">Reviewing</SelectItem>
-                            <SelectItem value="approved">Approved</SelectItem>
-                            <SelectItem value="rejected">Rejected</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </td>
-                      <td className="px-4 py-3">
-                        <div className="flex items-center justify-end gap-1">
-                          <Button size="icon" variant="ghost" onClick={() => setSelected(r)} title="View">
-                            <Eye className="h-4 w-4" />
-                          </Button>
-                          <Button size="icon" variant="ghost" onClick={() => openSms(r)} title="Send SMS">
-                            <Send className="h-4 w-4" />
-                          </Button>
-                          <Button size="icon" variant="ghost" onClick={() => remove(r.id)} title="Delete">
-                            <Trash2 className="h-4 w-4 text-destructive" />
-                          </Button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
-          </div>
-        </div>
-
-        {/* Mobile cards */}
-        <div className="md:hidden space-y-3">
-          {filtered.length === 0 ? (
-            <div className="bg-card border border-border rounded-2xl p-8 text-center text-muted-foreground">
-              <GraduationCap className="h-8 w-8 mx-auto mb-2 opacity-50" />
-              No applications yet.
+        {/* ── APPLICATIONS TAB ──────────────────────────────────────────────── */}
+        {tab === "applications" && (
+          <>
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="Search by student name, school, ward, guardian or reference…"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                className="pl-9 h-11"
+              />
             </div>
-          ) : (
-            filtered.map((r) => (
-              <div key={r.id} className="bg-card border border-border rounded-2xl p-4 space-y-3">
-                <div className="flex items-start justify-between gap-2">
-                  <div>
-                    <p className="font-mono text-xs font-bold text-primary">{r.reference}</p>
-                    <p className="font-semibold text-foreground">{r.student_name}</p>
-                    <p className="text-xs text-muted-foreground">{r.guardian_name} · {r.guardian_phone}</p>
-                  </div>
-                  <Select value={r.status} onValueChange={(v) => updateStatus(r.id, v)}>
-                    <SelectTrigger className={`h-7 text-[10px] font-bold uppercase ${STATUS_COLORS[r.status] ?? ""}`}>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="pending">Pending</SelectItem>
-                      <SelectItem value="reviewing">Reviewing</SelectItem>
-                      <SelectItem value="approved">Approved</SelectItem>
-                      <SelectItem value="rejected">Rejected</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
 
-                <div className="grid grid-cols-2 gap-2 text-sm">
-                  <div>
-                    <p className="text-[10px] uppercase tracking-wider text-muted-foreground">School</p>
-                    <p className="font-medium text-foreground">{r.school_name}</p>
-                    <p className="text-xs text-muted-foreground">{r.current_grade}</p>
+            <div className="grid sm:grid-cols-5 gap-3">
+              {(["all", "pending", "reviewing", "approved", "rejected"] as const).map((k) => (
+                <button
+                  key={k}
+                  onClick={() => setFilter(k)}
+                  className={`bg-card border-2 rounded-xl p-4 text-left transition-all ${
+                    filter === k ? "border-primary shadow-elegant" : "border-border hover:border-primary/40"
+                  }`}
+                >
+                  <p className="text-xs uppercase tracking-wider text-muted-foreground">{k}</p>
+                  <p className="text-2xl font-display font-bold mt-1">
+                    {(counts as Record<string, number>)[k] ?? 0}
+                  </p>
+                </button>
+              ))}
+            </div>
+
+            {/* Desktop table */}
+            <div className="hidden md:block bg-card border border-border rounded-2xl overflow-hidden">
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead className="bg-muted/50 text-xs uppercase tracking-wider text-muted-foreground">
+                    <tr>
+                      <th className="text-left px-4 py-3">Ref</th>
+                      <th className="text-left px-4 py-3">Student</th>
+                      <th className="text-left px-4 py-3">School / Grade</th>
+                      <th className="text-left px-4 py-3">Ward</th>
+                      <th className="text-right px-4 py-3">Amount</th>
+                      <th className="text-left px-4 py-3">Status</th>
+                      <th className="text-right px-4 py-3">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-border">
+                    {filtered.length === 0 ? (
+                      <tr><td colSpan={7} className="text-center py-12 text-muted-foreground">
+                        <GraduationCap className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                        No applications match your filters.
+                      </td></tr>
+                    ) : (
+                      filtered.map((r) => (
+                        <tr key={r.id} className="hover:bg-muted/30">
+                          <td className="px-4 py-3 font-mono text-xs font-bold text-primary">{r.reference}</td>
+                          <td className="px-4 py-3">
+                            <p className="font-semibold">{r.student_name}</p>
+                            <p className="text-xs text-muted-foreground">{r.guardian_name} · {r.guardian_phone}</p>
+                          </td>
+                          <td className="px-4 py-3">
+                            <p>{r.school_name}</p>
+                            <p className="text-xs text-muted-foreground">{r.current_grade}</p>
+                          </td>
+                          <td className="px-4 py-3 text-muted-foreground">{r.ward || "—"}</td>
+                          <td className="px-4 py-3 text-right font-semibold">
+                            {r.amount_requested ? `KSh ${Number(r.amount_requested).toLocaleString()}` : "—"}
+                          </td>
+                          <td className="px-4 py-3">
+                            <Select value={r.status} onValueChange={(v) => updateStatus(r.id, v)}>
+                              <SelectTrigger className={`h-8 w-32 text-xs font-bold uppercase ${STATUS_COLORS[r.status] ?? ""}`}>
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="pending">Pending</SelectItem>
+                                <SelectItem value="reviewing">Reviewing</SelectItem>
+                                <SelectItem value="approved">Approved</SelectItem>
+                                <SelectItem value="rejected">Rejected</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </td>
+                          <td className="px-4 py-3">
+                            <div className="flex items-center justify-end gap-1">
+                              <Button size="icon" variant="ghost" onClick={() => setSelected(r)} title="View">
+                                <Eye className="h-4 w-4" />
+                              </Button>
+                              <Button size="icon" variant="ghost" onClick={() => openSms(r)} title="Send SMS">
+                                <Send className="h-4 w-4" />
+                              </Button>
+                              <Button size="icon" variant="ghost" onClick={() => remove(r.id)} title="Delete">
+                                <Trash2 className="h-4 w-4 text-destructive" />
+                              </Button>
+                            </div>
+                          </td>
+                        </tr>
+                      ))
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            {/* Mobile cards */}
+            <div className="md:hidden space-y-3">
+              {filtered.length === 0 ? (
+                <div className="bg-card border border-border rounded-2xl p-8 text-center text-muted-foreground">
+                  <GraduationCap className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                  No applications match your filters.
+                </div>
+              ) : (
+                filtered.map((r) => (
+                  <div key={r.id} className="bg-card border border-border rounded-2xl p-4 space-y-3">
+                    <div className="flex items-start justify-between gap-2">
+                      <div>
+                        <p className="font-mono text-xs font-bold text-primary">{r.reference}</p>
+                        <p className="font-semibold text-foreground">{r.student_name}</p>
+                        <p className="text-xs text-muted-foreground">{r.guardian_name} · {r.guardian_phone}</p>
+                      </div>
+                      <Select value={r.status} onValueChange={(v) => updateStatus(r.id, v)}>
+                        <SelectTrigger className={`h-7 text-[10px] font-bold uppercase ${STATUS_COLORS[r.status] ?? ""}`}>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="pending">Pending</SelectItem>
+                          <SelectItem value="reviewing">Reviewing</SelectItem>
+                          <SelectItem value="approved">Approved</SelectItem>
+                          <SelectItem value="rejected">Rejected</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="grid grid-cols-2 gap-2 text-sm">
+                      <div>
+                        <p className="text-[10px] uppercase tracking-wider text-muted-foreground">School</p>
+                        <p className="font-medium">{r.school_name}</p>
+                        <p className="text-xs text-muted-foreground">{r.current_grade}</p>
+                      </div>
+                      <div className="text-right">
+                        <p className="text-[10px] uppercase tracking-wider text-muted-foreground">Amount</p>
+                        <p className="font-semibold">
+                          {r.amount_requested ? `KSh ${Number(r.amount_requested).toLocaleString()}` : "—"}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2 pt-2 border-t border-border">
+                      <Button size="sm" variant="outline" className="flex-1" onClick={() => setSelected(r)}>
+                        <Eye className="h-3.5 w-3.5 mr-1" /> View
+                      </Button>
+                      <Button size="sm" variant="outline" className="flex-1" onClick={() => openSms(r)}>
+                        <Send className="h-3.5 w-3.5 mr-1" /> SMS
+                      </Button>
+                      <Button size="icon" variant="ghost" onClick={() => remove(r.id)}>
+                        <Trash2 className="h-4 w-4 text-destructive" />
+                      </Button>
+                    </div>
                   </div>
-                  <div className="text-right">
-                    <p className="text-[10px] uppercase tracking-wider text-muted-foreground">Amount</p>
-                    <p className="font-semibold text-foreground">
-                      {r.amount_requested ? `KSh ${Number(r.amount_requested).toLocaleString()}` : "—"}
+                ))
+              )}
+            </div>
+          </>
+        )}
+
+        {/* ── BROADSHEET TAB ────────────────────────────────────────────────── */}
+        {tab === "broadsheet" && (
+          <div className="space-y-5">
+
+            {/* Header controls */}
+            <div className="bg-card border border-border rounded-2xl p-5 space-y-4">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <div>
+                  <h2 className="font-display font-bold text-lg flex items-center gap-2">
+                    <FileSpreadsheet className="h-5 w-5 text-gold" />
+                    Approved Bursary Broadsheet
+                  </h2>
+                  <p className="text-sm text-muted-foreground mt-0.5">
+                    All approved applications sorted and grouped by school. Download as a PDF to send to schools.
+                  </p>
+                </div>
+                <Button
+                  variant="hero"
+                  onClick={downloadBroadsheet}
+                  disabled={approvedRows.length === 0}
+                  className="gap-2 shrink-0"
+                >
+                  <Download className="h-4 w-4" />
+                  Download Broadsheet PDF
+                </Button>
+              </div>
+
+              {/* Summary stats */}
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                <StatCard icon={CheckCircle2} label="Approved" value={String(approvedRows.length)} color="text-emerald-600" />
+                <StatCard icon={School} label="Schools" value={String(bySchool.size)} color="text-blue-600" />
+                <StatCard icon={Users} label="Total Students" value={String(approvedRows.length)} color="text-primary" />
+                <StatCard icon={Banknote} label="Grand Total" value={`KSh ${grandTotal.toLocaleString()}`} color="text-gold" />
+              </div>
+
+              {/* Sort controls */}
+              <div className="flex flex-wrap items-center gap-3">
+                <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Sort by:</span>
+                {(
+                  [
+                    ["student_name", "Student Name"],
+                    ["school_name", "School"],
+                    ["ward", "Ward"],
+                    ["current_grade", "Grade"],
+                    ["amount_requested", "Amount"],
+                  ] as [SortField, string][]
+                ).map(([field, label]) => (
+                  <button
+                    key={field}
+                    onClick={() => {
+                      if (bsSort === field) setBsOrder((o) => (o === "asc" ? "desc" : "asc"));
+                      else { setBsSort(field); setBsOrder("asc"); }
+                    }}
+                    className={`flex items-center gap-1 px-3 py-1.5 rounded-lg border text-xs font-semibold transition-all ${
+                      bsSort === field
+                        ? "border-primary bg-primary/10 text-primary"
+                        : "border-border text-muted-foreground hover:border-primary/40"
+                    }`}
+                  >
+                    {label}
+                    {bsSort === field && (
+                      <ArrowUpDown className="h-3 w-3" />
+                    )}
+                  </button>
+                ))}
+                <div className="ml-auto flex gap-2">
+                  <button onClick={expandAll} className="text-xs text-primary hover:underline">Expand all</button>
+                  <span className="text-muted-foreground">·</span>
+                  <button onClick={collapseAll} className="text-xs text-primary hover:underline">Collapse all</button>
+                </div>
+              </div>
+            </div>
+
+            {approvedRows.length === 0 ? (
+              <div className="bg-card border-2 border-dashed border-border rounded-2xl p-12 text-center text-muted-foreground">
+                <CheckCircle2 className="h-10 w-10 mx-auto mb-3 opacity-30" />
+                <p className="font-semibold">No approved applications yet.</p>
+                <p className="text-sm mt-1">Go to the Applications tab and mark applications as <strong>Approved</strong> to populate the broadsheet.</p>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {/* Per-school accordion */}
+                {Array.from(bySchool.entries()).map(([school, schoolRows], schoolIdx) => {
+                  const schoolTotal = schoolRows.reduce((s, r) => s + (r.amount_requested ?? 0), 0);
+                  const isOpen = bsExpanded.has(school);
+                  return (
+                    <div key={school} className="bg-card border border-border rounded-2xl overflow-hidden">
+                      {/* School header */}
+                      <button
+                        onClick={() => toggleSchool(school)}
+                        className="w-full flex items-center justify-between gap-3 px-5 py-4 bg-muted/30 hover:bg-muted/50 transition-colors text-left"
+                      >
+                        <div className="flex items-center gap-3 min-w-0">
+                          <div className="h-9 w-9 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
+                            <School className="h-5 w-5 text-primary" />
+                          </div>
+                          <div className="min-w-0">
+                            <p className="font-display font-bold text-base text-foreground truncate">{school}</p>
+                            <p className="text-xs text-muted-foreground">
+                              {schoolRows[0].school_category && `${schoolRows[0].school_category} · `}
+                              {schoolRows.length} student{schoolRows.length !== 1 ? "s" : ""}
+                            </p>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-4 shrink-0">
+                          <div className="text-right">
+                            <p className="text-xs text-muted-foreground">Sub-total</p>
+                            <p className="font-bold text-emerald-600">KSh {schoolTotal.toLocaleString()}</p>
+                          </div>
+                          {isOpen
+                            ? <ChevronDown className="h-5 w-5 text-muted-foreground" />
+                            : <ChevronRight className="h-5 w-5 text-muted-foreground" />
+                          }
+                        </div>
+                      </button>
+
+                      {/* Students table inside accordion */}
+                      {isOpen && (
+                        <div className="overflow-x-auto">
+                          <table className="w-full text-sm">
+                            <thead className="bg-muted/20 text-[11px] uppercase tracking-wider text-muted-foreground">
+                              <tr>
+                                <th className="text-left px-4 py-2.5 w-8">#</th>
+                                <th className="text-left px-4 py-2.5">Student Name</th>
+                                <th className="text-left px-4 py-2.5">Ref</th>
+                                <th className="text-left px-4 py-2.5">Grade</th>
+                                <th className="text-left px-4 py-2.5">Gender</th>
+                                <th className="text-left px-4 py-2.5">Guardian</th>
+                                <th className="text-left px-4 py-2.5">Phone</th>
+                                <th className="text-left px-4 py-2.5">Ward</th>
+                                <th className="text-right px-4 py-2.5">Amount</th>
+                                <th className="text-right px-4 py-2.5">Actions</th>
+                              </tr>
+                            </thead>
+                            <tbody className="divide-y divide-border">
+                              {schoolRows.map((r, idx) => (
+                                <tr key={r.id} className={`hover:bg-muted/20 ${idx % 2 === 1 ? "bg-muted/10" : ""}`}>
+                                  <td className="px-4 py-3 text-muted-foreground text-xs">
+                                    {/* Global serial across all schools */}
+                                    {(Array.from(bySchool.values()).slice(0, schoolIdx).reduce((s, arr) => s + arr.length, 0)) + idx + 1}
+                                  </td>
+                                  <td className="px-4 py-3 font-semibold text-foreground">{r.student_name}</td>
+                                  <td className="px-4 py-3 font-mono text-xs text-primary">{r.reference}</td>
+                                  <td className="px-4 py-3 text-muted-foreground">{r.current_grade}</td>
+                                  <td className="px-4 py-3 text-muted-foreground capitalize">{r.gender || "—"}</td>
+                                  <td className="px-4 py-3">{r.guardian_name}</td>
+                                  <td className="px-4 py-3 text-muted-foreground">{r.guardian_phone}</td>
+                                  <td className="px-4 py-3 text-muted-foreground">{r.ward || "—"}</td>
+                                  <td className="px-4 py-3 text-right font-bold text-emerald-600">
+                                    {r.amount_requested ? `KSh ${Number(r.amount_requested).toLocaleString()}` : "—"}
+                                  </td>
+                                  <td className="px-4 py-3">
+                                    <div className="flex items-center justify-end gap-1">
+                                      <Button size="icon" variant="ghost" onClick={() => setSelected(r)} title="View">
+                                        <Eye className="h-3.5 w-3.5" />
+                                      </Button>
+                                      <Button size="icon" variant="ghost" onClick={() => openSms(r)} title="SMS">
+                                        <Send className="h-3.5 w-3.5" />
+                                      </Button>
+                                      <Button
+                                        size="icon" variant="ghost"
+                                        onClick={() => {
+                                          const bsRows: BroadsheetRow[] = schoolRows.map((s) => ({
+                                            reference: s.reference,
+                                            student_name: s.student_name,
+                                            registration_number: s.registration_number,
+                                            current_grade: s.current_grade,
+                                            gender: s.gender,
+                                            guardian_name: s.guardian_name,
+                                            guardian_phone: s.guardian_phone,
+                                            ward: s.ward,
+                                            amount_requested: s.amount_requested,
+                                            school_name: s.school_name,
+                                            school_category: s.school_category,
+                                            school_bank_account: s.school_bank_account,
+                                          }));
+                                          generateBroadsheetPdf(bsRows, `${school} — Bursary Award List`);
+                                        }}
+                                        title="Download school PDF"
+                                      >
+                                        <Download className="h-3.5 w-3.5" />
+                                      </Button>
+                                    </div>
+                                  </td>
+                                </tr>
+                              ))}
+                            </tbody>
+                            <tfoot>
+                              <tr className="bg-emerald-50 dark:bg-emerald-950/20">
+                                <td colSpan={8} className="px-4 py-2.5 text-xs font-bold uppercase tracking-wider text-emerald-700">
+                                  School sub-total — {schoolRows.length} student{schoolRows.length !== 1 ? "s" : ""}
+                                </td>
+                                <td className="px-4 py-2.5 text-right font-bold text-emerald-700">
+                                  KSh {schoolTotal.toLocaleString()}
+                                </td>
+                                <td />
+                              </tr>
+                            </tfoot>
+                          </table>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+
+                {/* Grand total card */}
+                <div className="bg-primary rounded-2xl px-6 py-5 flex flex-col sm:flex-row items-center justify-between gap-4">
+                  <div className="text-white text-center sm:text-left">
+                    <p className="text-sm font-semibold opacity-80">Grand Total</p>
+                    <p className="text-3xl font-display font-bold">KSh {grandTotal.toLocaleString()}</p>
+                    <p className="text-xs opacity-70 mt-0.5">
+                      {approvedRows.length} students across {bySchool.size} school{bySchool.size !== 1 ? "s" : ""}
                     </p>
                   </div>
-                  <div>
-                    <p className="text-[10px] uppercase tracking-wider text-muted-foreground">Ward</p>
-                    <p className="text-foreground">{r.ward || "—"}</p>
-                  </div>
-                </div>
-
-                <div className="flex items-center gap-2 pt-2 border-t border-border">
-                  <Button size="sm" variant="outline" className="flex-1" onClick={() => setSelected(r)}>
-                    <Eye className="h-3.5 w-3.5 mr-1" /> View
-                  </Button>
-                  <Button size="sm" variant="outline" className="flex-1" onClick={() => openSms(r)}>
-                    <Send className="h-3.5 w-3.5 mr-1" /> SMS
-                  </Button>
-                  <Button size="icon" variant="ghost" onClick={() => remove(r.id)} title="Delete">
-                    <Trash2 className="h-4 w-4 text-destructive" />
+                  <Button
+                    variant="outline"
+                    className="border-white/40 text-white hover:bg-white/10 gap-2"
+                    onClick={downloadBroadsheet}
+                  >
+                    <Download className="h-4 w-4" /> Download Full Broadsheet PDF
                   </Button>
                 </div>
               </div>
-            ))
-          )}
-        </div>
+            )}
+          </div>
+        )}
       </div>
 
-      {/* Detail dialog */}
+      {/* ── Detail dialog ────────────────────────────────────────────────────── */}
       <Dialog open={!!selected} onOpenChange={(o) => !o && setSelected(null)}>
         <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
           {selected && (
@@ -387,10 +712,7 @@ function AdminBursariesPage() {
                   <Detail label="Grade" value={selected.current_grade} />
                   <Detail label="Father alive" value={yn(selected.father_alive)} />
                   <Detail label="Mother alive" value={yn(selected.mother_alive)} />
-                  <Detail
-                    label="Student disability"
-                    value={selected.student_disability ? (selected.student_disability_detail || "Yes") : "No"}
-                  />
+                  <Detail label="Student disability" value={selected.student_disability ? (selected.student_disability_detail || "Yes") : "No"} />
                 </DetailGroup>
                 {selected.father_alive && (
                   <DetailGroup title="Father">
@@ -417,46 +739,21 @@ function AdminBursariesPage() {
                   <Detail label="Bank account" value={selected.school_bank_account} />
                   <Detail label="Outstanding" value={selected.student_outstanding} full />
                 </DetailGroup>
-                <DetailGroup title="Parent / Guardian">
+                <DetailGroup title="Primary Contactable Parent / Guardian">
                   <Detail label="Name" value={selected.guardian_name} />
                   <Detail label="Phone" value={selected.guardian_phone} />
                   <Detail label="National ID" value={selected.parent_national_id} />
                   <Detail label="Occupation" value={selected.parent_occupation} />
-                  <Detail label="Residential sub-county" value={selected.parent_residence_sub_county} />
+                  <Detail label="Sub-county" value={selected.parent_residence_sub_county} />
                   <Detail label="Ward" value={selected.ward} />
                   <Detail label="Polling station" value={selected.polling_station} />
-                  <Detail
-                    label="Parent disability"
-                    value={selected.parent_disability ? (selected.parent_disability_detail || "Yes") : "No"}
-                  />
+                  <Detail label="Disability" value={selected.parent_disability ? (selected.parent_disability_detail || "Yes") : "No"} />
                   <Detail label="Children in school" value={String(selected.siblings_in_school ?? "0")} />
-                  <Detail
-                    label="Total fee payable"
-                    value={selected.total_fee_payable ? `KSh ${Number(selected.total_fee_payable).toLocaleString()}` : null}
-                  />
-                  <Detail
-                    label="Fee arrears"
-                    value={selected.fee_arrears ? `KSh ${Number(selected.fee_arrears).toLocaleString()}` : null}
-                  />
-                  <Detail
-                    label="Monthly budget"
-                    value={selected.monthly_budget ? `KSh ${Number(selected.monthly_budget).toLocaleString()}` : null}
-                  />
-                  <Detail
-                    label="Fee balances"
-                    value={selected.estimated_fee_balances ? `KSh ${Number(selected.estimated_fee_balances).toLocaleString()}` : null}
-                  />
-                  <Detail
-                    label="Amount requested"
-                    value={selected.amount_requested ? `KSh ${Number(selected.amount_requested).toLocaleString()}` : null}
-                  />
+                  <Detail label="Monthly budget" value={selected.monthly_budget ? `KSh ${Number(selected.monthly_budget).toLocaleString()}` : null} />
+                  <Detail label="Amount requested" value={selected.amount_requested ? `KSh ${Number(selected.amount_requested).toLocaleString()}` : null} />
                   <Detail
                     label="Previously received bursary"
-                    value={
-                      selected.received_bursary_before
-                        ? `Yes${selected.previous_bursary_source ? ` — ${selected.previous_bursary_source}` : ""}${selected.previous_bursary_amount ? ` (KSh ${Number(selected.previous_bursary_amount).toLocaleString()})` : ""}`
-                        : "No"
-                    }
+                    value={selected.received_bursary_before ? `Yes${selected.previous_bursary_source ? ` — ${selected.previous_bursary_source}` : ""}${selected.previous_bursary_amount ? ` (KSh ${Number(selected.previous_bursary_amount).toLocaleString()})` : ""}` : "No"}
                     full
                   />
                   <Detail label="Submitted" value={new Date(selected.created_at).toLocaleString()} />
@@ -478,11 +775,11 @@ function AdminBursariesPage() {
               )}
               <DialogFooter className="gap-2 sm:gap-2">
                 <Button variant="outline" onClick={() => setSelected(null)}>Close</Button>
-                <Button variant="outline" onClick={() => downloadPdfFor(selected)}>
+                <Button variant="outline" onClick={() => generateBursaryPdf(selected)}>
                   <Download className="h-4 w-4" /> Download PDF
                 </Button>
                 <Button variant="hero" onClick={() => { openSms(selected); setSelected(null); }}>
-                  <Send className="h-4 w-4" /> Send SMS Feedback
+                  <Send className="h-4 w-4" /> Send SMS
                 </Button>
               </DialogFooter>
             </>
@@ -490,24 +787,16 @@ function AdminBursariesPage() {
         </DialogContent>
       </Dialog>
 
-      {/* SMS dialog */}
+      {/* ── SMS dialog ───────────────────────────────────────────────────────── */}
       <Dialog open={smsOpen} onOpenChange={setSmsOpen}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Send SMS Feedback</DialogTitle>
             <DialogDescription>
-              {smsTarget && (
-                <>To <strong>{smsTarget.guardian_name}</strong> ({smsTarget.guardian_phone || smsTarget.phone})</>
-              )}
+              {smsTarget && <>To <strong>{smsTarget.guardian_name}</strong> ({smsTarget.guardian_phone || smsTarget.phone})</>}
             </DialogDescription>
           </DialogHeader>
-          <Textarea
-            value={smsText}
-            onChange={(e) => setSmsText(e.target.value)}
-            rows={5}
-            maxLength={459}
-            placeholder="Your message…"
-          />
+          <Textarea value={smsText} onChange={(e) => setSmsText(e.target.value)} rows={5} maxLength={459} />
           <p className="text-xs text-muted-foreground">{smsText.length}/459 characters</p>
           <DialogFooter>
             <Button variant="outline" onClick={() => setSmsOpen(false)}>Cancel</Button>
@@ -518,6 +807,23 @@ function AdminBursariesPage() {
         </DialogContent>
       </Dialog>
     </AdminLayout>
+  );
+}
+
+// ── Sub-components ────────────────────────────────────────────────────────────
+
+function StatCard({ icon: Icon, label, value, color }: {
+  icon: React.ComponentType<{ className?: string }>;
+  label: string; value: string; color: string;
+}) {
+  return (
+    <div className="bg-muted/30 border border-border rounded-xl px-4 py-3 flex items-center gap-3">
+      <Icon className={`h-5 w-5 shrink-0 ${color}`} />
+      <div>
+        <p className="text-xs text-muted-foreground">{label}</p>
+        <p className={`font-display font-bold text-base ${color}`}>{value}</p>
+      </div>
+    </div>
   );
 }
 
@@ -540,8 +846,3 @@ function DetailGroup({ title, children }: { title: string; children: React.React
 }
 
 const yn = (v: boolean | null | undefined) => (v === null || v === undefined ? "—" : v ? "Yes" : "No");
-
-function downloadPdfFor(r: Row) {
-  generateBursaryPdf(r);
-}
-

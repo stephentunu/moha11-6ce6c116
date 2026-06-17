@@ -77,6 +77,8 @@ export type SiteContent = {
   foundationsHeadline: string;
   foundationsSubtitle: string;
   heroImageUrl: string;
+  /** ISO date string (YYYY-MM-DD) when the bursary window opens. Empty = closed. */
+  bursaryWindowStart: string;
 };
 
 const KEYS = {
@@ -191,6 +193,7 @@ const DEFAULT_CONTENT: SiteContent = {
   foundationsHeadline: "The Moha Foundation",
   foundationsSubtitle: "Real work that does not wait for elections.",
   heroImageUrl: "",
+  bursaryWindowStart: "",
 };
 
 const isBrowser = () => typeof window !== "undefined";

@@ -2,7 +2,7 @@ import { useState, useMemo, type ReactNode } from "react";
 import { z } from "zod";
 import { toast } from "sonner";
 import {
-  GraduationCap, ArrowRight, ArrowLeft, CheckCircle2, Download, User, School, Users, ShieldCheck,
+  GraduationCap, ArrowRight, ArrowLeft, CheckCircle2, Download, User, School, Users, ShieldCheck, Share2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -310,25 +310,54 @@ export function BursaryApplicationDialog({ trigger }: { trigger: ReactNode }) {
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2 font-display text-2xl">
             <GraduationCap className="h-6 w-6 text-gold" />
-            Moha Education Kitty — Bursary Application
+            Constituency Bursary Application Form
           </DialogTitle>
           <DialogDescription>
             Ward Bursary Application Form — Term 2 (2026/2027). Complete all four sections and download
-            your application form to sign and submit at the Moha Coordination Office, Kiamako-Mathare.
+            your application form to sign and submit at the Moha Coordination Office, Kiamaiko-Mathare.
           </DialogDescription>
         </DialogHeader>
 
         {result ? (
-          <div className="py-8 text-center space-y-5">
+          <div className="py-6 text-center space-y-4">
             <div className="mx-auto h-16 w-16 rounded-full bg-gold/15 flex items-center justify-center">
               <CheckCircle2 className="h-8 w-8 text-gold" />
             </div>
-            <h3 className="text-xl font-display font-bold">Application received</h3>
+            <h3 className="text-xl font-display font-bold">Application received!</h3>
+            <p className="text-2xl font-bold tracking-wider text-primary">{result.reference}</p>
             <p className="text-sm text-muted-foreground max-w-md mx-auto">
               Download the pre-filled form, attach the required documents (National ID, birth certificate, fee structure,
-              report form, NCPWD card, etc.), sign, and drop it at the Moha Coordination Office, Kiamako-Mathare.
+              report form, NCPWD card, etc.), sign, and drop it at the Moha Coordination Office, Kiamaiko-Mathare.
             </p>
-            <p className="text-2xl font-bold tracking-wider text-primary">{result.reference}</p>
+
+            {/* Share link */}
+            <div className="rounded-xl border border-border bg-muted/30 p-4 text-left space-y-2">
+              <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
+                <Share2 className="h-3.5 w-3.5" /> Know someone who needs to apply? Share this link
+              </p>
+              <div className="flex gap-2">
+                <Input
+                  readOnly
+                  value={typeof window !== "undefined" ? `${window.location.origin}/foundations` : ""}
+                  className="text-xs font-mono bg-background"
+                />
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="shrink-0"
+                  onClick={() => {
+                    const url = typeof window !== "undefined" ? `${window.location.origin}/foundations` : "";
+                    navigator.clipboard.writeText(url).then(() => toast.success("Application link copied!"));
+                  }}
+                >
+                  Copy
+                </Button>
+              </div>
+              <p className="text-[11px] text-muted-foreground">
+                Share with friends or family in Mathare who also need bursary support.
+              </p>
+            </div>
+
             <div className="flex flex-col sm:flex-row gap-2 justify-center">
               <Button onClick={downloadPdf} variant="hero" className="gap-2">
                 <Download className="h-4 w-4" /> Download Application Form (PDF)
@@ -570,7 +599,7 @@ export function BursaryApplicationDialog({ trigger }: { trigger: ReactNode }) {
                 {/* Guardian */}
                 <div className="rounded-lg border border-border bg-muted/30 p-4 space-y-3">
                   <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
-                    Guardian's Details <span className="text-[10px] normal-case text-muted-foreground">(Primary contact person if different from above)</span>
+                    Primary Contactable Parent / Guardian <span className="text-[10px] normal-case text-muted-foreground">(The parent or guardian who can be reached for communication)</span>
                   </p>
                   <div className="grid sm:grid-cols-2 gap-4">
                     <Field label="Name *"><Input value={form.guardianName} onChange={(e) => set("guardianName", e.target.value)} placeholder="Full name" /></Field>
@@ -606,9 +635,6 @@ export function BursaryApplicationDialog({ trigger }: { trigger: ReactNode }) {
                   <Field label="Number of children in school / University">
                     <Input type="number" min="0" value={form.siblingsInSchool} onChange={(e) => set("siblingsInSchool", e.target.value)} placeholder="0" />
                   </Field>
-                  <Field label="Total fee payable per annum — all children (KSh)">
-                    <Input type="number" min="0" value={form.totalFeePayable} onChange={(e) => set("totalFeePayable", e.target.value)} placeholder="0" />
-                  </Field>
                   <Field label="Monthly budget (KSh)">
                     <Input type="number" min="0" value={form.monthlyBudget} onChange={(e) => set("monthlyBudget", e.target.value)} placeholder="0" />
                   </Field>
@@ -643,7 +669,6 @@ export function BursaryApplicationDialog({ trigger }: { trigger: ReactNode }) {
                   <Row label="Guardian" value={`${form.guardianName} · ${form.guardianPhone}`} />
                   <Row label="Ward / Polling" value={`${form.ward || "—"} · ${form.pollingStation || "—"}`} />
                   <Row label="Children in school" value={form.siblingsInSchool || "0"} />
-                  <Row label="Total annual fee (all)" value={form.totalFeePayable ? `KSh ${Number(form.totalFeePayable).toLocaleString()}` : "—"} />
                   <Row label="Monthly budget" value={form.monthlyBudget ? `KSh ${Number(form.monthlyBudget).toLocaleString()}` : "—"} />
                   <Row label="Previous bursary" value={form.receivedBursaryBefore === null ? "Not answered" : form.receivedBursaryBefore ? `Yes — ${form.previousBursarySource || "—"} (KSh ${Number(form.previousBursaryAmount || 0).toLocaleString()})` : "No"} />
                 </div>
@@ -664,7 +689,7 @@ export function BursaryApplicationDialog({ trigger }: { trigger: ReactNode }) {
                       Your data will be stored securely and will <strong className="text-foreground">not</strong> be shared
                       with third parties without your consent, except where required by law. You have the right
                       to request access to or deletion of your data at any time by contacting us at
-                      the Moha Coordination Office, Kiamako-Mathare or via <em>hello@mohadelivers.com</em>.
+                      the Moha Coordination Office, Kiamaiko-Mathare or via <em>hello@mohadelivers.com</em>.
                     </p>
                     <p>
                       By submitting this application, you confirm that the information provided is true and accurate
