@@ -15,7 +15,7 @@ import {
 } from "lucide-react";
 import { PageHero } from "@/components/PageHero";
 import { Button } from "@/components/ui/button";
-import { useContent } from "@/lib/admin-store";
+import { useContent, useBursaryWindow } from "@/lib/admin-store";
 import { BursaryApplicationDialog } from "@/components/BursaryApplicationDialog";
 import vulnerableImg from "@/assets/moha/donation3.jpeg";
 import bursaryImg from "@/assets/moha/bursary1.jpeg";
@@ -309,19 +309,21 @@ const foundations: Foundation[] = [
 function FoundationsPage() {
   const [content] = useContent();
   const title = (content.foundationsHeadline || "").replace(/Foundations/gi, "Foundation");
+  const { windowStart, loading } = useBursaryWindow();
 
   // Compute whether the 10-day bursary window is currently open
   const bursaryWindowOpen = (() => {
-    if (!content.bursaryWindowStart) return false;
-    const start = new Date(content.bursaryWindowStart);
+    if (!windowStart) return false;
+    const start = new Date(windowStart);
     const end = new Date(start);
     end.setDate(end.getDate() + 10);
     const now = new Date();
     return now >= start && now <= end;
   })();
+
   const bursaryWindowEnd = (() => {
-    if (!content.bursaryWindowStart) return null;
-    const end = new Date(content.bursaryWindowStart);
+    if (!windowStart) return null;
+    const end = new Date(windowStart);
     end.setDate(end.getDate() + 10);
     return end;
   })();
@@ -390,7 +392,9 @@ function FoundationsPage() {
 
                 {f.title.startsWith("Bursaries") && (
                   <div className="mt-6">
-                    {bursaryWindowOpen ? (
+                    {loading ? (
+                      <div className="h-11 w-48 rounded-lg bg-muted/50 animate-pulse" />
+                    ) : bursaryWindowOpen ? (
                       <>
                         <BursaryApplicationDialog
                           trigger={

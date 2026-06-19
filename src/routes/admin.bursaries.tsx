@@ -1,14 +1,15 @@
-
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import {
   GraduationCap, Send, Eye, Trash2, Download, Search,
   FileSpreadsheet, CheckCircle2, School, ArrowUpDown,
   ChevronDown, ChevronRight, Users, Banknote,
+  CheckSquare, X,
 } from "lucide-react";
 import { generateBursaryPdf, generateBroadsheetPdf, type BroadsheetRow } from "@/lib/bursary-pdf";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import {
@@ -23,6 +24,7 @@ import { Toaster } from "@/components/ui/sonner";
 import { AdminLayout } from "@/components/AdminLayout";
 import { supabase } from "@/integrations/supabase/client";
 import { sendBursarySms } from "@/lib/bursary.functions";
+import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/admin/bursaries")({
   head: () => ({
@@ -112,6 +114,9 @@ function AdminBursariesPage() {
   const [bsSort, setBsSort] = useState<SortField>("school_name");
   const [bsOrder, setBsOrder] = useState<"asc" | "desc">("asc");
   const [bsExpanded, setBsExpanded] = useState<Set<string>>(new Set());
+  // Bulk selection
+  const [checkedIds, setCheckedIds] = useState<Set<string>>(new Set());
+  const [bulkBusy, setBulkBusy] = useState(false);
 
   const load = async () => {
     const { data, error } = await supabase
@@ -187,6 +192,58 @@ function AdminBursariesPage() {
     for (const r of rows) (c as Record<string, number>)[r.status] = ((c as Record<string, number>)[r.status] ?? 0) + 1;
     return c;
   }, [rows]);
+
+  // ── Bulk selection helpers ───────────────────────────────────────────────
+  const filteredIds = filtered.map((r) => r.id);
+  const allChecked = filteredIds.length > 0 && filteredIds.every((id) => checkedIds.has(id));
+  const someChecked = filteredIds.some((id) => checkedIds.has(id));
+
+  const toggleOne = (id: string) =>
+    setCheckedIds((prev) => { const next = new Set(prev); next.has(id) ? next.delete(id) : next.add(id); return next; });
+
+  const toggleAll = () => {
+    if (allChecked) {
+      setCheckedIds((prev) => { const next = new Set(prev); filteredIds.forEach((id) => next.delete(id)); return next; });
+    } else {
+      setCheckedIds((prev) => { const next = new Set(prev); filteredIds.forEach((id) => next.add(id)); return next; });
+    }
+  };
+
+  const clearChecked = () => setCheckedIds(new Set());
+
+  // ── Bulk actions ─────────────────────────────────────────────────────────
+  const bulkUpdateStatus = async (status: string) => {
+    const ids = [...checkedIds];
+    setBulkBusy(true);
+    const { error } = await supabase
+      .from("bursary_applications" as never)
+      .update({ status } as never)
+      .in("id", ids);
+    setBulkBusy(false);
+    if (error) { toast.error(error.message); return; }
+    toast.success(`${ids.length} application${ids.length !== 1 ? "s" : ""} marked as ${status}`);
+    clearChecked();
+    load();
+  };
+
+  const bulkDelete = async () => {
+    const ids = [...checkedIds];
+    const names = rows.filter((r) => ids.includes(r.id)).map((r) => r.student_name);
+    if (!window.confirm(
+      `Delete ${ids.length} application${ids.length !== 1 ? "s" : ""}?\n\n${names.slice(0, 5).join(", ")}${names.length > 5 ? ` and ${names.length - 5} more` : ""}\n\nThis cannot be undone.`
+    )) return;
+    setBulkBusy(true);
+    const { error } = await supabase
+      .from("bursary_applications" as never)
+      .delete()
+      .in("id", ids);
+    setBulkBusy(false);
+    if (error) { toast.error(error.message); return; }
+    setRows((prev) => prev.filter((r) => !ids.includes(r.id)));
+    clearChecked();
+    toast.success(`${ids.length} application${ids.length !== 1 ? "s" : ""} deleted`);
+    load();
+  };
 
   // ── Actions ──────────────────────────────────────────────────────────────────
   const updateStatus = async (id: string, status: string) => {
@@ -330,12 +387,55 @@ function AdminBursariesPage() {
               ))}
             </div>
 
+            {/* Bulk action bar */}
+            {checkedIds.size > 0 && (
+              <div className="flex flex-wrap items-center gap-3 px-4 py-3 bg-primary/5 border border-primary/20 rounded-xl mb-3">
+                <div className="flex items-center gap-2 flex-1 min-w-0">
+                  <CheckSquare className="h-4 w-4 text-primary shrink-0" />
+                  <span className="text-sm font-semibold text-primary">
+                    {checkedIds.size} application{checkedIds.size !== 1 ? "s" : ""} selected
+                  </span>
+                  <button onClick={clearChecked} className="ml-1 text-muted-foreground hover:text-foreground">
+                    <X className="h-3.5 w-3.5" />
+                  </button>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  <Button size="sm" variant="outline" disabled={bulkBusy} onClick={() => bulkUpdateStatus("approved")}
+                    className="gap-1.5 border-emerald-300 text-emerald-700 hover:bg-emerald-50">
+                    <CheckCircle2 className="h-3.5 w-3.5" /> Approve all
+                  </Button>
+                  <Button size="sm" variant="outline" disabled={bulkBusy} onClick={() => bulkUpdateStatus("reviewing")}
+                    className="gap-1.5 border-blue-300 text-blue-700 hover:bg-blue-50">
+                    Reviewing
+                  </Button>
+                  <Button size="sm" variant="outline" disabled={bulkBusy} onClick={() => bulkUpdateStatus("pending")}
+                    className="gap-1.5 border-amber-300 text-amber-700 hover:bg-amber-50">
+                    Pending
+                  </Button>
+                  <Button size="sm" variant="outline" disabled={bulkBusy} onClick={() => bulkUpdateStatus("rejected")}
+                    className="gap-1.5 border-rose-300 text-rose-700 hover:bg-rose-50">
+                    Reject all
+                  </Button>
+                  <Button size="sm" variant="destructive" disabled={bulkBusy} onClick={bulkDelete} className="gap-1.5">
+                    <Trash2 className="h-3.5 w-3.5" /> Delete {checkedIds.size}
+                  </Button>
+                </div>
+              </div>
+            )}
+
             {/* Desktop table */}
             <div className="hidden md:block bg-card border border-border rounded-2xl overflow-hidden">
               <div className="overflow-x-auto">
                 <table className="w-full text-sm">
                   <thead className="bg-muted/50 text-xs uppercase tracking-wider text-muted-foreground">
                     <tr>
+                      <th className="w-10 px-4 py-3">
+                        <Checkbox
+                          checked={allChecked}
+                          onCheckedChange={toggleAll}
+                          aria-label="Select all"
+                        />
+                      </th>
                       <th className="text-left px-4 py-3">Ref</th>
                       <th className="text-left px-4 py-3">Student</th>
                       <th className="text-left px-4 py-3">School / Grade</th>
@@ -347,13 +447,22 @@ function AdminBursariesPage() {
                   </thead>
                   <tbody className="divide-y divide-border">
                     {filtered.length === 0 ? (
-                      <tr><td colSpan={7} className="text-center py-12 text-muted-foreground">
+                      <tr><td colSpan={8} className="text-center py-12 text-muted-foreground">
                         <GraduationCap className="h-8 w-8 mx-auto mb-2 opacity-50" />
                         No applications match your filters.
                       </td></tr>
                     ) : (
-                      filtered.map((r) => (
-                        <tr key={r.id} className="hover:bg-muted/30">
+                      filtered.map((r) => {
+                        const isChecked = checkedIds.has(r.id);
+                        return (
+                        <tr key={r.id} className={isChecked ? "bg-primary/5" : "hover:bg-muted/30"}>
+                          <td className="px-4 py-3">
+                            <Checkbox
+                              checked={isChecked}
+                              onCheckedChange={() => toggleOne(r.id)}
+                              aria-label={`Select ${r.student_name}`}
+                            />
+                          </td>
                           <td className="px-4 py-3 font-mono text-xs font-bold text-primary">{r.reference}</td>
                           <td className="px-4 py-3">
                             <p className="font-semibold">{r.student_name}</p>
@@ -394,7 +503,8 @@ function AdminBursariesPage() {
                             </div>
                           </td>
                         </tr>
-                      ))
+                        );
+                      })
                     )}
                   </tbody>
                 </table>
@@ -409,9 +519,17 @@ function AdminBursariesPage() {
                   No applications match your filters.
                 </div>
               ) : (
-                filtered.map((r) => (
-                  <div key={r.id} className="bg-card border border-border rounded-2xl p-4 space-y-3">
-                    <div className="flex items-start justify-between gap-2">
+                filtered.map((r) => {
+                  const isChecked = checkedIds.has(r.id);
+                  return (
+                  <div key={r.id} className={`bg-card border rounded-2xl p-4 space-y-3 ${isChecked ? "border-primary/40 bg-primary/5" : "border-border"}`}>
+                    <div className="flex items-start gap-3">
+                      <Checkbox
+                        checked={isChecked}
+                        onCheckedChange={() => toggleOne(r.id)}
+                        className="mt-1 shrink-0"
+                        aria-label={`Select ${r.student_name}`}
+                      />
                       <div>
                         <p className="font-mono text-xs font-bold text-primary">{r.reference}</p>
                         <p className="font-semibold text-foreground">{r.student_name}</p>
@@ -454,7 +572,8 @@ function AdminBursariesPage() {
                       </Button>
                     </div>
                   </div>
-                ))
+                  );
+                })
               )}
             </div>
           </>

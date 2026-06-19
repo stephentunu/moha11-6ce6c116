@@ -2,6 +2,7 @@
 // Uses a custom event so multiple components in the same tab stay in sync.
 
 import { useEffect, useState } from "react";
+import { supabase } from "@/integrations/supabase/client";
 
 export type PaymentMethod = "send_money" | "pochi" | "till" | "paybill" | "cash";
 
@@ -458,6 +459,75 @@ export function useContent() {
 export function updateContent(patch: Partial<SiteContent>) {
   const cur = read<SiteContent>(KEYS.content, DEFAULT_CONTENT);
   write(KEYS.content, { ...cur, ...patch });
+}
+
+// ===== Bursary Window — Supabase-backed so ALL devices see the same value =====
+//
+// Reads from / writes to a `site_settings` table with a single row:
+//   id = 'bursary_window'
+//   value = ISO date string (YYYY-MM-DD) or empty string
+//
+// SQL to create the table (run once in Supabase SQL editor):
+//
+//   create table if not exists site_settings (
+//     id text primary key,
+//     value text not null default ''
+//   );
+//   insert into site_settings (id, value) values ('bursary_window', '')
+//   on conflict (id) do nothing;
+//   -- Allow public read (no auth needed for the public site):
+//   alter table site_settings enable row level security;
+//   create policy "public read" on site_settings for select using (true);
+//   create policy "admin write" on site_settings for all using (true) with check (true);
+
+/** Read the bursary window start date from Supabase. Returns "" if not set. */
+export async function fetchBursaryWindowStart(): Promise<string> {
+  try {
+    const { data, error } = await supabase
+      .from("site_settings" as never)
+      .select("value")
+      .eq("id", "bursary_window")
+      .single();
+    if (error || !data) return "";
+    return (data as unknown as { value: string }).value ?? "";
+  } catch {
+    return "";
+  }
+}
+
+/** Save the bursary window start date to Supabase (admin only). */
+export async function saveBursaryWindowStart(dateStr: string): Promise<void> {
+  await supabase
+    .from("site_settings" as never)
+    .upsert({ id: "bursary_window", value: dateStr } as never, { onConflict: "id" } as never);
+}
+
+/** React hook: subscribes to the bursary window start from Supabase in real-time. */
+export function useBursaryWindow() {
+  const [windowStart, setWindowStart] = useState<string>("");
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    // Initial fetch
+    fetchBursaryWindowStart().then((v) => { setWindowStart(v); setLoading(false); });
+
+    // Real-time subscription — any device saving triggers an update here too
+    const ch = supabase
+      .channel("bursary-window-watch")
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "site_settings" },
+        (payload) => {
+          const row = payload.new as { id: string; value: string } | null;
+          if (row?.id === "bursary_window") setWindowStart(row.value ?? "");
+        }
+      )
+      .subscribe();
+
+    return () => { supabase.removeChannel(ch); };
+  }, []);
+
+  return { windowStart, loading };
 }
 
 // ===== Activities =====

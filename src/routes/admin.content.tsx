@@ -8,7 +8,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
 import { Toaster } from "@/components/ui/sonner";
 import { AdminLayout } from "@/components/AdminLayout";
-import { useContent, updateContent, type SiteContent } from "@/lib/admin-store";
+import { useContent, updateContent, useBursaryWindow, saveBursaryWindowStart, type SiteContent } from "@/lib/admin-store";
 
 export const Route = createFileRoute("/admin/content")({
   head: () => ({
@@ -23,11 +23,13 @@ export const Route = createFileRoute("/admin/content")({
 function AdminContentPage() {
   const [content] = useContent();
   const [draft, setDraft] = useState<SiteContent>(content);
+  const { windowStart, loading: windowLoading } = useBursaryWindow();
+  const [draftWindowStart, setDraftWindowStart] = useState<string>("");
+  const [savingWindow, setSavingWindow] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
 
-  useEffect(() => {
-    setDraft(content);
-  }, [content]);
+  useEffect(() => { setDraft(content); }, [content]);
+  useEffect(() => { setDraftWindowStart(windowStart); }, [windowStart]);
 
   const update = <K extends keyof SiteContent>(k: K, v: SiteContent[K]) =>
     setDraft((d) => ({ ...d, [k]: v }));
@@ -52,6 +54,13 @@ function AdminContentPage() {
   const reset = () => {
     setDraft(content);
     toast.info("Changes discarded");
+  };
+
+  const saveWindow = async (dateStr: string) => {
+    setSavingWindow(true);
+    await saveBursaryWindowStart(dateStr);
+    setSavingWindow(false);
+    toast.success(dateStr ? `Bursary window set — opens ${dateStr}` : "Bursary window closed");
   };
 
   const dirty = JSON.stringify(draft) !== JSON.stringify(content);
@@ -181,19 +190,37 @@ function AdminContentPage() {
         {/* Bursary Application Window */}
         <Section icon={GraduationCap} title="Bursary Application Window">
           <div className="space-y-3">
+            <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-xs text-amber-800 font-medium flex items-start gap-2">
+              <span className="shrink-0 mt-0.5">🌐</span>
+              <span>
+                This setting is stored in the <strong>database</strong> and is immediately visible to
+                all users on all devices the moment you save it.
+              </span>
+            </div>
             <p className="text-sm text-muted-foreground">
               Set the start date for the bursary application window. Applications will automatically
               close <strong>10 days</strong> after the start date. Leave blank to close the window.
             </p>
             <Field label="Application window start date">
-              <Input
-                type="date"
-                value={draft.bursaryWindowStart || ""}
-                onChange={(e) => update("bursaryWindowStart", e.target.value)}
-              />
+              <div className="flex gap-2">
+                <Input
+                  type="date"
+                  value={draftWindowStart}
+                  onChange={(e) => setDraftWindowStart(e.target.value)}
+                  disabled={windowLoading}
+                  className="flex-1"
+                />
+                <Button
+                  variant="hero"
+                  onClick={() => saveWindow(draftWindowStart)}
+                  disabled={savingWindow || windowLoading || draftWindowStart === windowStart}
+                >
+                  {savingWindow ? "Saving…" : "Save & Publish"}
+                </Button>
+              </div>
             </Field>
-            {draft.bursaryWindowStart && (() => {
-              const start = new Date(draft.bursaryWindowStart);
+            {windowStart && (() => {
+              const start = new Date(windowStart);
               const end = new Date(start);
               end.setDate(end.getDate() + 10);
               const now = new Date();
@@ -203,19 +230,24 @@ function AdminContentPage() {
                   {open
                     ? `✓ Window OPEN — closes ${end.toLocaleDateString("en-KE", { day: "numeric", month: "long", year: "numeric" })}`
                     : now < start
-                      ? `Window opens ${start.toLocaleDateString("en-KE", { day: "numeric", month: "long", year: "numeric" })}`
-                      : `Window CLOSED — ended ${end.toLocaleDateString("en-KE", { day: "numeric", month: "long", year: "numeric" })}`
+                      ? `⏳ Window opens ${start.toLocaleDateString("en-KE", { day: "numeric", month: "long", year: "numeric" })}`
+                      : `✗ Window CLOSED — ended ${end.toLocaleDateString("en-KE", { day: "numeric", month: "long", year: "numeric" })}`
                   }
                 </div>
               );
             })()}
+            {!windowStart && !windowLoading && (
+              <div className="rounded-lg border border-border bg-muted/30 px-4 py-3 text-sm text-muted-foreground">
+                No window set — the bursary form is currently hidden from all users.
+              </div>
+            )}
             <Button
               variant="outline"
               size="sm"
-              onClick={() => update("bursaryWindowStart", "")}
-              disabled={!draft.bursaryWindowStart}
+              onClick={() => { setDraftWindowStart(""); saveWindow(""); }}
+              disabled={savingWindow || !windowStart}
             >
-              Clear / Close window
+              Clear / Close window immediately
             </Button>
           </div>
         </Section>
