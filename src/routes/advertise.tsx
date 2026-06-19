@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useMemo, useState, useRef, type ChangeEvent, type FormEvent } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -75,6 +75,7 @@ import {
   type PaymentMethod,
 } from "@/lib/admin-store";
 import { useLoyalty, shareBusiness } from "@/lib/loyalty";
+import { useUserAuth } from "@/lib/user-auth";
 import { supabase } from "@/integrations/supabase/client";
 
 export const Route = createFileRoute("/advertise")({
@@ -206,6 +207,18 @@ function AdvertisePage() {
   const [wardFilter, setWardFilter] = useState<string>("all");
   const [categoryFilter, setCategoryFilter] = useState<string>("all");
   const [open, setOpen] = useState(false);
+  const navigate = useNavigate();
+  const { isSignedIn, loading: authLoading } = useUserAuth();
+
+  // Gate the registration dialog behind sign-in — browsing the marketplace stays public
+  const openRegister = () => {
+    if (authLoading) return;
+    if (!isSignedIn) {
+      navigate({ to: "/signin", search: { redirect: "/advertise" } });
+      return;
+    }
+    setOpen(true);
+  };
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -248,10 +261,17 @@ function AdvertisePage() {
         <div className="bg-card border border-border rounded-2xl shadow-elegant p-6 md:p-8 flex flex-col md:flex-row items-center justify-between gap-4">
           <div>
             <h2 className="font-display text-xl md:text-2xl font-bold">Ready to grow your customer base?</h2>
-            <p className="text-sm text-muted-foreground">List your business in under 2 minutes. Always free.</p>
+            <p className="text-sm text-muted-foreground">
+              List your business in under 2 minutes. Always free.
+              {!authLoading && !isSignedIn && (
+                <span className="block mt-0.5 text-xs text-gold font-semibold">
+                  A free account is required to list a business.
+                </span>
+              )}
+            </p>
           </div>
           <div className="flex flex-wrap gap-3">
-            <Button size="lg" variant="hero" onClick={() => setOpen(true)}>
+            <Button size="lg" variant="hero" onClick={openRegister}>
               <Plus className="h-5 w-5" />
               Advertise Your Business
             </Button>
@@ -359,7 +379,7 @@ function AdvertisePage() {
             <Store className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
             <h3 className="font-display text-2xl font-bold mb-2">No businesses match your search</h3>
             <p className="text-muted-foreground mb-6">Try clearing filters or be the first to list in this category.</p>
-            <Button onClick={() => setOpen(true)} variant="hero">
+            <Button onClick={openRegister} variant="hero">
               <Plus className="h-4 w-4" />
               List Your Business
             </Button>
@@ -386,7 +406,7 @@ function AdvertisePage() {
           <Button
             size="xl"
             variant="hero"
-            onClick={() => setOpen(true)}
+            onClick={openRegister}
             className="bg-gold text-gold-foreground hover:bg-gold/90"
           >
             <Plus className="h-5 w-5" />

@@ -110,7 +110,6 @@ type Form = {
   ward: string;
   pollingStation: string;
   siblingsInSchool: string;
-  totalFeePayable: string;
   monthlyBudget: string;
   reason: string;
   // Consent
@@ -132,7 +131,7 @@ const EMPTY: Form = {
   guardianName: "", guardianPhone: "", guardianNationalId: "", guardianOccupation: "",
   guardianDisability: false, guardianDisabilityDetail: "",
   parentResidenceSubCounty: "", ward: "", pollingStation: "",
-  siblingsInSchool: "", totalFeePayable: "", monthlyBudget: "", reason: "",
+  siblingsInSchool: "", monthlyBudget: "", reason: "",
   dataConsent: false,
 };
 
@@ -229,7 +228,8 @@ export function BursaryApplicationDialog({ trigger }: { trigger: ReactNode }) {
         parent_disability: form.guardianDisability,
         parent_disability_detail: form.guardianDisabilityDetail || null,
         siblings_in_school: form.siblingsInSchool ? Number(form.siblingsInSchool) : 0,
-        total_fee_payable: form.totalFeePayable ? Number(form.totalFeePayable) : null,
+        student_annual_fee: form.studentAnnualFee ? Number(form.studentAnnualFee) : null,
+        outstanding_balance: form.outstandingBalance ? Number(form.outstandingBalance) : null,
         monthly_budget: form.monthlyBudget ? Number(form.monthlyBudget) : null,
         amount_requested: form.amountRequested ? Number(form.amountRequested) : 0,
         received_bursary_before: form.receivedBursaryBefore ?? false,
@@ -262,6 +262,7 @@ export function BursaryApplicationDialog({ trigger }: { trigger: ReactNode }) {
       dob: form.dob,
       gender: form.gender,
       current_grade: form.currentGrade,
+      birth_cert_number: form.birthCertNumber,
       father_alive: form.fatherAlive,
       mother_alive: form.motherAlive,
       father_name: form.fatherAlive ? form.fatherName : "",
@@ -274,12 +275,14 @@ export function BursaryApplicationDialog({ trigger }: { trigger: ReactNode }) {
       mother_national_id: form.motherAlive ? form.motherNationalId : "",
       student_disability: form.studentDisability,
       student_disability_detail: form.studentDisabilityDetail,
+      student_outstanding_ability: form.studentOutstanding,
+      student_annual_fee: form.studentAnnualFee ? Number(form.studentAnnualFee) : 0,
+      outstanding_balance: form.outstandingBalance ? Number(form.outstandingBalance) : 0,
       school_name: form.schoolName,
       school_category: form.schoolCategory,
       school_county: form.schoolCounty,
       school_sub_county: form.schoolSubCounty,
       year_of_admission: form.yearOfAdmission,
-      student_outstanding: form.studentOutstanding,
       school_bank_account: form.schoolBankAccount,
       guardian_name: form.guardianName,
       guardian_phone: form.guardianPhone,
@@ -291,10 +294,7 @@ export function BursaryApplicationDialog({ trigger }: { trigger: ReactNode }) {
       parent_disability: form.guardianDisability,
       parent_disability_detail: form.guardianDisabilityDetail,
       siblings_in_school: form.siblingsInSchool ? Number(form.siblingsInSchool) : 0,
-      total_fee_payable: form.totalFeePayable ? Number(form.totalFeePayable) : 0,
-      fee_arrears: 0,
       monthly_budget: form.monthlyBudget ? Number(form.monthlyBudget) : 0,
-      estimated_fee_balances: 0,
       amount_requested: form.amountRequested ? Number(form.amountRequested) : 0,
       received_bursary_before: form.receivedBursaryBefore ?? false,
       previous_bursary_source: form.receivedBursaryBefore ? form.previousBursarySource : "",

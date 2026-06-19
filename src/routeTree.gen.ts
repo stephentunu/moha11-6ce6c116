@@ -11,6 +11,7 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as UnsubscribeRouteImport } from './routes/unsubscribe'
 import { Route as StoriesRouteImport } from './routes/stories'
+import { Route as SigninRouteImport } from './routes/signin'
 import { Route as PrioritiesRouteImport } from './routes/priorities'
 import { Route as PollingRouteImport } from './routes/polling'
 import { Route as OpinionRouteImport } from './routes/opinion'
@@ -40,6 +41,11 @@ const UnsubscribeRoute = UnsubscribeRouteImport.update({
 const StoriesRoute = StoriesRouteImport.update({
   id: '/stories',
   path: '/stories',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SigninRoute = SigninRouteImport.update({
+  id: '/signin',
+  path: '/signin',
   getParentRoute: () => rootRouteImport,
 } as any)
 const PrioritiesRoute = PrioritiesRouteImport.update({
@@ -153,6 +159,7 @@ export interface FileRoutesByFullPath {
   '/opinion': typeof OpinionRoute
   '/polling': typeof PollingRoute
   '/priorities': typeof PrioritiesRoute
+  '/signin': typeof SigninRoute
   '/stories': typeof StoriesRoute
   '/unsubscribe': typeof UnsubscribeRoute
   '/admin/activities': typeof AdminActivitiesRoute
@@ -177,6 +184,7 @@ export interface FileRoutesByTo {
   '/opinion': typeof OpinionRoute
   '/polling': typeof PollingRoute
   '/priorities': typeof PrioritiesRoute
+  '/signin': typeof SigninRoute
   '/stories': typeof StoriesRoute
   '/unsubscribe': typeof UnsubscribeRoute
   '/admin/activities': typeof AdminActivitiesRoute
@@ -202,6 +210,7 @@ export interface FileRoutesById {
   '/opinion': typeof OpinionRoute
   '/polling': typeof PollingRoute
   '/priorities': typeof PrioritiesRoute
+  '/signin': typeof SigninRoute
   '/stories': typeof StoriesRoute
   '/unsubscribe': typeof UnsubscribeRoute
   '/admin/activities': typeof AdminActivitiesRoute
@@ -228,6 +237,7 @@ export interface FileRouteTypes {
     | '/opinion'
     | '/polling'
     | '/priorities'
+    | '/signin'
     | '/stories'
     | '/unsubscribe'
     | '/admin/activities'
@@ -252,6 +262,7 @@ export interface FileRouteTypes {
     | '/opinion'
     | '/polling'
     | '/priorities'
+    | '/signin'
     | '/stories'
     | '/unsubscribe'
     | '/admin/activities'
@@ -276,6 +287,7 @@ export interface FileRouteTypes {
     | '/opinion'
     | '/polling'
     | '/priorities'
+    | '/signin'
     | '/stories'
     | '/unsubscribe'
     | '/admin/activities'
@@ -301,6 +313,7 @@ export interface RootRouteChildren {
   OpinionRoute: typeof OpinionRoute
   PollingRoute: typeof PollingRoute
   PrioritiesRoute: typeof PrioritiesRoute
+  SigninRoute: typeof SigninRoute
   StoriesRoute: typeof StoriesRoute
   UnsubscribeRoute: typeof UnsubscribeRoute
   AdminActivitiesRoute: typeof AdminActivitiesRoute
@@ -330,6 +343,13 @@ declare module '@tanstack/react-router' {
       path: '/stories'
       fullPath: '/stories'
       preLoaderRoute: typeof StoriesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/signin': {
+      id: '/signin'
+      path: '/signin'
+      fullPath: '/signin'
+      preLoaderRoute: typeof SigninRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/priorities': {
@@ -485,6 +505,7 @@ const rootRouteChildren: RootRouteChildren = {
   OpinionRoute: OpinionRoute,
   PollingRoute: PollingRoute,
   PrioritiesRoute: PrioritiesRoute,
+  SigninRoute: SigninRoute,
   StoriesRoute: StoriesRoute,
   UnsubscribeRoute: UnsubscribeRoute,
   AdminActivitiesRoute: AdminActivitiesRoute,

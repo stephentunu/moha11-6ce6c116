@@ -6,7 +6,7 @@ import {
   ChevronDown, ChevronRight, Users, Banknote,
   CheckSquare, X,
 } from "lucide-react";
-import { generateBursaryPdf, generateBroadsheetPdf, type BroadsheetRow } from "@/lib/bursary-pdf";
+import { generateBursaryPdf, generateBroadsheetPdf, type BroadsheetRow, type BursaryPdfData } from "@/lib/bursary-pdf";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -62,7 +62,6 @@ type Row = {
   school_county: string | null;
   school_sub_county: string | null;
   year_of_admission: string | null;
-  student_outstanding: string | null;
   school_bank_account: string | null;
   guardian_name: string;
   guardian_phone: string;
@@ -74,10 +73,9 @@ type Row = {
   parent_disability: boolean | null;
   parent_disability_detail: string | null;
   siblings_in_school: number | null;
-  total_fee_payable: number | null;
-  fee_arrears: number | null;
+  student_annual_fee: number | null;
+  outstanding_balance: number | null;
   monthly_budget: number | null;
-  estimated_fee_balances: number | null;
   amount_requested: number | null;
   received_bursary_before: boolean | null;
   previous_bursary_source: string | null;
@@ -832,6 +830,12 @@ function AdminBursariesPage() {
                   <Detail label="Father alive" value={yn(selected.father_alive)} />
                   <Detail label="Mother alive" value={yn(selected.mother_alive)} />
                   <Detail label="Student disability" value={selected.student_disability ? (selected.student_disability_detail || "Yes") : "No"} />
+                  <Detail label="Student annual fee" value={selected.student_annual_fee ? `KSh ${Number(selected.student_annual_fee).toLocaleString()}` : null} />
+                  <Detail label="Outstanding balance" value={selected.outstanding_balance ? `KSh ${Number(selected.outstanding_balance).toLocaleString()}` : null} />
+                  <Detail
+                    label="Received bursary before"
+                    value={selected.received_bursary_before ? `Yes${selected.previous_bursary_source ? ` — ${selected.previous_bursary_source}` : ""}${selected.previous_bursary_amount ? ` (KSh ${Number(selected.previous_bursary_amount).toLocaleString()})` : ""}` : "No"}
+                  />
                 </DetailGroup>
                 {selected.father_alive && (
                   <DetailGroup title="Father">
@@ -856,7 +860,6 @@ function AdminBursariesPage() {
                   <Detail label="Sub-county" value={selected.school_sub_county} />
                   <Detail label="Year of admission" value={selected.year_of_admission} />
                   <Detail label="Bank account" value={selected.school_bank_account} />
-                  <Detail label="Outstanding" value={selected.student_outstanding} full />
                 </DetailGroup>
                 <DetailGroup title="Primary Contactable Parent / Guardian">
                   <Detail label="Name" value={selected.guardian_name} />
@@ -870,11 +873,6 @@ function AdminBursariesPage() {
                   <Detail label="Children in school" value={String(selected.siblings_in_school ?? "0")} />
                   <Detail label="Monthly budget" value={selected.monthly_budget ? `KSh ${Number(selected.monthly_budget).toLocaleString()}` : null} />
                   <Detail label="Amount requested" value={selected.amount_requested ? `KSh ${Number(selected.amount_requested).toLocaleString()}` : null} />
-                  <Detail
-                    label="Previously received bursary"
-                    value={selected.received_bursary_before ? `Yes${selected.previous_bursary_source ? ` — ${selected.previous_bursary_source}` : ""}${selected.previous_bursary_amount ? ` (KSh ${Number(selected.previous_bursary_amount).toLocaleString()})` : ""}` : "No"}
-                    full
-                  />
                   <Detail label="Submitted" value={new Date(selected.created_at).toLocaleString()} />
                 </DetailGroup>
               </div>
@@ -894,7 +892,7 @@ function AdminBursariesPage() {
               )}
               <DialogFooter className="gap-2 sm:gap-2">
                 <Button variant="outline" onClick={() => setSelected(null)}>Close</Button>
-                <Button variant="outline" onClick={() => generateBursaryPdf(selected)}>
+                <Button variant="outline" onClick={() => generateBursaryPdf(toPdfData(selected))}>
                   <Download className="h-4 w-4" /> Download PDF
                 </Button>
                 <Button variant="hero" onClick={() => { openSms(selected); setSelected(null); }}>
@@ -965,3 +963,57 @@ function DetailGroup({ title, children }: { title: string; children: React.React
 }
 
 const yn = (v: boolean | null | undefined) => (v === null || v === undefined ? "—" : v ? "Yes" : "No");
+
+/**
+ * Maps a saved database Row into the exact shape the PDF generator expects.
+ * Keeping this as a single explicit function (rather than passing `selected`
+ * straight into generateBursaryPdf) guarantees the downloadable form always
+ * reflects the real columns that were actually saved — no stale/renamed
+ * field names slipping through.
+ */
+function toPdfData(r: Row): BursaryPdfData {
+  return {
+    reference: r.reference,
+    student_name: r.student_name,
+    registration_number: r.registration_number,
+    dob: r.dob,
+    gender: r.gender,
+    current_grade: r.current_grade,
+    father_alive: r.father_alive,
+    mother_alive: r.mother_alive,
+    father_name: r.father_name,
+    father_phone: r.father_phone,
+    father_occupation: r.father_occupation,
+    father_national_id: r.father_national_id,
+    mother_name: r.mother_name,
+    mother_phone: r.mother_phone,
+    mother_occupation: r.mother_occupation,
+    mother_national_id: r.mother_national_id,
+    student_disability: r.student_disability,
+    student_disability_detail: r.student_disability_detail,
+    student_annual_fee: r.student_annual_fee,
+    outstanding_balance: r.outstanding_balance,
+    school_name: r.school_name,
+    school_category: r.school_category,
+    school_county: r.school_county,
+    school_sub_county: r.school_sub_county,
+    year_of_admission: r.year_of_admission,
+    school_bank_account: r.school_bank_account,
+    guardian_name: r.guardian_name,
+    guardian_phone: r.guardian_phone,
+    parent_national_id: r.parent_national_id,
+    parent_occupation: r.parent_occupation,
+    parent_residence_sub_county: r.parent_residence_sub_county,
+    ward: r.ward,
+    polling_station: r.polling_station,
+    parent_disability: r.parent_disability,
+    parent_disability_detail: r.parent_disability_detail,
+    siblings_in_school: r.siblings_in_school,
+    monthly_budget: r.monthly_budget,
+    amount_requested: r.amount_requested,
+    received_bursary_before: r.received_bursary_before,
+    previous_bursary_source: r.previous_bursary_source,
+    previous_bursary_amount: r.previous_bursary_amount,
+    reason: r.reason,
+  };
+}

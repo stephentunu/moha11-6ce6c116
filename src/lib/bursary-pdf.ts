@@ -7,6 +7,7 @@ export type BursaryPdfData = {
   dob?: string | null;
   gender?: string | null;
   current_grade: string;
+  birth_cert_number?: string | null;
   father_alive?: boolean | null;
   mother_alive?: boolean | null;
   father_name?: string | null;
@@ -19,13 +20,15 @@ export type BursaryPdfData = {
   mother_national_id?: string | null;
   student_disability?: boolean | null;
   student_disability_detail?: string | null;
+  student_outstanding_ability?: string | null;
+  student_annual_fee?: number | null;
+  outstanding_balance?: number | null;
 
   school_name: string;
   school_category?: string | null;
   school_county?: string | null;
   school_sub_county?: string | null;
   year_of_admission?: string | null;
-  student_outstanding?: string | null;
   school_bank_account?: string | null;
 
   guardian_name: string;
@@ -38,10 +41,7 @@ export type BursaryPdfData = {
   parent_disability?: boolean | null;
   parent_disability_detail?: string | null;
   siblings_in_school?: number | null;
-  total_fee_payable?: number | null;
-  fee_arrears?: number | null;
   monthly_budget?: number | null;
-  estimated_fee_balances?: number | null;
   amount_requested?: number | null;
   received_bursary_before?: boolean | null;
   previous_bursary_source?: string | null;
@@ -103,15 +103,21 @@ export function generateBursaryPdf(d: BursaryPdfData) {
   y += 5;
   kvRows(doc, y, [
     ["Student Name", dash(d.student_name)],
-    ["Registration / Admission No.", dash(d.registration_number)],
+    ["Admission / Registration No.", dash(d.registration_number)],
     ["Date of Birth", dash(d.dob)],
-    ["Grade / Class", dash(d.current_grade)],
     ["Gender", dash(d.gender)],
+    ["Grade / Class", dash(d.current_grade)],
+    ["Birth Certificate No.", dash(d.birth_cert_number)],
     ["Father Alive", bool(d.father_alive)],
     ["Mother Alive", bool(d.mother_alive)],
     ["Living with Disability", d.student_disability ? `Yes — ${d.student_disability_detail || "specified"}` : "No"],
+    ["Student's Outstanding Ability", dash(d.student_outstanding_ability)],
+    ["Student Annual Fee Payable", money(d.student_annual_fee)],
+    ["Student's Outstanding Balance", money(d.outstanding_balance)],
+    ["Amount Applying For", money(d.amount_requested)],
+    ["Received Bursary in Last 6 Months?", d.received_bursary_before ? `Yes — ${d.previous_bursary_source || "source unspecified"} (${money(d.previous_bursary_amount)})` : "No"],
   ]);
-  y += rowHeight(8);
+  y += rowHeight(14);
 
   // B.1: Father's details (only if alive)
   if (d.father_alive) {
@@ -152,10 +158,9 @@ export function generateBursaryPdf(d: BursaryPdfData) {
     ["County", dash(d.school_county)],
     ["Sub-County", dash(d.school_sub_county)],
     ["Year of Admission", dash(d.year_of_admission)],
-    ["Student's Outstanding", dash(d.student_outstanding)],
     ["School Bank Account", dash(d.school_bank_account)],
   ]);
-  y += rowHeight(7);
+  y += rowHeight(6);
 
   // D: Parent/Guardian
   y += 2;
@@ -170,16 +175,10 @@ export function generateBursaryPdf(d: BursaryPdfData) {
     ["Ward", dash(d.ward)],
     ["Polling Station", dash(d.polling_station)],
     ["Living with Disability", d.parent_disability ? `Yes — ${d.parent_disability_detail || "specified"}` : "No"],
-    ["Children in High School / University", dash(d.siblings_in_school ?? 0)],
-    ["Total Fee Payable (all children)", money(d.total_fee_payable)],
-    ["Fee Arrears (all children)", money(d.fee_arrears)],
+    ["Children in School / University", dash(d.siblings_in_school ?? 0)],
     ["Parent's Monthly Budget", money(d.monthly_budget)],
-    ["Estimated Total Fee Balances", money(d.estimated_fee_balances)],
-    ["Amount Applying For", money(d.amount_requested)],
-    ["Previously Received Bursary?", d.received_bursary_before ? `Yes — ${d.previous_bursary_source || "source unspecified"}` : "No"],
-    ["Previous Bursary Amount", money(d.previous_bursary_amount)],
   ]);
-  y += rowHeight(16);
+  y += rowHeight(10);
 
   // Reason
   y += 2;
