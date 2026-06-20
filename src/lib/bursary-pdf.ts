@@ -1,4 +1,4 @@
-import jsPDF from "jspdf";
+import { jsPDF } from "jspdf";
 
 export type BursaryPdfData = {
   reference: string;
@@ -89,7 +89,7 @@ export function generateBursaryPdf(d: BursaryPdfData) {
     "• Parent's National ID  • Student's Birth Certificate  • Parent's Death Certificate(s)",
     "• Current report form and fee structure  • NCPWD card or letter  • Admission letter where necessary",
     "• Any other crucial supporting documents",
-    "Duly filled form to be returned to the Moha Coordination Office, Kiamako-Mathare.",
+    "Duly filled form to be returned to the Moha Coordination Office, Kiamaiko-Mathare.",
     "STUDENTS LIVING WITH DISABILITY ARE ENCOURAGED TO APPLY.",
   ];
   for (const line of instr) {

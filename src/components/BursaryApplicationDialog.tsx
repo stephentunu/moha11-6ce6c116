@@ -237,11 +237,30 @@ export function BursaryApplicationDialog({ trigger }: { trigger: ReactNode }) {
         previous_bursary_amount: form.receivedBursaryBefore && form.previousBursaryAmount ? Number(form.previousBursaryAmount) : null,
         reason: form.reason || null,
       };
-      const { data, error } = await supabase
+      let { data, error } = await supabase
         .from("bursary_applications" as never)
         .insert(payload as never)
         .select("reference")
         .single();
+
+      // Resilience: if Supabase rejects the insert because a column doesn't
+      // exist yet (e.g. a field was added to the form before the database
+      // migration was run), retry once without the newer optional fields
+      // rather than losing the whole application.
+      if (error && /column .* does not exist/i.test(error.message)) {
+        const { student_annual_fee, outstanding_balance, ...fallbackPayload } = payload;
+        const retry = await supabase
+          .from("bursary_applications" as never)
+          .insert(fallbackPayload as never)
+          .select("reference")
+          .single();
+        data = retry.data;
+        error = retry.error;
+        if (!error) {
+          toast.info("Application saved. Some new fields will sync once the database is updated.");
+        }
+      }
+
       if (error) throw error;
       const ref = (data as unknown as { reference: string }).reference;
       setResult({ reference: ref });
@@ -313,7 +332,7 @@ export function BursaryApplicationDialog({ trigger }: { trigger: ReactNode }) {
             Constituency Bursary Application Form
           </DialogTitle>
           <DialogDescription>
-            Ward Bursary Application Form — Term 2 (2026/2027). Complete all four sections and download
+            Constituency Bursary Application Form — Term 2 (2026/2027). Complete all four sections and download
             your application form to sign and submit at the Moha Coordination Office, Kiamaiko-Mathare.
           </DialogDescription>
         </DialogHeader>
