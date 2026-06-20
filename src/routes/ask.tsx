@@ -11,22 +11,16 @@ import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
 import { Toaster } from "@/components/ui/sonner";
 import { addMessage } from "@/lib/admin-store";
+import { seoMeta, seoLinks } from "@/lib/seo";
 
 export const Route = createFileRoute("/ask")({
   head: () => ({
-    meta: [
-      { title: "Ask Moha — Direct Q&A" },
-      {
-        name: "description",
-        content:
-          "Ask Moha anything — about the manifesto, his vision for Mathare, or how to get involved.",
-      },
-      { property: "og:title", content: "Ask Moha — Direct Q&A" },
-      {
-        property: "og:description",
-        content: "Your questions deserve answers.",
-      },
-    ],
+    meta: seoMeta({
+      title: "Ask Moha — Direct Q&A",
+      description: "Ask Moha anything — about the manifesto, his vision for Mathare, or how to get involved.",
+      path: "/ask",
+    }),
+    links: seoLinks("/ask"),
   }),
   component: AskPage,
 });

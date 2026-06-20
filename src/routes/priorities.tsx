@@ -15,6 +15,7 @@ import {
 import { PageHero } from "@/components/PageHero";
 import { cn } from "@/lib/utils";
 import { useContent } from "@/lib/admin-store";
+import { seoMeta, seoLinks } from "@/lib/seo";
 import educationImg from "@/assets/moha/moha25.jpeg";
 import healthImg from "@/assets/moha/moha10.jpeg";
 import businessImg from "@/assets/moha/foundation5.jpeg";
@@ -23,19 +24,13 @@ import otherImg from "@/assets/moha/donation3.jpeg";
 
 export const Route = createFileRoute("/priorities")({
   head: () => ({
-    meta: [
-      { title: "Priorities — Moha Delivers | Mathare 2027" },
-      {
-        name: "description",
-        content:
-          "Education, Health & Environment, Businesses, Security & Safety, Other Initiatives — Moha's five-pillar manifesto for Mathare 2027.",
-      },
-      { property: "og:title", content: "Priorities — Moha Delivers" },
-      {
-        property: "og:description",
-        content: "Four pillars. One Mathare. Moha's plan for 2027.",
-      },
-    ],
+    meta: seoMeta({
+      title: "Priorities — Moha Delivers",
+      description:
+        "Education, Health & Environment, Businesses, Security & Safety, Other Initiatives — Moha's five-pillar manifesto for Mathare 2027.",
+      path: "/priorities",
+    }),
+    links: seoLinks("/priorities"),
   }),
   component: PrioritiesPage,
 });

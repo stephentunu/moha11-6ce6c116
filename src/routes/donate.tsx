@@ -14,22 +14,17 @@ import impactImg1 from "@/assets/moha/donation3.jpeg";
 import impactImg2 from "@/assets/moha/foundation1.jpeg";
 import impactImg3 from "@/assets/moha/bursary1.jpeg";
 import impactImg4 from "@/assets/moha/foundation5.jpeg";
+import { seoMeta, seoLinks } from "@/lib/seo";
 
 export const Route = createFileRoute("/donate")({
   head: () => ({
-    meta: [
-      { title: "Donate — Power Moha's Movement | Mathare 2027" },
-      {
-        name: "description",
-        content:
-          "Support Moha's 2027 campaign for Mathare via M-Pesa or Card. From KSh 500 to KSh 10,000 — every shilling delivers.",
-      },
-      { property: "og:title", content: "Donate — Power the Movement" },
-      {
-        property: "og:description",
-        content: "M-Pesa or Card. Every shilling moves Mathare forward.",
-      },
-    ],
+    meta: seoMeta({
+      title: "Donate — Power Moha's Movement",
+      description:
+        "Support Moha's 2027 campaign for Mathare via M-Pesa or Card. From KSh 500 to KSh 10,000 — every shilling delivers.",
+      path: "/donate",
+    }),
+    links: seoLinks("/donate"),
   }),
   component: DonatePage,
 });

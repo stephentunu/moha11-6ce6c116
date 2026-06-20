@@ -16,6 +16,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { SectionHeader } from "@/components/SectionHeader";
 import { useContent, useActivities, filterUpcoming } from "@/lib/admin-store";
+import { seoMeta, seoLinks, personJsonLd } from "@/lib/seo";
 import heroImg from "@/assets/moha/moha-portrait.jpeg";
 import rallyImg from "@/assets/moha/foundation1.jpeg";
 import educationImg from "@/assets/moha/moha35.jpeg";
@@ -31,18 +32,16 @@ import galleryImg6 from "@/assets/moha/moha20.jpeg";
 
 export const Route = createFileRoute("/")({
   head: () => ({
-    meta: [
-      { title: "Moha Delivers — Kuna More na Moha! | Mathare 2027" },
-      {
-        name: "description",
-        content:
-          "Join the movement. Moha is the 2027 MP aspirant for Mathare delivering on education, health, business, and environment. Kuna More na Moha!",
-      },
-      { property: "og:title", content: "Moha Delivers — Mathare 2027" },
-      {
-        property: "og:description",
-        content: "A people-powered movement for Mathare. Kuna More na Moha!",
-      },
+    meta: seoMeta({
+      title: "Moha Delivers — Kuna More na Moha!",
+      description:
+        "Join the movement. Moha is the 2027 MP aspirant for Mathare delivering on education, health, business, and environment. Kuna More na Moha!",
+      path: "/",
+      bare: true,
+    }),
+    links: seoLinks("/"),
+    scripts: [
+      { type: "application/ld+json", children: JSON.stringify(personJsonLd()) },
     ],
   }),
   component: HomePage,

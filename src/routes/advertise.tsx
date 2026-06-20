@@ -76,22 +76,17 @@ import {
 } from "@/lib/admin-store";
 import { useLoyalty, shareBusiness } from "@/lib/loyalty";
 import { supabase } from "@/integrations/supabase/client";
+import { seoMeta, seoLinks } from "@/lib/seo";
 
 export const Route = createFileRoute("/advertise")({
   head: () => ({
-    meta: [
-      { title: "Advertise With Us — Mathare Business Hub | Moha Delivers" },
-      {
-        name: "description",
-        content:
-          "List your Mathare business on the Moha Business Hub. Multiple photos, payment options, delivery info — free for every hustler.",
-      },
-      { property: "og:title", content: "Advertise With Us — Mathare Business Hub" },
-      {
-        property: "og:description",
-        content: "Supporting Mathare Businesses — Moha Delivers. Free directory for local entrepreneurs.",
-      },
-    ],
+    meta: seoMeta({
+      title: "Advertise With Us — Mathare Business Hub",
+      description:
+        "List your Mathare business on the Moha Business Hub. Multiple photos, payment options, delivery info — free for every hustler.",
+      path: "/advertise",
+    }),
+    links: seoLinks("/advertise"),
   }),
   component: AdvertisePage,
 });

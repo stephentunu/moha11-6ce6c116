@@ -4,6 +4,7 @@ import { Navbar } from "@/components/Navbar";
 import { Footer } from "@/components/Footer";
 import { ChatWidget } from "@/components/ChatWidget";
 import { bumpVisitOncePerSession } from "@/lib/loyalty";
+import { SITE_NAME, SITE_URL, DEFAULT_OG_IMAGE, TWITTER_HANDLE, organizationJsonLd } from "@/lib/seo";
 
 import appCss from "../styles.css?url";
 
@@ -32,34 +33,54 @@ export const Route = createRootRoute({
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "Moha Delivers — Mathare 2027" },
+      { title: `${SITE_NAME} — Mathare 2027` },
       {
         name: "description",
         content:
           "Moha for Mathare 2027 — a movement for education, health, business, and environment. Kuna More na Moha!",
       },
       { name: "author", content: "Moha for Mathare" },
-      { property: "og:title", content: "Moha Delivers — Mathare 2027" },
+      { name: "theme-color", content: "#14532d" },
+      { name: "robots", content: "index, follow" },
+
+      // Open Graph defaults (overridden per-page via seoMeta())
+      { property: "og:title", content: `${SITE_NAME} — Mathare 2027` },
       {
         property: "og:description",
-        content: "A movement for Mathare. Kuna More na Moha!",
+        content: "A people-powered movement for Mathare. Kuna More na Moha!",
       },
       { property: "og:type", content: "website" },
+      { property: "og:url", content: SITE_URL },
+      { property: "og:image", content: DEFAULT_OG_IMAGE },
+      { property: "og:image:width", content: "1200" },
+      { property: "og:image:height", content: "630" },
+      { property: "og:site_name", content: SITE_NAME },
+      { property: "og:locale", content: "en_KE" },
+
+      // Twitter defaults
       { name: "twitter:card", content: "summary_large_image" },
-      { name: "twitter:title", content: "Moha Delivers — Mathare 2027" },
-      { name: "description", content: "Moha Mathare Connect is a campaign website for an MP aspirant, featuring AI, live polling, and donations." },
-      { property: "og:description", content: "Moha Mathare Connect is a campaign website for an MP aspirant, featuring AI, live polling, and donations." },
-      { name: "twitter:description", content: "Moha Mathare Connect is a campaign website for an MP aspirant, featuring AI, live polling, and donations." },
-      { property: "og:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/835fe492-3478-47bf-874f-fc8c7eb5c36c/id-preview-1d664b0c--09fabeb3-c879-4fa6-98a5-5780a2ba97cd.lovable.app-1777063077478.png" },
-      { name: "twitter:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/835fe492-3478-47bf-874f-fc8c7eb5c36c/id-preview-1d664b0c--09fabeb3-c879-4fa6-98a5-5780a2ba97cd.lovable.app-1777063077478.png" },
+      { name: "twitter:title", content: `${SITE_NAME} — Mathare 2027` },
+      { name: "twitter:description", content: "A people-powered movement for Mathare. Kuna More na Moha!" },
+      { name: "twitter:image", content: DEFAULT_OG_IMAGE },
+      { name: "twitter:site", content: TWITTER_HANDLE },
     ],
     links: [
       { rel: "stylesheet", href: appCss },
+      { rel: "canonical", href: SITE_URL },
+      { rel: "icon", type: "image/png", href: "/favicon.png" },
+      { rel: "apple-touch-icon", href: "/favicon.png" },
+      { rel: "manifest", href: "/site.webmanifest" },
       { rel: "preconnect", href: "https://fonts.googleapis.com" },
       { rel: "preconnect", href: "https://fonts.gstatic.com", crossOrigin: "anonymous" },
       {
         rel: "stylesheet",
         href: "https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap",
+      },
+    ],
+    scripts: [
+      {
+        type: "application/ld+json",
+        children: JSON.stringify(organizationJsonLd()),
       },
     ],
   }),

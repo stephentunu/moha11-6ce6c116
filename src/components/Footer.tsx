@@ -143,7 +143,7 @@ export function Footer() {
               </li>
               <li className="flex items-start gap-2">
                 <Mail className="h-4 w-4 mt-0.5 text-gold shrink-0" />
-                hello@mohadlivers.com
+                hello@mohadelivers.com
               </li>
             </ul>
 

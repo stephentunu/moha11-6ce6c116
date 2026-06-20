@@ -250,7 +250,6 @@ function useStore<T>(key: string, fallback: T): [T, (v: T | ((p: T) => T)) => vo
 }
 
 // ===== Businesses (backed by Supabase) =====
-import { supabase } from "@/integrations/supabase/client";
 
 type BusinessRow = {
   id: string;

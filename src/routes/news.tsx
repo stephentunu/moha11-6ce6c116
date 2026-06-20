@@ -1,4 +1,3 @@
-
 import { createFileRoute } from "@tanstack/react-router";
 import { motion } from "framer-motion";
 import { Calendar, ArrowRight } from "lucide-react";
@@ -8,21 +7,16 @@ import educationImg from "@/assets/moha/bursary1.jpeg";
 import healthImg from "@/assets/moha/moha10.jpeg";
 import environmentImg from "@/assets/moha/environment-cleanup.jpg";
 import businessImg from "@/assets/moha/foundation5.jpeg";
+import { seoMeta, seoLinks } from "@/lib/seo";
 
 export const Route = createFileRoute("/news")({
   head: () => ({
-    meta: [
-      { title: "Top Stories — Moha Campaign News" },
-      {
-        name: "description",
-        content: "The latest news, milestones, and updates from Moha's Mathare 2027 campaign.",
-      },
-      { property: "og:title", content: "Top Stories — Moha Campaign News" },
-      {
-        property: "og:description",
-        content: "Campaign milestones, community wins, and movement updates.",
-      },
-    ],
+    meta: seoMeta({
+      title: "Top Stories — Moha Campaign News",
+      description: "The latest news, milestones, and updates from Moha's Mathare 2027 campaign.",
+      path: "/news",
+    }),
+    links: seoLinks("/news"),
   }),
   component: NewsPage,
 });

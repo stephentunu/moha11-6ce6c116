@@ -21,22 +21,17 @@ import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { Toaster } from "@/components/ui/sonner";
 import { usePolls, votePoll, MATHARE_WARDS, type Poll } from "@/lib/admin-store";
+import { seoMeta, seoLinks } from "@/lib/seo";
 
 export const Route = createFileRoute("/polling")({
   head: () => ({
-    meta: [
-      { title: "Community Polling — Moha for Mathare" },
-      {
-        name: "description",
-        content:
-          "Select your Mathare ward and vote on Moha's initiatives, projects and 2027 MP candidacy. Your voice shapes the manifesto.",
-      },
-      { property: "og:title", content: "Community Polling — Moha for Mathare" },
-      {
-        property: "og:description",
-        content: "Pick your ward and cast your vote — every voice from Mathare counts.",
-      },
-    ],
+    meta: seoMeta({
+      title: "Community Polling — Moha for Mathare",
+      description:
+        "Select your Mathare ward and vote on Moha's initiatives, projects and 2027 MP candidacy. Your voice shapes the manifesto.",
+      path: "/polling",
+    }),
+    links: seoLinks("/polling"),
   }),
   component: PollingPage,
 });

@@ -91,22 +91,17 @@ import ecd from "@/assets/moha/gallery/ecd.jpeg";
 import ecd1 from "@/assets/moha/gallery/ecd1.jpeg";
 import ecd2 from "@/assets/moha/gallery/ecd2.jpeg";
 import children from "@/assets/moha/gallery/children.jpeg";
+import { seoMeta, seoLinks } from "@/lib/seo";
 
 export const Route = createFileRoute("/foundations")({
   head: () => ({
-    meta: [
-      { title: "Foundation — Moha for Mathare" },
-      {
-        name: "description",
-        content:
-          "Moha's foundations: vulnerable groups, bursaries, PWDs, youth empowerment, sports & talent, school supplies, business support, and early childhood care in Mathare.",
-      },
-      { property: "og:title", content: "Foundation — Moha for Mathare" },
-      {
-        property: "og:description",
-        content: "Service in action across Mathare — youth, sports, education, business and care.",
-      },
-    ],
+    meta: seoMeta({
+      title: "Foundation — Moha for Mathare",
+      description:
+        "Moha's foundations: vulnerable groups, bursaries, PWDs, youth empowerment, sports & talent, school supplies, business support, and early childhood care in Mathare.",
+      path: "/foundations",
+    }),
+    links: seoLinks("/foundations"),
   }),
   component: FoundationsPage,
 });

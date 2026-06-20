@@ -8,22 +8,16 @@ import atienoImg from "@/assets/moha/donation3.jpeg";
 import davidImg from "@/assets/moha/foundation10.jpeg";
 import sarahImg from "@/assets/moha/moha40.jpeg";
 import jumaImg from "@/assets/moha/foundation1.jpeg";
+import { seoMeta, seoLinks } from "@/lib/seo";
 
 export const Route = createFileRoute("/stories")({
   head: () => ({
-    meta: [
-      { title: "Featured Stories — Moha for Mathare" },
-      {
-        name: "description",
-        content:
-          "Real testimonials from Mathare residents whose lives have been touched by Moha's work.",
-      },
-      { property: "og:title", content: "Featured Stories — Moha for Mathare" },
-      {
-        property: "og:description",
-        content: "Voices of Mathare — testimonials of impact.",
-      },
-    ],
+    meta: seoMeta({
+      title: "Featured Stories — Moha for Mathare",
+      description: "Real testimonials from Mathare residents whose lives have been touched by Moha's work.",
+      path: "/stories",
+    }),
+    links: seoLinks("/stories"),
   }),
   component: StoriesPage,
 });
