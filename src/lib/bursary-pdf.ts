@@ -351,7 +351,240 @@ function checkbox(doc: jsPDF, x: number, y: number, label: string) {
   doc.text(label, x + 5, y + 3.2);
 }
 
-// ─── BROADSHEET PDF ───────────────────────────────────────────────────────────
+// ─── SCHOOL CONFIRMATION LETTER ────────────────────────────────────────────
+// Generates the official "Confirmation of Bursary Beneficiaries" letter sent
+// to a school's Principal — formatted to match the Moha Education Kitty
+// letterhead exactly: address block, RE line, narrative paragraph with the
+// cheque number and total, a 15-row NO/NAME/FORM-ADM NO/AMOUNT table, closing
+// paragraph, and signature block.
+
+export type ConfirmationLetterRow = {
+  student_name: string;
+  registration_number?: string | null;
+  current_grade: string;
+  amount_requested?: number | null;
+};
+
+export type ConfirmationLetterOptions = {
+  schoolName: string;
+  termLabel?: string;       // e.g. "2026 T2" — defaults to current year + "T2"
+  chequeNumber?: string;    // left blank (dotted line) if not provided
+  dateLabel?: string;       // left blank (dotted line) if not provided
+  officerName?: string;
+  officerPhone?: string;
+};
+
+export function generateConfirmationLetter(
+  rows: ConfirmationLetterRow[],
+  opts: ConfirmationLetterOptions,
+) {
+  const doc = new jsPDF({ unit: "mm", format: "a4", orientation: "portrait" });
+  const W = 210;
+  const M = 18;
+  const contentW = W - 2 * M;
+
+  const term = opts.termLabel || `${new Date().getFullYear()} T2`;
+  const officerName = opts.officerName || "Benard Omondi";
+  const officerPhone = opts.officerPhone || "0725104771";
+  const total = rows.reduce((s, r) => s + (r.amount_requested ?? 0), 0);
+
+  let y = 16;
+
+  // ── Letterhead ───────────────────────────────────────────────────────────
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(20);
+  doc.setTextColor(37, 78, 173); // letterhead blue, matching the official template
+  doc.text("MOHA EDUCATION KITTY", W / 2, y, { align: "center" });
+  doc.setTextColor(0, 0, 0);
+  y += 6.5;
+
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(10.5);
+  doc.text("P.O. BOX 12596-00100", W / 2, y, { align: "center" });
+  y += 5;
+  doc.text("JonSaga, Tavern Building, -Kiamaiko", W / 2, y, { align: "center" });
+  y += 5;
+  doc.setFont("helvetica", "bold");
+  const nairobiW = doc.getTextWidth("NAIROBI");
+  doc.text("NAIROBI", W / 2, y, { align: "center" });
+  doc.setLineWidth(0.4);
+  doc.line(W / 2 - nairobiW / 2, y + 0.8, W / 2 + nairobiW / 2, y + 0.8);
+  y += 12;
+
+  // ── Date ─────────────────────────────────────────────────────────────────
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(10.5);
+  const dateText = `Date: ${opts.dateLabel || ""}`;
+  doc.text(dateText, W - M, y, { align: "right" });
+  if (!opts.dateLabel) {
+    const labelW = doc.getTextWidth("Date: ");
+    doc.setLineWidth(0.3);
+    doc.line(W - M - 45, y + 0.8, W - M, y + 0.8);
+  }
+  y += 12;
+
+  // ── Addressee ────────────────────────────────────────────────────────────
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(10.5);
+  doc.text("THE PRINCIPAL,", M, y);
+  y += 7;
+  doc.setFont("helvetica", "normal");
+  doc.setLineWidth(0.25);
+  doc.line(M, y, M + 85, y);
+  doc.text(opts.schoolName, M + 1, y - 1.3);
+  y += 7;
+  doc.line(M, y, M + 85, y);
+  y += 9;
+
+  // ── RE line ──────────────────────────────────────────────────────────────
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(10.5);
+  const reLabel = "RE: ";
+  doc.text(reLabel, M, y);
+  const reLabelW = doc.getTextWidth(reLabel);
+  const reText = `CONFIRMATION OF BURSARY BENEFICIARIES FOR THE YEAR ${term}`;
+  doc.text(reText, M + reLabelW, y);
+  const reTextW = doc.getTextWidth(reText);
+  doc.setLineWidth(0.3);
+  doc.line(M + reLabelW, y + 0.8, M + reLabelW + reTextW, y + 0.8);
+  y += 8;
+
+  // ── Narrative paragraph ──────────────────────────────────────────────────
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(10.5);
+  const introLine1 = "This letter serves to confirm that the following students from your school are successful beneficiaries of";
+  doc.text(introLine1, M, y, { maxWidth: contentW });
+  y += 6;
+
+  doc.setFont("helvetica", "bold");
+  const boldPart = "Moha Bursary Kitty";
+  doc.text(boldPart, M, y);
+  const boldPartW = doc.getTextWidth(boldPart);
+  doc.setFont("helvetica", "normal");
+  doc.text(` for the year `, M + boldPartW, y);
+  const yearLabelW = doc.getTextWidth(` for the year `);
+  doc.setFont("helvetica", "bold");
+  doc.text(term, M + boldPartW + yearLabelW, y);
+  const termW = doc.getTextWidth(term);
+  doc.setFont("helvetica", "normal");
+  doc.text(". The total amount is Ksh", M + boldPartW + yearLabelW + termW, y);
+  y += 6;
+
+  // Amount + cheque line — the total is always auto-calculated from the
+  // student list; only the cheque number itself is left blank until the
+  // admin has the physical cheque in hand.
+  const amountStr = total > 0 ? `${total.toLocaleString()}.00` : "";
+  doc.text(amountStr, M, y);
+  if (!amountStr) {
+    doc.setLineWidth(0.25);
+    doc.line(M, y + 0.8, M + 50, y + 0.8);
+  }
+  const amountTextW = amountStr ? doc.getTextWidth(amountStr) : 50;
+  doc.text(" in cheque No ", M + amountTextW + 2, y);
+  const chequeStr = opts.chequeNumber || "";
+  const chequeStartX = M + amountTextW + 2 + doc.getTextWidth(" in cheque No ");
+  doc.text(chequeStr, chequeStartX, y);
+  if (!chequeStr) {
+    doc.line(chequeStartX, y + 0.8, chequeStartX + 40, y + 0.8);
+  }
+  y += 6;
+  doc.text("distributed as below.", M, y);
+  y += 10;
+
+  // ── Table ────────────────────────────────────────────────────────────────
+  const colNo = { x: M, w: 12 };
+  const colName = { x: M + 12, w: 80 };
+  const colAdm = { x: M + 92, w: 45 };
+  const colAmt = { x: M + 137, w: contentW - 137 };
+  const headerH = 8;
+  const rowH = 7.6;
+  const tableRows = Math.max(rows.length, 15); // always at least 15 rows like the official template
+
+  const tableTop = y;
+
+  // Header row
+  doc.setLineWidth(0.35);
+  doc.setDrawColor(0, 0, 0);
+  doc.rect(M, y, contentW, headerH);
+  doc.line(colName.x, y, colName.x, y + headerH);
+  doc.line(colAdm.x, y, colAdm.x, y + headerH);
+  doc.line(colAmt.x, y, colAmt.x, y + headerH);
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(10);
+  doc.text("NO", colNo.x + colNo.w / 2, y + 5.5, { align: "center" });
+  doc.text("NAME", colName.x + 2, y + 5.5);
+  doc.text("FORM/ADM NO", colAdm.x + 2, y + 5.5);
+  doc.text("AMOUNT", colAmt.x + 2, y + 5.5);
+  y += headerH;
+
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(9.5);
+
+  for (let i = 0; i < tableRows; i++) {
+    // Page break if needed (rare for 15 rows on A4 portrait, but safe to guard)
+    if (y + rowH > 277) {
+      doc.addPage();
+      y = 20;
+    }
+
+    doc.rect(M, y, contentW, rowH);
+    doc.line(colName.x, y, colName.x, y + rowH);
+    doc.line(colAdm.x, y, colAdm.x, y + rowH);
+    doc.line(colAmt.x, y, colAmt.x, y + rowH);
+
+    doc.text(String(i + 1), colNo.x + colNo.w / 2, y + 5.2, { align: "center" });
+
+    const r = rows[i];
+    if (r) {
+      const nameLines = doc.splitTextToSize(r.student_name, colName.w - 4);
+      doc.text(String(nameLines[0] ?? ""), colName.x + 2, y + 5.2);
+
+      const admLabel = [r.current_grade, r.registration_number].filter(Boolean).join(" / ");
+      const admLines = doc.splitTextToSize(admLabel, colAdm.w - 4);
+      doc.text(String(admLines[0] ?? ""), colAdm.x + 2, y + 5.2);
+
+      if (r.amount_requested) {
+        doc.text(`${Number(r.amount_requested).toLocaleString()}.00`, colAmt.x + colAmt.w - 2, y + 5.2, { align: "right" });
+      }
+    }
+
+    y += rowH;
+  }
+
+  y += 8;
+
+  // ── Closing paragraph ────────────────────────────────────────────────────
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(10.5);
+  if (y > 255) { doc.addPage(); y = 20; }
+  doc.text(
+    "We are requested to distribute the funds accordingly. For any discrepancies or confirmation of the",
+    M, y, { maxWidth: contentW },
+  );
+  y += 5.5;
+  doc.text("receipts of the cheque, please contact the undersigned.", M, y);
+  y += 11;
+  doc.text("Thanks for your support and cooperation.", M, y);
+  y += 11;
+  doc.text("Yours faithfully,", M, y);
+  y += 14;
+
+  doc.setFont("helvetica", "normal");
+  doc.text(`${officerName} – `, M, y);
+  const nameLabelW = doc.getTextWidth(`${officerName} – `);
+  doc.setFont("helvetica", "bold");
+  doc.text(`${officerPhone} (WhatsApp)`, M + nameLabelW, y);
+  y += 5.5;
+  doc.setFont("helvetica", "bold");
+  const fieldOfficer = "Field Operations Officer";
+  doc.text(fieldOfficer, M, y);
+  doc.setLineWidth(0.3);
+  doc.line(M, y + 0.8, M + doc.getTextWidth(fieldOfficer), y + 0.8);
+
+  const safeSchool = opts.schoolName.replace(/[^a-z0-9]/gi, "-").slice(0, 40);
+  doc.save(`Moha-Confirmation-Letter-${safeSchool}-${Date.now()}.pdf`);
+}
+
 
 export type BroadsheetRow = {
   reference: string;

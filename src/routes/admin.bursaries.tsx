@@ -4,9 +4,9 @@ import {
   GraduationCap, Send, Eye, Trash2, Download, Search,
   FileSpreadsheet, CheckCircle2, School, ArrowUpDown,
   ChevronDown, ChevronRight, Users, Banknote,
-  CheckSquare, X,
+  CheckSquare, X, Mail, FileText, Calendar,
 } from "lucide-react";
-import { generateBursaryPdf, generateBroadsheetPdf, type BroadsheetRow, type BursaryPdfData } from "@/lib/bursary-pdf";
+import { generateBursaryPdf, generateBroadsheetPdf, generateConfirmationLetter, type BroadsheetRow, type BursaryPdfData, type ConfirmationLetterRow } from "@/lib/bursary-pdf";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -95,7 +95,7 @@ const STATUS_COLORS: Record<string, string> = {
   rejected:  "bg-rose-500/15 text-rose-700 dark:text-rose-400",
 };
 
-type Tab = "applications" | "broadsheet";
+type Tab = "applications" | "broadsheet" | "letters";
 type SortField = "student_name" | "school_name" | "ward" | "amount_requested" | "current_grade";
 
 function AdminBursariesPage() {
@@ -115,6 +115,15 @@ function AdminBursariesPage() {
   // Bulk selection
   const [checkedIds, setCheckedIds] = useState<Set<string>>(new Set());
   const [bulkBusy, setBulkBusy] = useState(false);
+
+  // School Confirmation Letter tab
+  const [letterSchoolSearch, setLetterSchoolSearch] = useState("");
+  const [letterSelectedSchool, setLetterSelectedSchool] = useState<string | null>(null);
+  const [letterChequeNumber, setLetterChequeNumber] = useState("");
+  const [letterDate, setLetterDate] = useState("");
+  const [letterOfficerName, setLetterOfficerName] = useState("Benard Omondi");
+  const [letterOfficerPhone, setLetterOfficerPhone] = useState("0725104771");
+  const [letterTerm, setLetterTerm] = useState(`${new Date().getFullYear()} T2`);
 
   const load = async () => {
     const { data, error } = await supabase
@@ -183,6 +192,32 @@ function AdminBursariesPage() {
   const grandTotal = useMemo(
     () => approvedRows.reduce((s, r) => s + (r.amount_requested ?? 0), 0),
     [approvedRows]
+  );
+
+  // Schools available for confirmation letters (only schools with at least
+  // one APPROVED applicant — this is what gets confirmed and sent for cheque
+  // distribution).
+  const letterSchoolList = useMemo(() => {
+    const q = letterSchoolSearch.trim().toLowerCase();
+    return Array.from(bySchool.entries())
+      .map(([school, schoolRows]) => ({
+        school,
+        count: schoolRows.length,
+        total: schoolRows.reduce((s, r) => s + (r.amount_requested ?? 0), 0),
+        category: schoolRows[0]?.school_category ?? null,
+      }))
+      .filter((s) => !q || s.school.toLowerCase().includes(q))
+      .sort((a, b) => a.school.localeCompare(b.school));
+  }, [bySchool, letterSchoolSearch]);
+
+  const letterSelectedRows = useMemo(
+    () => (letterSelectedSchool ? bySchool.get(letterSelectedSchool) ?? [] : []),
+    [bySchool, letterSelectedSchool]
+  );
+
+  const letterSelectedTotal = useMemo(
+    () => letterSelectedRows.reduce((s, r) => s + (r.amount_requested ?? 0), 0),
+    [letterSelectedRows]
   );
 
   const counts = useMemo(() => {
@@ -305,6 +340,28 @@ function AdminBursariesPage() {
     toast.success("Broadsheet PDF generated!");
   };
 
+  const downloadConfirmationLetter = () => {
+    if (!letterSelectedSchool || letterSelectedRows.length === 0) {
+      toast.error("Select a school with approved applicants first.");
+      return;
+    }
+    const rows: ConfirmationLetterRow[] = letterSelectedRows.map((r) => ({
+      student_name: r.student_name,
+      registration_number: r.registration_number,
+      current_grade: r.current_grade,
+      amount_requested: r.amount_requested,
+    }));
+    generateConfirmationLetter(rows, {
+      schoolName: letterSelectedSchool,
+      termLabel: letterTerm,
+      chequeNumber: letterChequeNumber.trim() || undefined,
+      dateLabel: letterDate.trim() || undefined,
+      officerName: letterOfficerName.trim() || undefined,
+      officerPhone: letterOfficerPhone.trim() || undefined,
+    });
+    toast.success(`Confirmation letter generated for ${letterSelectedSchool}`);
+  };
+
   const toggleSchool = (school: string) => {
     setBsExpanded((prev) => {
       const next = new Set(prev);
@@ -351,6 +408,18 @@ function AdminBursariesPage() {
                   {counts.approved}
                 </span>
               )}
+            </span>
+          </button>
+          <button
+            onClick={() => setTab("letters")}
+            className={`px-5 py-2 rounded-lg text-sm font-semibold transition-all ${
+              tab === "letters"
+                ? "bg-card shadow text-foreground"
+                : "text-muted-foreground hover:text-foreground"
+            }`}
+          >
+            <span className="flex items-center gap-2">
+              <Mail className="h-4 w-4" /> School Confirmation Letters
             </span>
           </button>
         </div>
@@ -801,6 +870,203 @@ function AdminBursariesPage() {
                 </div>
               </div>
             )}
+          </div>
+        )}
+
+        {/* ── SCHOOL CONFIRMATION LETTERS TAB ─────────────────────────────────── */}
+        {tab === "letters" && (
+          <div className="grid lg:grid-cols-[360px_1fr] gap-5">
+
+            {/* Left: school search & select */}
+            <div className="bg-card border border-border rounded-2xl p-5 space-y-4 h-fit">
+              <div>
+                <h2 className="font-display font-bold text-lg flex items-center gap-2">
+                  <Mail className="h-5 w-5 text-gold" />
+                  Confirmation Letters
+                </h2>
+                <p className="text-sm text-muted-foreground mt-0.5">
+                  Search a school, then generate its official confirmation-of-beneficiaries letter.
+                </p>
+              </div>
+
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input
+                  placeholder="Search school name…"
+                  value={letterSchoolSearch}
+                  onChange={(e) => setLetterSchoolSearch(e.target.value)}
+                  className="pl-9 h-10"
+                />
+              </div>
+
+              <div className="space-y-1.5 max-h-[480px] overflow-y-auto pr-1">
+                {letterSchoolList.length === 0 ? (
+                  <div className="text-center text-sm text-muted-foreground py-10">
+                    <School className="h-7 w-7 mx-auto mb-2 opacity-30" />
+                    {bySchool.size === 0
+                      ? "No approved applications yet."
+                      : "No school matches your search."}
+                  </div>
+                ) : (
+                  letterSchoolList.map(({ school, count, total, category }) => {
+                    const active = letterSelectedSchool === school;
+                    return (
+                      <button
+                        key={school}
+                        onClick={() => setLetterSelectedSchool(school)}
+                        className={`w-full text-left px-3.5 py-3 rounded-xl border transition-all ${
+                          active
+                            ? "border-primary bg-primary/5 shadow-sm"
+                            : "border-border hover:border-primary/40 hover:bg-muted/30"
+                        }`}
+                      >
+                        <p className="font-semibold text-sm text-foreground truncate">{school}</p>
+                        <div className="flex items-center justify-between mt-1">
+                          <span className="text-xs text-muted-foreground">
+                            {category && `${category} · `}{count} student{count !== 1 ? "s" : ""}
+                          </span>
+                          <span className="text-xs font-bold text-emerald-600">
+                            KSh {total.toLocaleString()}
+                          </span>
+                        </div>
+                      </button>
+                    );
+                  })
+                )}
+              </div>
+            </div>
+
+            {/* Right: letter preview details & generate */}
+            <div className="bg-card border border-border rounded-2xl p-6">
+              {!letterSelectedSchool ? (
+                <div className="h-full min-h-[400px] flex flex-col items-center justify-center text-center text-muted-foreground">
+                  <FileText className="h-12 w-12 mb-3 opacity-20" />
+                  <p className="font-semibold">Select a school to get started</p>
+                  <p className="text-sm mt-1 max-w-xs">
+                    Pick a school from the list to preview its beneficiaries and generate the official confirmation letter.
+                  </p>
+                </div>
+              ) : (
+                <div className="space-y-5">
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <h3 className="font-display font-bold text-xl text-foreground">{letterSelectedSchool}</h3>
+                      <p className="text-sm text-muted-foreground mt-0.5">
+                        {letterSelectedRows.length} approved student{letterSelectedRows.length !== 1 ? "s" : ""} · Total KSh {letterSelectedTotal.toLocaleString()}
+                      </p>
+                    </div>
+                    <Button variant="hero" onClick={downloadConfirmationLetter} className="gap-2 shrink-0">
+                      <Download className="h-4 w-4" /> Download Letter
+                    </Button>
+                  </div>
+
+                  {/* Letter details form */}
+                  <div className="grid sm:grid-cols-2 gap-4 bg-muted/20 border border-border rounded-xl p-4">
+                    <div>
+                      <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Term / Year</label>
+                      <Input
+                        value={letterTerm}
+                        onChange={(e) => setLetterTerm(e.target.value)}
+                        placeholder="e.g. 2026 T2"
+                        className="mt-1.5 h-9"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide flex items-center gap-1">
+                        <Calendar className="h-3 w-3" /> Date (optional)
+                      </label>
+                      <Input
+                        value={letterDate}
+                        onChange={(e) => setLetterDate(e.target.value)}
+                        placeholder="Leave blank for a signing line"
+                        className="mt-1.5 h-9"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Cheque Number (optional)</label>
+                      <Input
+                        value={letterChequeNumber}
+                        onChange={(e) => setLetterChequeNumber(e.target.value)}
+                        placeholder="Leave blank for a signing line"
+                        className="mt-1.5 h-9"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Total Amount (auto-calculated)</label>
+                      <Input
+                        value={`KSh ${letterSelectedTotal.toLocaleString()}.00`}
+                        disabled
+                        className="mt-1.5 h-9 font-semibold text-emerald-700 bg-emerald-50 border-emerald-200"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Field Officer Name</label>
+                      <Input
+                        value={letterOfficerName}
+                        onChange={(e) => setLetterOfficerName(e.target.value)}
+                        className="mt-1.5 h-9"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Field Officer Phone</label>
+                      <Input
+                        value={letterOfficerPhone}
+                        onChange={(e) => setLetterOfficerPhone(e.target.value)}
+                        className="mt-1.5 h-9"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Student list preview */}
+                  <div>
+                    <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-2">
+                      Beneficiaries — auto-filled from approved applications
+                    </p>
+                    <div className="border border-border rounded-xl overflow-hidden">
+                      <table className="w-full text-sm">
+                        <thead className="bg-muted/30 text-[11px] uppercase tracking-wider text-muted-foreground">
+                          <tr>
+                            <th className="text-left px-3 py-2 w-8">#</th>
+                            <th className="text-left px-3 py-2">Name</th>
+                            <th className="text-left px-3 py-2">Form / Adm No.</th>
+                            <th className="text-right px-3 py-2">Amount</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-border">
+                          {letterSelectedRows.map((r, i) => (
+                            <tr key={r.id} className={i % 2 === 1 ? "bg-muted/10" : ""}>
+                              <td className="px-3 py-2 text-muted-foreground text-xs">{i + 1}</td>
+                              <td className="px-3 py-2 font-medium text-foreground">{r.student_name}</td>
+                              <td className="px-3 py-2 text-muted-foreground text-xs">
+                                {[r.current_grade, r.registration_number].filter(Boolean).join(" / ")}
+                              </td>
+                              <td className="px-3 py-2 text-right font-semibold">
+                                {r.amount_requested ? `KSh ${Number(r.amount_requested).toLocaleString()}` : "—"}
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                        <tfoot>
+                          <tr className="bg-emerald-50">
+                            <td colSpan={3} className="px-3 py-2 text-xs font-bold uppercase tracking-wider text-emerald-700">
+                              Total
+                            </td>
+                            <td className="px-3 py-2 text-right font-bold text-emerald-700">
+                              KSh {letterSelectedTotal.toLocaleString()}
+                            </td>
+                          </tr>
+                        </tfoot>
+                      </table>
+                    </div>
+                  </div>
+
+                  <p className="text-[11px] text-muted-foreground">
+                    The downloaded letter follows the official Moha Education Kitty letterhead format —
+                    ready to print and send to the school for signing and cheque collection.
+                  </p>
+                </div>
+              )}
+            </div>
           </div>
         )}
       </div>
