@@ -1,14 +1,8 @@
 import { useEffect, useState } from "react";
-import { Link, useLocation, useNavigate } from "@tanstack/react-router";
-import { Menu, X, User, LogOut, ChevronDown } from "lucide-react";
+import { Link, useLocation } from "@tanstack/react-router";
+import { Menu, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import {
-  DropdownMenu, DropdownMenuContent, DropdownMenuItem,
-  DropdownMenuSeparator, DropdownMenuTrigger, DropdownMenuLabel,
-} from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
-import { useUserAuth } from "@/lib/user-auth";
-import { toast } from "sonner";
 import mohaLogo from "@/assets/moha/moha-portrait.jpeg";
 
 const links = [
@@ -20,14 +14,13 @@ const links = [
   { to: "/polling", label: "Polling" },
   { to: "/advertise", label: "Advertise With Us" },
   { to: "/ask", label: "Ask Me" },
+  { to: "/admin/login", label: "Admin" },
 ] as const;
 
 export function Navbar() {
   const [scrolled, setScrolled] = useState(false);
   const [open, setOpen] = useState(false);
   const location = useLocation();
-  const navigate = useNavigate();
-  const { isSignedIn, displayName, signOut } = useUserAuth();
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 30);
@@ -42,12 +35,6 @@ export function Navbar() {
 
   const isHome = location.pathname === "/";
   const transparent = isHome && !scrolled;
-
-  const handleSignOut = async () => {
-    await signOut();
-    toast.success("Signed out");
-    navigate({ to: "/" });
-  };
 
   return (
     <header
@@ -109,51 +96,6 @@ export function Navbar() {
           </nav>
 
           <div className="hidden lg:flex items-center gap-3">
-            {isSignedIn ? (
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button
-                    variant="outline"
-                    size="default"
-                    className={cn(
-                      "gap-2",
-                      transparent && "bg-white/10 border-white/30 text-white hover:bg-white/20 hover:text-white"
-                    )}
-                  >
-                    <User className="h-4 w-4" />
-                    {displayName}
-                    <ChevronDown className="h-3.5 w-3.5" />
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-56">
-                  <DropdownMenuLabel>Signed in as {displayName}</DropdownMenuLabel>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem onClick={() => navigate({ to: "/foundations" })}>
-                    Apply for Bursary
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => navigate({ to: "/advertise" })}>
-                    List My Business
-                  </DropdownMenuItem>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem onClick={handleSignOut} className="text-destructive focus:text-destructive">
-                    <LogOut className="h-4 w-4 mr-2" /> Sign Out
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
-            ) : (
-              <Button
-                asChild
-                variant="outline"
-                size="default"
-                className={cn(
-                  transparent && "bg-white/10 border-white/30 text-white hover:bg-white/20 hover:text-white"
-                )}
-              >
-                <Link to="/signin">
-                  <User className="h-4 w-4" /> Sign In
-                </Link>
-              </Button>
-            )}
             <Button asChild variant="hero" size="default">
               <Link to="/donate">Donate</Link>
             </Button>
@@ -183,29 +125,6 @@ export function Navbar() {
                   {link.label}
                 </Link>
               ))}
-
-              <div className="border-t border-border my-1" />
-
-              {isSignedIn ? (
-                <>
-                  <p className="px-4 py-1 text-xs text-muted-foreground font-semibold">
-                    Signed in as {displayName}
-                  </p>
-                  <button
-                    onClick={handleSignOut}
-                    className="px-4 py-3 rounded-md text-left text-destructive hover:bg-destructive/5 font-semibold transition flex items-center gap-2"
-                  >
-                    <LogOut className="h-4 w-4" /> Sign Out
-                  </button>
-                </>
-              ) : (
-                <Link
-                  to="/signin"
-                  className="px-4 py-3 rounded-md text-foreground hover:bg-primary/5 hover:text-primary font-semibold transition flex items-center gap-2"
-                >
-                  <User className="h-4 w-4" /> Sign In
-                </Link>
-              )}
 
               <Button asChild variant="hero" className="mt-2">
                 <Link to="/donate">Donate Now</Link>

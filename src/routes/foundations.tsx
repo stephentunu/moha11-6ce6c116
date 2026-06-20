@@ -1,4 +1,4 @@
-import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { motion } from "framer-motion";
 import {
   HandHeart,
@@ -12,12 +12,10 @@ import {
   Baby,
   Users,
   Clock,
-  LogIn,
 } from "lucide-react";
 import { PageHero } from "@/components/PageHero";
 import { Button } from "@/components/ui/button";
 import { useContent, useBursaryWindow } from "@/lib/admin-store";
-import { useUserAuth } from "@/lib/user-auth";
 import { BursaryApplicationDialog } from "@/components/BursaryApplicationDialog";
 import vulnerableImg from "@/assets/moha/donation3.jpeg";
 import bursaryImg from "@/assets/moha/bursary1.jpeg";
@@ -310,8 +308,6 @@ const foundations: Foundation[] = [
 
 function FoundationsPage() {
   const [content] = useContent();
-  const navigate = useNavigate();
-  const { isSignedIn, loading: authLoading } = useUserAuth();
   const title = (content.foundationsHeadline || "").replace(/Foundations/gi, "Foundation");
   const { windowStart, loading } = useBursaryWindow();
 
@@ -396,38 +392,22 @@ function FoundationsPage() {
 
                 {f.title.startsWith("Bursaries") && (
                   <div className="mt-6">
-                    {loading || authLoading ? (
+                    {loading ? (
                       <div className="h-11 w-48 rounded-lg bg-muted/50 animate-pulse" />
                     ) : bursaryWindowOpen ? (
-                      isSignedIn ? (
-                        <>
-                          <BursaryApplicationDialog
-                            trigger={
-                              <Button variant="hero" size="lg">
-                                Apply for bursary <ArrowRight className="h-5 w-5" />
-                              </Button>
-                            }
-                          />
-                          <p className="mt-2 text-xs text-muted-foreground">
-                            4-step application · Window closes{" "}
-                            {bursaryWindowEnd?.toLocaleDateString("en-KE", { day: "numeric", month: "long", year: "numeric" })}.
-                          </p>
-                        </>
-                      ) : (
-                        <>
-                          <Button
-                            variant="hero"
-                            size="lg"
-                            onClick={() => navigate({ to: "/signin", search: { redirect: "/foundations" } })}
-                          >
-                            <LogIn className="h-5 w-5" /> Sign in to apply for bursary
-                          </Button>
-                          <p className="mt-2 text-xs text-muted-foreground">
-                            Free account required · Window closes{" "}
-                            {bursaryWindowEnd?.toLocaleDateString("en-KE", { day: "numeric", month: "long", year: "numeric" })}.
-                          </p>
-                        </>
-                      )
+                      <>
+                        <BursaryApplicationDialog
+                          trigger={
+                            <Button variant="hero" size="lg">
+                              Apply for bursary <ArrowRight className="h-5 w-5" />
+                            </Button>
+                          }
+                        />
+                        <p className="mt-2 text-xs text-muted-foreground">
+                          4-step application · Window closes{" "}
+                          {bursaryWindowEnd?.toLocaleDateString("en-KE", { day: "numeric", month: "long", year: "numeric" })}.
+                        </p>
+                      </>
                     ) : (
                       <div className="rounded-xl border-2 border-amber-300 bg-amber-50 px-5 py-4 text-sm text-amber-800 font-medium">
                         <p className="font-bold text-base mb-1">Applications are currently closed</p>

@@ -1,100 +1,123 @@
-// Public user authentication — powered by Supabase Auth (email + password).
-// Completely separate from the admin login (which uses a fixed local credential
-// pair and localStorage). This is for regular site visitors who need an account
-// to apply for a bursary or list a business on the Advertise page.
+// Public user authentication — full name + password, no email or phone
+// required. Built for an audience that needs the simplest possible account
+// system. Sessions are tracked via a token stored in localStorage and
+// validated against the app_sessions table on the server.
+//
+// Completely separate from admin login (still a fixed email + password pair,
+// checked locally — see admin-store.ts).
 
 import { useEffect, useState, useCallback } from "react";
-import { supabase } from "@/integrations/supabase/client";
-import type { User, Session } from "@supabase/supabase-js";
+import { simpleSignUp, simpleSignIn, simpleSignOut, validateSession } from "@/lib/simple-auth.functions";
+
+const SESSION_KEY = "moha.user.session.v1";
 
 export type AuthResult = { ok: true } | { ok: false; message: string };
 
-/** Sign up a new user with email + password. */
-export async function userSignUp(email: string, password: string, fullName: string): Promise<AuthResult> {
-  const cleanEmail = email.trim().toLowerCase();
-  if (!cleanEmail || !password) return { ok: false, message: "Email and password are required" };
-  if (password.length < 6) return { ok: false, message: "Password must be at least 6 characters" };
+type StoredSession = { token: string; userId: string; fullName: string };
 
-  const redirectUrl = typeof window !== "undefined" ? `${window.location.origin}/` : undefined;
-
-  const { error } = await supabase.auth.signUp({
-    email: cleanEmail,
-    password,
-    options: {
-      data: { full_name: fullName.trim() },
-      emailRedirectTo: redirectUrl,
-    },
-  });
-
-  if (error) {
-    if (error.message.toLowerCase().includes("already registered") || error.message.toLowerCase().includes("already exists")) {
-      return { ok: false, message: "An account with this email already exists. Please sign in instead." };
-    }
-    return { ok: false, message: error.message };
+function readSession(): StoredSession | null {
+  if (typeof window === "undefined") return null;
+  try {
+    const raw = localStorage.getItem(SESSION_KEY);
+    return raw ? (JSON.parse(raw) as StoredSession) : null;
+  } catch {
+    return null;
   }
-  return { ok: true };
 }
 
-/** Sign in an existing user with email + password. */
-export async function userSignIn(email: string, password: string): Promise<AuthResult> {
-  const cleanEmail = email.trim().toLowerCase();
-  if (!cleanEmail || !password) return { ok: false, message: "Email and password are required" };
+function writeSession(session: StoredSession | null) {
+  if (typeof window === "undefined") return;
+  if (session) localStorage.setItem(SESSION_KEY, JSON.stringify(session));
+  else localStorage.removeItem(SESSION_KEY);
+  window.dispatchEvent(new CustomEvent("moha-user-session"));
+}
 
-  const { error } = await supabase.auth.signInWithPassword({ email: cleanEmail, password });
-  if (error) {
-    if (error.message.toLowerCase().includes("invalid login")) {
-      return { ok: false, message: "Incorrect email or password" };
-    }
-    if (error.message.toLowerCase().includes("email not confirmed")) {
-      return { ok: false, message: "Please confirm your email before signing in. Check your inbox." };
-    }
-    return { ok: false, message: error.message };
+/** Create a new account with full name + password. */
+export async function userSignUp(fullName: string, password: string): Promise<AuthResult> {
+  if (!fullName.trim() || fullName.trim().length < 2) {
+    return { ok: false, message: "Please enter your full name" };
   }
-  return { ok: true };
+  if (!password || password.length < 4) {
+    return { ok: false, message: "Password must be at least 4 characters" };
+  }
+  try {
+    const res = await simpleSignUp({ data: { fullName, password } });
+    writeSession({ token: res.token, userId: res.userId, fullName: res.fullName });
+    return { ok: true };
+  } catch (e) {
+    return { ok: false, message: e instanceof Error ? e.message : "Could not create account" };
+  }
+}
+
+/** Sign in with full name + password. */
+export async function userSignIn(fullName: string, password: string): Promise<AuthResult> {
+  if (!fullName.trim()) return { ok: false, message: "Please enter your name" };
+  if (!password) return { ok: false, message: "Please enter your password" };
+  try {
+    const res = await simpleSignIn({ data: { fullName, password } });
+    writeSession({ token: res.token, userId: res.userId, fullName: res.fullName });
+    return { ok: true };
+  } catch (e) {
+    return { ok: false, message: e instanceof Error ? e.message : "Could not sign in" };
+  }
 }
 
 /** Sign the current user out. */
 export async function userSignOut(): Promise<void> {
-  await supabase.auth.signOut();
+  const session = readSession();
+  if (session) {
+    try { await simpleSignOut({ data: { token: session.token } }); } catch { /* ignore */ }
+  }
+  writeSession(null);
 }
 
-/** React hook: tracks the current Supabase Auth session reactively. */
+/** React hook: tracks the current session reactively, validating it on load. */
 export function useUserAuth() {
-  const [session, setSession] = useState<Session | null>(null);
-  const [user, setUser] = useState<User | null>(null);
+  const [session, setSession] = useState<StoredSession | null>(null);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    supabase.auth.getSession().then(({ data }) => {
-      setSession(data.session);
-      setUser(data.session?.user ?? null);
+  const refresh = useCallback(async () => {
+    const stored = readSession();
+    if (!stored) {
+      setSession(null);
       setLoading(false);
-    });
-
-    const { data: listener } = supabase.auth.onAuthStateChange((_event, newSession) => {
-      setSession(newSession);
-      setUser(newSession?.user ?? null);
-      setLoading(false);
-    });
-
-    return () => listener.subscription.unsubscribe();
+      return;
+    }
+    try {
+      const res = await validateSession({ data: { token: stored.token } });
+      if (res.valid) {
+        setSession({ token: stored.token, userId: res.userId, fullName: res.fullName });
+      } else {
+        writeSession(null);
+        setSession(null);
+      }
+    } catch {
+      // Network hiccup — keep the locally-stored session optimistically
+      setSession(stored);
+    }
+    setLoading(false);
   }, []);
+
+  useEffect(() => {
+    refresh();
+    const onChange = () => { setSession(readSession()); };
+    window.addEventListener("moha-user-session", onChange);
+    window.addEventListener("storage", onChange);
+    return () => {
+      window.removeEventListener("moha-user-session", onChange);
+      window.removeEventListener("storage", onChange);
+    };
+  }, [refresh]);
 
   const signOut = useCallback(async () => {
     await userSignOut();
   }, []);
 
-  const displayName =
-    (user?.user_metadata?.full_name as string | undefined)?.trim() ||
-    user?.email?.split("@")[0] ||
-    "";
-
   return {
-    session,
-    user,
     loading,
-    isSignedIn: !!user,
-    displayName,
+    isSignedIn: !!session,
+    displayName: session?.fullName || "",
+    userId: session?.userId || "",
     signOut,
   };
 }
