@@ -748,3 +748,48 @@ export async function deleteBursaryApplication(id: string) {
   if (error) throw error;
   emitBursaryChange();
 }
+
+// ===== Guardian → Supporter sync =====
+//
+// Every parent/guardian who submits a bursary application is automatically
+// added to the Supporters list — they've already shown trust and engagement
+// with Moha's work, so they belong in the supporter base. Uses the exact
+// same phone-normalization convention as the Supporters admin page, and
+// upserts on phone number so re-applying (e.g. a second child) doesn't
+// create duplicate supporter records.
+
+function normalizeKenyanPhone(raw: string): string {
+  const digits = String(raw || "").replace(/[^\d+]/g, "");
+  if (!digits) return "";
+  if (digits.startsWith("+")) return digits;
+  if (digits.startsWith("254")) return "+" + digits;
+  if (digits.startsWith("0") && digits.length === 10) return "+254" + digits.slice(1);
+  if (digits.length === 9 && digits.startsWith("7")) return "+254" + digits;
+  return digits;
+}
+
+export async function syncGuardianAsSupporter(input: {
+  name: string;
+  phone: string;
+  idNumber?: string | null;
+  ward?: string | null;
+}) {
+  const phone = normalizeKenyanPhone(input.phone);
+  if (!input.name?.trim() || !phone) return; // skip silently — not enough data to create a supporter record
+
+  try {
+    await supabase.from("supporters" as never).upsert(
+      {
+        name: input.name.trim(),
+        phone,
+        id_number: input.idNumber?.trim() || "",
+        ward: input.ward || null,
+        notes: "Auto-added: bursary application guardian",
+      } as never,
+      { onConflict: "phone" } as never,
+    );
+  } catch {
+    // Never let a supporter-sync failure block or surface an error during
+    // bursary submission — this is a best-effort background action.
+  }
+}

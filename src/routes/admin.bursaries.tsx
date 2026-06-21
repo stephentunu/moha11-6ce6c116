@@ -5,6 +5,7 @@ import {
   FileSpreadsheet, CheckCircle2, School, ArrowUpDown,
   ChevronDown, ChevronRight, Users, Banknote,
   CheckSquare, X, Mail, FileText, Calendar,
+  MapPin, Pencil, ArrowLeft, XCircle, Clock3,
 } from "lucide-react";
 import { generateBursaryPdf, generateBroadsheetPdf, generateConfirmationLetter, type BroadsheetRow, type BursaryPdfData, type ConfirmationLetterRow } from "@/lib/bursary-pdf";
 import { Button } from "@/components/ui/button";
@@ -58,6 +59,7 @@ type Row = {
   student_disability: boolean | null;
   student_disability_detail: string | null;
   school_name: string;
+  canonical_school_name: string | null;
   school_category: string | null;
   school_county: string | null;
   school_sub_county: string | null;
@@ -95,7 +97,19 @@ const STATUS_COLORS: Record<string, string> = {
   rejected:  "bg-rose-500/15 text-rose-700 dark:text-rose-400",
 };
 
-type Tab = "applications" | "broadsheet" | "letters";
+/**
+ * The school name actually used everywhere in the UI, broadsheet, and
+ * letters. Applicants type their school freely on the form, which means the
+ * same real school can show up under several spellings — e.g. "Kanga
+ * School", "Kanga High School", "Kanga Boys". An admin can set a single
+ * `canonical_school_name` on any one application from that school to fix
+ * this; once set, it takes priority over the raw applicant-entered name.
+ */
+function effectiveSchoolName(r: Row): string {
+  return (r.canonical_school_name?.trim() || r.school_name || "").trim();
+}
+
+type Tab = "applications" | "review" | "broadsheet" | "letters";
 type SortField = "student_name" | "school_name" | "ward" | "amount_requested" | "current_grade";
 
 function AdminBursariesPage() {
@@ -124,6 +138,14 @@ function AdminBursariesPage() {
   const [letterOfficerName, setLetterOfficerName] = useState("Benard Omondi");
   const [letterOfficerPhone, setLetterOfficerPhone] = useState("0725104771");
   const [letterTerm, setLetterTerm] = useState(`${new Date().getFullYear()} T2`);
+
+  // Review by Location tab — County → Sub-county → School → Students drill-down
+  const [reviewCounty, setReviewCounty] = useState<string | null>(null);
+  const [reviewSubCounty, setReviewSubCounty] = useState<string | null>(null);
+  const [reviewSchool, setReviewSchool] = useState<string | null>(null);
+  const [renameSchoolOpen, setRenameSchoolOpen] = useState(false);
+  const [renameSchoolDraft, setRenameSchoolDraft] = useState("");
+  const [renameSchoolBusy, setRenameSchoolBusy] = useState(false);
 
   const load = async () => {
     const { data, error } = await supabase
@@ -178,11 +200,11 @@ function AdminBursariesPage() {
   // Group approved by school (already sorted by school then name within each group)
   const bySchool = useMemo(() => {
     const base = [...approvedRows].sort(
-      (a, b) => a.school_name.localeCompare(b.school_name) || a.student_name.localeCompare(b.student_name)
+      (a, b) => effectiveSchoolName(a).localeCompare(effectiveSchoolName(b)) || a.student_name.localeCompare(b.student_name)
     );
     const map = new Map<string, Row[]>();
     for (const r of base) {
-      const key = r.school_name.trim();
+      const key = effectiveSchoolName(r);
       if (!map.has(key)) map.set(key, []);
       map.get(key)!.push(r);
     }
@@ -219,6 +241,89 @@ function AdminBursariesPage() {
     () => letterSelectedRows.reduce((s, r) => s + (r.amount_requested ?? 0), 0),
     [letterSelectedRows]
   );
+
+  // ── Review by Location: County → Sub-county → School → Students ────────────
+  // Built from ALL applications (not just approved) since this is the
+  // primary place admins triage pending/reviewing applications. Counties and
+  // sub-counties come from the application form's standardized dropdown, so
+  // they're already consistent. School names go through effectiveSchoolName()
+  // so a canonical rename merges variant spellings immediately.
+
+  const reviewCounties = useMemo(() => {
+    const map = new Map<string, Row[]>();
+    for (const r of rows) {
+      const key = (r.school_county || "Unspecified").trim();
+      if (!map.has(key)) map.set(key, []);
+      map.get(key)!.push(r);
+    }
+    return Array.from(map.entries())
+      .map(([county, countyRows]) => ({
+        county,
+        count: countyRows.length,
+        pending: countyRows.filter((r) => r.status === "pending").length,
+      }))
+      .sort((a, b) => a.county.localeCompare(b.county));
+  }, [rows]);
+
+  const reviewSubCounties = useMemo(() => {
+    if (!reviewCounty) return [];
+    const inCounty = rows.filter((r) => (r.school_county || "Unspecified").trim() === reviewCounty);
+    const map = new Map<string, Row[]>();
+    for (const r of inCounty) {
+      const key = (r.school_sub_county || "Unspecified").trim();
+      if (!map.has(key)) map.set(key, []);
+      map.get(key)!.push(r);
+    }
+    return Array.from(map.entries())
+      .map(([subCounty, subRows]) => ({
+        subCounty,
+        count: subRows.length,
+        pending: subRows.filter((r) => r.status === "pending").length,
+      }))
+      .sort((a, b) => a.subCounty.localeCompare(b.subCounty));
+  }, [rows, reviewCounty]);
+
+  const reviewSchools = useMemo(() => {
+    if (!reviewCounty || !reviewSubCounty) return [];
+    const inLocation = rows.filter(
+      (r) =>
+        (r.school_county || "Unspecified").trim() === reviewCounty &&
+        (r.school_sub_county || "Unspecified").trim() === reviewSubCounty,
+    );
+    const map = new Map<string, Row[]>();
+    for (const r of inLocation) {
+      const key = effectiveSchoolName(r) || "Unspecified School";
+      if (!map.has(key)) map.set(key, []);
+      map.get(key)!.push(r);
+    }
+    return Array.from(map.entries())
+      .map(([school, schoolRows]) => ({
+        school,
+        count: schoolRows.length,
+        pending: schoolRows.filter((r) => r.status === "pending").length,
+        category: schoolRows[0]?.school_category ?? null,
+      }))
+      .sort((a, b) => a.school.localeCompare(b.school));
+  }, [rows, reviewCounty, reviewSubCounty]);
+
+  const reviewStudents = useMemo(() => {
+    if (!reviewCounty || !reviewSubCounty || !reviewSchool) return [];
+    return rows
+      .filter(
+        (r) =>
+          (r.school_county || "Unspecified").trim() === reviewCounty &&
+          (r.school_sub_county || "Unspecified").trim() === reviewSubCounty &&
+          (effectiveSchoolName(r) || "Unspecified School") === reviewSchool,
+      )
+      .sort((a, b) => a.student_name.localeCompare(b.student_name));
+  }, [rows, reviewCounty, reviewSubCounty, reviewSchool]);
+
+  // Variant raw spellings feeding into the currently-selected canonical school
+  // name — shown to the admin so they can see exactly what they're merging.
+  const reviewSchoolVariants = useMemo(() => {
+    const variants = new Set(reviewStudents.map((r) => r.school_name.trim()).filter(Boolean));
+    return Array.from(variants);
+  }, [reviewStudents]);
 
   const counts = useMemo(() => {
     const c = { all: rows.length, pending: 0, reviewing: 0, approved: 0, rejected: 0 };
@@ -286,6 +391,41 @@ function AdminBursariesPage() {
       .eq("id", id);
     if (error) toast.error(error.message);
     else { toast.success(`Marked ${status}`); load(); }
+  };
+
+  /**
+   * Apply a single canonical school name to every application currently
+   * showing under the selected (raw or already-canonical) school name. This
+   * is how an admin merges "Kanga School" / "Kanga High School" / "Kanga
+   * Boys" into one consistent entry that flows through to the broadsheet and
+   * confirmation letters.
+   */
+  const renameSchool = async () => {
+    const newName = renameSchoolDraft.trim();
+    if (!newName || !reviewSchool) {
+      toast.error("Enter a school name");
+      return;
+    }
+    setRenameSchoolBusy(true);
+    const ids = reviewStudents.map((r) => r.id);
+    const { error } = await supabase
+      .from("bursary_applications" as never)
+      .update({ canonical_school_name: newName } as never)
+      .in("id", ids);
+    setRenameSchoolBusy(false);
+
+    if (error && /column .* does not exist/i.test(error.message)) {
+      toast.error(
+        "School renaming needs a database update. Run: ALTER TABLE bursary_applications ADD COLUMN canonical_school_name TEXT; in Supabase, then try again.",
+      );
+      return;
+    }
+    if (error) { toast.error(error.message); return; }
+
+    toast.success(`${ids.length} application${ids.length !== 1 ? "s" : ""} now show as "${newName}"`);
+    setRenameSchoolOpen(false);
+    setReviewSchool(newName);
+    load();
   };
 
   const remove = async (id: string) => {
@@ -391,6 +531,23 @@ function AdminBursariesPage() {
           >
             <span className="flex items-center gap-2">
               <GraduationCap className="h-4 w-4" /> All Applications
+            </span>
+          </button>
+          <button
+            onClick={() => setTab("review")}
+            className={`px-5 py-2 rounded-lg text-sm font-semibold transition-all ${
+              tab === "review"
+                ? "bg-card shadow text-foreground"
+                : "text-muted-foreground hover:text-foreground"
+            }`}
+          >
+            <span className="flex items-center gap-2">
+              <MapPin className="h-4 w-4" /> Review by Location
+              {counts.pending > 0 && (
+                <span className="bg-amber-500 text-white text-[10px] font-bold rounded-full px-1.5 py-0.5">
+                  {counts.pending}
+                </span>
+              )}
             </span>
           </button>
           <button
@@ -644,6 +801,265 @@ function AdminBursariesPage() {
               )}
             </div>
           </>
+        )}
+
+        {/* ── REVIEW BY LOCATION TAB ───────────────────────────────────────────── */}
+        {tab === "review" && (
+          <div className="space-y-5">
+            <div className="bg-card border border-border rounded-2xl p-5">
+              <h2 className="font-display font-bold text-lg flex items-center gap-2">
+                <MapPin className="h-5 w-5 text-gold" />
+                Review by Location
+              </h2>
+              <p className="text-sm text-muted-foreground mt-0.5">
+                Drill down from County → Sub-county → School to review every applicant from that school together,
+                and merge duplicate school name spellings into one consistent entry.
+              </p>
+
+              {/* Breadcrumb */}
+              <div className="flex flex-wrap items-center gap-1.5 mt-4 text-sm">
+                <button
+                  onClick={() => { setReviewCounty(null); setReviewSubCounty(null); setReviewSchool(null); }}
+                  className={`px-2.5 py-1 rounded-lg font-semibold transition-colors ${!reviewCounty ? "bg-primary/10 text-primary" : "text-muted-foreground hover:text-foreground"}`}
+                >
+                  All Counties
+                </button>
+                {reviewCounty && (
+                  <>
+                    <ChevronRight className="h-3.5 w-3.5 text-muted-foreground" />
+                    <button
+                      onClick={() => { setReviewSubCounty(null); setReviewSchool(null); }}
+                      className={`px-2.5 py-1 rounded-lg font-semibold transition-colors ${!reviewSubCounty ? "bg-primary/10 text-primary" : "text-muted-foreground hover:text-foreground"}`}
+                    >
+                      {reviewCounty}
+                    </button>
+                  </>
+                )}
+                {reviewSubCounty && (
+                  <>
+                    <ChevronRight className="h-3.5 w-3.5 text-muted-foreground" />
+                    <button
+                      onClick={() => setReviewSchool(null)}
+                      className={`px-2.5 py-1 rounded-lg font-semibold transition-colors ${!reviewSchool ? "bg-primary/10 text-primary" : "text-muted-foreground hover:text-foreground"}`}
+                    >
+                      {reviewSubCounty}
+                    </button>
+                  </>
+                )}
+                {reviewSchool && (
+                  <>
+                    <ChevronRight className="h-3.5 w-3.5 text-muted-foreground" />
+                    <span className="px-2.5 py-1 rounded-lg font-semibold bg-primary/10 text-primary">{reviewSchool}</span>
+                  </>
+                )}
+              </div>
+            </div>
+
+            {/* Level 1: Counties */}
+            {!reviewCounty && (
+              <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                {reviewCounties.map(({ county, count, pending }) => (
+                  <button
+                    key={county}
+                    onClick={() => setReviewCounty(county)}
+                    className="bg-card border border-border rounded-xl p-4 text-left hover:border-primary/40 hover:shadow-sm transition-all"
+                  >
+                    <div className="flex items-center justify-between">
+                      <p className="font-display font-bold text-foreground">{county}</p>
+                      <ChevronRight className="h-4 w-4 text-muted-foreground" />
+                    </div>
+                    <div className="flex items-center gap-3 mt-2">
+                      <span className="text-xs text-muted-foreground">{count} application{count !== 1 ? "s" : ""}</span>
+                      {pending > 0 && (
+                        <span className="flex items-center gap-1 text-xs font-semibold text-amber-700">
+                          <Clock3 className="h-3 w-3" /> {pending} pending
+                        </span>
+                      )}
+                    </div>
+                  </button>
+                ))}
+              </div>
+            )}
+
+            {/* Level 2: Sub-counties */}
+            {reviewCounty && !reviewSubCounty && (
+              <div className="space-y-3">
+                <Button variant="outline" size="sm" onClick={() => setReviewCounty(null)} className="gap-1.5">
+                  <ArrowLeft className="h-3.5 w-3.5" /> Back to Counties
+                </Button>
+                <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                  {reviewSubCounties.map(({ subCounty, count, pending }) => (
+                    <button
+                      key={subCounty}
+                      onClick={() => setReviewSubCounty(subCounty)}
+                      className="bg-card border border-border rounded-xl p-4 text-left hover:border-primary/40 hover:shadow-sm transition-all"
+                    >
+                      <div className="flex items-center justify-between">
+                        <p className="font-display font-bold text-foreground">{subCounty}</p>
+                        <ChevronRight className="h-4 w-4 text-muted-foreground" />
+                      </div>
+                      <div className="flex items-center gap-3 mt-2">
+                        <span className="text-xs text-muted-foreground">{count} application{count !== 1 ? "s" : ""}</span>
+                        {pending > 0 && (
+                          <span className="flex items-center gap-1 text-xs font-semibold text-amber-700">
+                            <Clock3 className="h-3 w-3" /> {pending} pending
+                          </span>
+                        )}
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Level 3: Schools */}
+            {reviewCounty && reviewSubCounty && !reviewSchool && (
+              <div className="space-y-3">
+                <Button variant="outline" size="sm" onClick={() => setReviewSubCounty(null)} className="gap-1.5">
+                  <ArrowLeft className="h-3.5 w-3.5" /> Back to {reviewCounty}
+                </Button>
+                <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                  {reviewSchools.map(({ school, count, pending, category }) => (
+                    <button
+                      key={school}
+                      onClick={() => setReviewSchool(school)}
+                      className="bg-card border border-border rounded-xl p-4 text-left hover:border-primary/40 hover:shadow-sm transition-all"
+                    >
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="flex items-start gap-2 min-w-0">
+                          <School className="h-4 w-4 text-primary mt-0.5 shrink-0" />
+                          <p className="font-display font-bold text-foreground leading-snug">{school}</p>
+                        </div>
+                        <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0" />
+                      </div>
+                      <div className="flex items-center gap-3 mt-2 ml-6">
+                        <span className="text-xs text-muted-foreground">
+                          {category && `${category} · `}{count} student{count !== 1 ? "s" : ""}
+                        </span>
+                        {pending > 0 && (
+                          <span className="flex items-center gap-1 text-xs font-semibold text-amber-700">
+                            <Clock3 className="h-3 w-3" /> {pending} pending
+                          </span>
+                        )}
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Level 4: Students at this school */}
+            {reviewCounty && reviewSubCounty && reviewSchool && (
+              <div className="space-y-3">
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <Button variant="outline" size="sm" onClick={() => setReviewSchool(null)} className="gap-1.5">
+                    <ArrowLeft className="h-3.5 w-3.5" /> Back to Schools
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => { setRenameSchoolDraft(reviewSchool); setRenameSchoolOpen(true); }}
+                    className="gap-1.5"
+                  >
+                    <Pencil className="h-3.5 w-3.5" /> Fix / Standardize School Name
+                  </Button>
+                </div>
+
+                {reviewSchoolVariants.length > 1 && (
+                  <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+                    <p className="font-semibold mb-1">⚠ Multiple spellings found for this school</p>
+                    <p className="text-xs">
+                      Applicants entered: {reviewSchoolVariants.map((v) => `"${v}"`).join(", ")}.
+                      Use "Fix / Standardize School Name" above to merge them into one consistent name.
+                    </p>
+                  </div>
+                )}
+
+                <div className="bg-card border border-border rounded-2xl overflow-hidden">
+                  <div className="px-5 py-4 border-b border-border">
+                    <p className="font-display font-bold text-base text-foreground">{reviewSchool}</p>
+                    <p className="text-xs text-muted-foreground mt-0.5">
+                      {reviewStudents.length} application{reviewStudents.length !== 1 ? "s" : ""} from this school
+                    </p>
+                  </div>
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-sm">
+                      <thead className="bg-muted/30 text-[11px] uppercase tracking-wider text-muted-foreground">
+                        <tr>
+                          <th className="text-left px-4 py-2.5">Student</th>
+                          <th className="text-left px-4 py-2.5">Grade</th>
+                          <th className="text-left px-4 py-2.5">Guardian</th>
+                          <th className="text-right px-4 py-2.5">Amount</th>
+                          <th className="text-left px-4 py-2.5">Status</th>
+                          <th className="text-right px-4 py-2.5">Actions</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-border">
+                        {reviewStudents.map((r) => (
+                          <tr key={r.id} className="hover:bg-muted/20">
+                            <td className="px-4 py-3">
+                              <p className="font-semibold text-foreground">{r.student_name}</p>
+                              <p className="font-mono text-[11px] text-primary">{r.reference}</p>
+                            </td>
+                            <td className="px-4 py-3 text-muted-foreground">{r.current_grade}</td>
+                            <td className="px-4 py-3">
+                              <p>{r.guardian_name}</p>
+                              <p className="text-xs text-muted-foreground">{r.guardian_phone}</p>
+                            </td>
+                            <td className="px-4 py-3 text-right font-semibold">
+                              {r.amount_requested ? `KSh ${Number(r.amount_requested).toLocaleString()}` : "—"}
+                            </td>
+                            <td className="px-4 py-3">
+                              <Badge className={STATUS_COLORS[r.status] ?? ""}>{r.status}</Badge>
+                            </td>
+                            <td className="px-4 py-3">
+                              <div className="flex items-center justify-end gap-1.5">
+                                <Button size="sm" variant="ghost" onClick={() => setSelected(r)} title="View full application">
+                                  <Eye className="h-3.5 w-3.5" />
+                                </Button>
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  className="gap-1 border-emerald-300 text-emerald-700 hover:bg-emerald-50"
+                                  onClick={() => updateStatus(r.id, "approved")}
+                                  disabled={r.status === "approved"}
+                                >
+                                  <CheckCircle2 className="h-3.5 w-3.5" /> Approve
+                                </Button>
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  className="gap-1 border-blue-300 text-blue-700 hover:bg-blue-50"
+                                  onClick={() => updateStatus(r.id, "reviewing")}
+                                  disabled={r.status === "reviewing"}
+                                >
+                                  Reviewing
+                                </Button>
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  className="gap-1 border-rose-300 text-rose-700 hover:bg-rose-50"
+                                  onClick={() => updateStatus(r.id, "rejected")}
+                                  disabled={r.status === "rejected"}
+                                >
+                                  <XCircle className="h-3.5 w-3.5" /> Reject
+                                </Button>
+                              </div>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+
+                <p className="text-xs text-muted-foreground">
+                  Approved applications appear automatically in the <strong>Approved Broadsheet</strong> and{" "}
+                  <strong>School Confirmation Letters</strong> tabs under this same school name.
+                </p>
+              </div>
+            )}
+          </div>
         )}
 
         {/* ── BROADSHEET TAB ────────────────────────────────────────────────── */}
@@ -1120,7 +1536,10 @@ function AdminBursariesPage() {
                   </DetailGroup>
                 )}
                 <DetailGroup title="School">
-                  <Detail label="School" value={selected.school_name} />
+                  <Detail label="School (as typed by applicant)" value={selected.school_name} />
+                  {selected.canonical_school_name && selected.canonical_school_name.trim() !== selected.school_name.trim() && (
+                    <Detail label="Standardized school name" value={selected.canonical_school_name} />
+                  )}
                   <Detail label="Category" value={selected.school_category} />
                   <Detail label="County" value={selected.school_county} />
                   <Detail label="Sub-county" value={selected.school_sub_county} />
@@ -1185,6 +1604,55 @@ function AdminBursariesPage() {
             <Button variant="outline" onClick={() => setSmsOpen(false)}>Cancel</Button>
             <Button variant="hero" onClick={sendSms} disabled={smsBusy || smsText.trim().length === 0}>
               <Send className="h-4 w-4" /> {smsBusy ? "Sending…" : "Send"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* ── Rename / standardize school dialog ──────────────────────────────── */}
+      <Dialog open={renameSchoolOpen} onOpenChange={setRenameSchoolOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Pencil className="h-4 w-4 text-gold" /> Standardize School Name
+            </DialogTitle>
+            <DialogDescription>
+              This sets one consistent school name across all {reviewStudents.length} application
+              {reviewStudents.length !== 1 ? "s" : ""} currently grouped here. It won't change what the
+              applicant originally typed — it just controls what shows on the broadsheet and confirmation letters.
+            </DialogDescription>
+          </DialogHeader>
+
+          {reviewSchoolVariants.length > 1 && (
+            <div className="rounded-lg bg-muted/40 border border-border px-3 py-2.5 text-xs text-muted-foreground">
+              <p className="font-semibold text-foreground mb-1">Spellings currently in this group:</p>
+              <ul className="list-disc list-inside space-y-0.5">
+                {reviewSchoolVariants.map((v) => <li key={v}>{v}</li>)}
+              </ul>
+            </div>
+          )}
+
+          <div>
+            <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+              Official school name
+            </label>
+            <Input
+              value={renameSchoolDraft}
+              onChange={(e) => setRenameSchoolDraft(e.target.value)}
+              placeholder="e.g. Kanga Secondary School"
+              className="mt-1.5"
+              autoFocus
+            />
+          </div>
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setRenameSchoolOpen(false)}>Cancel</Button>
+            <Button
+              variant="hero"
+              onClick={renameSchool}
+              disabled={renameSchoolBusy || !renameSchoolDraft.trim()}
+            >
+              {renameSchoolBusy ? "Saving…" : "Apply to All"}
             </Button>
           </DialogFooter>
         </DialogContent>

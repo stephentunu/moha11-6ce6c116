@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link, useLocation } from "@tanstack/react-router";
-import { Menu, X } from "lucide-react";
+import { Menu, X, LogIn } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import mohaLogo from "@/assets/moha/moha-portrait.jpeg";
@@ -14,7 +14,6 @@ const links = [
   { to: "/polling", label: "Polling" },
   { to: "/advertise", label: "Advertise With Us" },
   { to: "/ask", label: "Ask Me" },
-  { to: "/admin/login", label: "Admin" },
 ] as const;
 
 export function Navbar() {
@@ -96,6 +95,18 @@ export function Navbar() {
           </nav>
 
           <div className="hidden lg:flex items-center gap-3">
+            <Link
+              to="/admin/login"
+              className={cn(
+                "flex items-center gap-1.5 px-3 py-2 text-sm font-semibold rounded-md transition-all",
+                transparent
+                  ? "text-white/90 hover:text-gold"
+                  : "text-foreground/80 hover:text-primary"
+              )}
+            >
+              <LogIn className="h-4 w-4" />
+              Sign In
+            </Link>
             <Button asChild variant="hero" size="default">
               <Link to="/donate">Donate</Link>
             </Button>
@@ -125,6 +136,14 @@ export function Navbar() {
                   {link.label}
                 </Link>
               ))}
+
+              <Link
+                to="/admin/login"
+                className="flex items-center gap-2 px-4 py-3 rounded-md text-foreground hover:bg-primary/5 hover:text-primary font-semibold transition"
+              >
+                <LogIn className="h-4 w-4" />
+                Sign In
+              </Link>
 
               <Button asChild variant="hero" className="mt-2">
                 <Link to="/donate">Donate Now</Link>

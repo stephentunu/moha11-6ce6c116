@@ -18,7 +18,7 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import { supabase } from "@/integrations/supabase/client";
-import { MATHARE_WARDS } from "@/lib/admin-store";
+import { MATHARE_WARDS, syncGuardianAsSupporter } from "@/lib/admin-store";
 import { KENYA_COUNTIES, COUNTY_NAMES } from "@/lib/kenya-counties";
 import { generateBursaryPdf } from "@/lib/bursary-pdf";
 
@@ -265,6 +265,15 @@ export function BursaryApplicationDialog({ trigger }: { trigger: ReactNode }) {
       const ref = (data as unknown as { reference: string }).reference;
       setResult({ reference: ref });
       toast.success(`Application submitted — Ref ${ref}`);
+
+      // Add the guardian to the Supporters list — best-effort, never blocks
+      // or fails the application submission itself.
+      syncGuardianAsSupporter({
+        name: form.guardianName,
+        phone: form.guardianPhone,
+        idNumber: form.guardianNationalId,
+        ward: form.ward || null,
+      });
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Failed to submit application");
     } finally {
@@ -332,7 +341,7 @@ export function BursaryApplicationDialog({ trigger }: { trigger: ReactNode }) {
             Constituency Bursary Application Form
           </DialogTitle>
           <DialogDescription>
-            Constituency Bursary Application Form — Term 2 (2026/2027). Complete all four sections and download
+            Ward Bursary Application Form — Term 2 (2026/2027). Complete all four sections and download
             your application form to sign and submit at the Moha Coordination Office, Kiamaiko-Mathare.
           </DialogDescription>
         </DialogHeader>
