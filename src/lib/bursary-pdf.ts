@@ -393,7 +393,7 @@ export function generateConfirmationLetter(
   // ── Letterhead ───────────────────────────────────────────────────────────
   doc.setFont("helvetica", "bold");
   doc.setFontSize(20);
-  doc.setTextColor(37, 78, 173); // letterhead blue, matching the official template
+  doc.setTextColor(20, 83, 45); // primary green, matching the site theme
   doc.text("MOHA EDUCATION KITTY", W / 2, y, { align: "center" });
   doc.setTextColor(0, 0, 0);
   y += 6.5;

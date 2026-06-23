@@ -106,7 +106,7 @@ const STATUS_COLORS: Record<string, string> = {
  * this; once set, it takes priority over the raw applicant-entered name.
  */
 function effectiveSchoolName(r: Row): string {
-  return (r.canonical_school_name?.trim() || r.school_name || "").trim();
+  return (r.canonical_school_name?.trim() || r.school_name || "").trim().toUpperCase();
 }
 
 type Tab = "applications" | "review" | "broadsheet" | "letters";
@@ -331,6 +331,15 @@ function AdminBursariesPage() {
     return c;
   }, [rows]);
 
+  const allSchoolNames = useMemo(() => {
+    const names = new Set<string>();
+    for (const r of rows) {
+      const name = effectiveSchoolName(r);
+      if (name) names.add(name);
+    }
+    return Array.from(names).sort();
+  }, [rows]);
+
   // ── Bulk selection helpers ───────────────────────────────────────────────
   const filteredIds = filtered.map((r) => r.id);
   const allChecked = filteredIds.length > 0 && filteredIds.every((id) => checkedIds.has(id));
@@ -517,6 +526,11 @@ function AdminBursariesPage() {
   return (
     <AdminLayout title="Bursary Applications">
       <Toaster />
+      <datalist id="school-suggestions">
+        {allSchoolNames.map((name) => (
+          <option key={name} value={name} />
+        ))}
+      </datalist>
       <div className="space-y-6">
 
         {/* Tab switcher */}
@@ -587,6 +601,7 @@ function AdminBursariesPage() {
             <div className="relative">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
+                list="school-suggestions"
                 placeholder="Search by student name, school, ward, guardian or reference…"
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
@@ -1637,9 +1652,10 @@ function AdminBursariesPage() {
               Official school name
             </label>
             <Input
+              list="school-suggestions"
               value={renameSchoolDraft}
               onChange={(e) => setRenameSchoolDraft(e.target.value)}
-              placeholder="e.g. Kanga Secondary School"
+              placeholder="e.g. KANGA HIGH SCHOOL"
               className="mt-1.5"
               autoFocus
             />

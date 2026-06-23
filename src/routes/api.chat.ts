@@ -56,16 +56,16 @@ export const Route = createFileRoute("/api/chat")({
             );
           }
 
-          const apiKey = process.env.LOVABLE_API_KEY;
+          const apiKey = process.env.GROQ_API_KEY;
           if (!apiKey) {
             return new Response(
-              JSON.stringify({ error: "AI service not configured" }),
+              JSON.stringify({ error: "AI service not configured. Please set GROQ_API_KEY in your .env file." }),
               { status: 500, headers: { "Content-Type": "application/json" } }
             );
           }
 
           const response = await fetch(
-            "https://ai.gateway.lovable.dev/v1/chat/completions",
+            "https://api.groq.com/openai/v1/chat/completions",
             {
               method: "POST",
               headers: {
@@ -73,7 +73,7 @@ export const Route = createFileRoute("/api/chat")({
                 "Content-Type": "application/json",
               },
               body: JSON.stringify({
-                model: "google/gemini-3-flash-preview",
+                model: "llama-3.3-70b-versatile",
                 stream: true,
                 messages: [
                   { role: "system", content: SYSTEM_PROMPT },
@@ -83,27 +83,28 @@ export const Route = createFileRoute("/api/chat")({
             }
           );
 
-          if (response.status === 429) {
+          if (response.status === 401 || response.status === 403) {
             return new Response(
-              JSON.stringify({ error: "Too many requests. Please try again in a moment." }),
-              { status: 429, headers: { "Content-Type": "application/json" } }
+              JSON.stringify({ error: "Invalid API key. Please check your GROQ_API_KEY." }),
+              { status: 500, headers: { "Content-Type": "application/json" } }
             );
           }
-          if (response.status === 402) {
+          if (response.status === 429) {
             return new Response(
-              JSON.stringify({ error: "AI credits exhausted. Please contact the team." }),
-              { status: 402, headers: { "Content-Type": "application/json" } }
+              JSON.stringify({ error: "Rate limit reached. Please wait a moment and try again." }),
+              { status: 429, headers: { "Content-Type": "application/json" } }
             );
           }
           if (!response.ok || !response.body) {
             const t = await response.text().catch(() => "");
-            console.error("AI gateway error:", response.status, t);
+            console.error("Groq API error:", response.status, t);
             return new Response(
-              JSON.stringify({ error: "AI service unavailable" }),
+              JSON.stringify({ error: `AI service error (${response.status}).` }),
               { status: 500, headers: { "Content-Type": "application/json" } }
             );
           }
 
+          // Groq is OpenAI-compatible — stream directly to the client
           return new Response(response.body, {
             headers: { "Content-Type": "text/event-stream" },
           });
