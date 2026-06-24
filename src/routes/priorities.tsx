@@ -241,12 +241,12 @@ function PrioritiesPage() {
         <div className="container mx-auto px-4 lg:px-8">
           {/* Tabs */}
           <div className="flex flex-wrap gap-3 justify-center mb-12">
-            {themes.map((t) => {
-              const isActive = active === t.key;
+            {themes.map((theme) => {
+              const isActive = active === theme.key;
               return (
                 <button
-                  key={t.key}
-                  onClick={() => setActive(t.key)}
+                  key={theme.key}
+                  onClick={() => setActive(theme.key)}
                   className={cn(
                     "flex items-center gap-2 px-5 py-3 rounded-full font-semibold text-sm transition-all border-2",
                     isActive
@@ -254,8 +254,8 @@ function PrioritiesPage() {
                       : "bg-card text-foreground border-border hover:border-primary/50"
                   )}
                 >
-                  <t.icon className="h-4 w-4" />
-                  {t(t.title)}
+                  <theme.icon className="h-4 w-4" />
+                  {t(theme.title)}
                 </button>
               );
             })}
