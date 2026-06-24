@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { MessageCircle, X, Send, Sparkles, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { useLanguage } from "@/hooks/useLanguage";
 
 type Msg = { role: "user" | "assistant"; content: string };
 
@@ -17,14 +18,26 @@ export function ChatWidget() {
   const [open, setOpen] = useState(false);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
+  const { language, t } = useLanguage();
   const [messages, setMessages] = useState<Msg[]>([
     {
       role: "assistant",
-      content:
-        "Karibu! 👋 I'm Moha's AI assistant. Ask me about the manifesto, donations, foundations, or how to get involved. Kuna More na Moha!",
+      content: t("Karibu! 👋 I'm Moha's AI assistant. Ask me about the manifesto, donations, foundations, or how to get involved. Kuna More na Moha!"),
     },
   ]);
   const scrollRef = useRef<HTMLDivElement>(null);
+ 
+  useEffect(() => {
+    // If the chat has only the default welcome message, translate it when language changes.
+    if (messages.length === 1 && messages[0].role === "assistant") {
+      setMessages([
+        {
+          role: "assistant",
+          content: t("Karibu! 👋 I'm Moha's AI assistant. Ask me about the manifesto, donations, foundations, or how to get involved. Kuna More na Moha!"),
+        },
+      ]);
+    }
+  }, [language]);
 
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
@@ -43,14 +56,14 @@ export function ChatWidget() {
       const res = await fetch("/api/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ messages: next }),
+        body: JSON.stringify({ messages: next, language }),
       });
-
+ 
       if (!res.ok || !res.body) {
-        const err = await res.json().catch(() => ({ error: "Failed to reach AI" }));
+        const err = await res.json().catch(() => ({ error: t("Something went wrong. Please try again.") }));
         setMessages((m) => [
           ...m,
-          { role: "assistant", content: err.error || "Something went wrong. Please try again." },
+          { role: "assistant", content: err.error || t("Something went wrong. Please try again.") },
         ]);
         setLoading(false);
         return;
@@ -103,7 +116,7 @@ export function ChatWidget() {
       console.error(e);
       setMessages((m) => [
         ...m,
-        { role: "assistant", content: "Network error. Please try again." },
+        { role: "assistant", content: t("Network error. Please try again.") },
       ]);
     } finally {
       setLoading(false);
@@ -163,10 +176,10 @@ export function ChatWidget() {
                 <Sparkles className="h-5 w-5 text-gold-foreground" />
               </div>
               <div>
-                <div className="font-display font-bold">Moha AI</div>
+                <div className="font-display font-bold">{t("Moha AI")}</div>
                 <div className="text-xs text-primary-foreground/80 flex items-center gap-1.5">
                   <span className="h-1.5 w-1.5 rounded-full bg-green-400 animate-pulse" />
-                  Online — ask anything
+                  {t("Online — ask anything")}
                 </div>
               </div>
             </div>
@@ -196,15 +209,15 @@ export function ChatWidget() {
               {messages.length <= 1 && !loading && (
                 <div className="pt-2 space-y-2">
                   <p className="text-xs text-muted-foreground font-semibold">
-                    Try asking:
+                    {t("Try asking:")}
                   </p>
                   {SUGGESTED.map((s) => (
                     <button
                       key={s}
-                      onClick={() => send(s)}
+                      onClick={() => send(t(s))}
                       className="block w-full text-left text-sm px-3 py-2 rounded-lg border border-border hover:border-primary hover:bg-primary/5 transition"
                     >
-                      {s}
+                      {t(s)}
                     </button>
                   ))}
                 </div>
@@ -223,7 +236,7 @@ export function ChatWidget() {
                 type="text"
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
-                placeholder="Ask Moha AI…"
+                placeholder={t("Ask Moha AI…")}
                 disabled={loading}
                 maxLength={500}
                 className="flex-1 h-11 px-4 rounded-lg bg-muted text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-primary"

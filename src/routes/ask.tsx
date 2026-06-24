@@ -1,4 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { useLanguage } from "@/hooks/useLanguage";
 import { useState } from "react";
 import { Send, Loader2, MessageCircleQuestion } from "lucide-react";
 import { z } from "zod";
@@ -42,19 +43,20 @@ const popularQs = [
 function AskPage() {
   const [loading, setLoading] = useState(false);
   const [data, setData] = useState({ name: "", contact: "", question: "" });
+  const { t } = useLanguage();
 
   const submit = (e: React.FormEvent) => {
     e.preventDefault();
     const result = schema.safeParse(data);
     if (!result.success) {
-      toast.error(result.error.issues[0].message);
+      toast.error(t(result.error.issues[0].message));
       return;
     }
     setLoading(true);
     setTimeout(() => {
       addMessage({ kind: "ask", name: data.name, contact: data.contact, body: data.question });
       setLoading(false);
-      toast.success("Question received! Moha or his team will get back to you.");
+      toast.success(t("Question received! Moha or his team will get back to you."));
       setData({ name: "", contact: "", question: "" });
     }, 800);
   };
@@ -63,9 +65,9 @@ function AskPage() {
     <>
       <Toaster />
       <PageHero
-        eyebrow="Direct Line"
-        title="Ask Moha anything."
-        subtitle="No filters. No PR speak. Submit your question and get a real answer from Moha or his team."
+        eyebrow={t("Direct Line")}
+        title={t("Ask Moha anything.")}
+        subtitle={t("No filters. No PR speak. Submit your question and get a real answer from Moha or his team.")}
       />
 
       <section className="py-20 bg-background">
@@ -78,10 +80,11 @@ function AskPage() {
             >
               <div>
                 <Label htmlFor="name" className="font-bold mb-2 block">
-                  Your Name
+                  {t("Your Name")}
                 </Label>
                 <Input
                   id="name"
+                  placeholder={t("Enter your name...")}
                   value={data.name}
                   maxLength={100}
                   onChange={(e) => setData((d) => ({ ...d, name: e.target.value }))}
@@ -91,11 +94,11 @@ function AskPage() {
               </div>
               <div>
                 <Label htmlFor="contact" className="font-bold mb-2 block">
-                  Phone or Email
+                  {t("Phone or Email")}
                 </Label>
                 <Input
                   id="contact"
-                  placeholder="07XX or you@email.com"
+                  placeholder={t("07XX or you@email.com")}
                   value={data.contact}
                   maxLength={120}
                   onChange={(e) => setData((d) => ({ ...d, contact: e.target.value }))}
@@ -105,11 +108,11 @@ function AskPage() {
               </div>
               <div>
                 <Label htmlFor="question" className="font-bold mb-2 block">
-                  Your Question
+                  {t("Your Question")}
                 </Label>
                 <Textarea
                   id="question"
-                  placeholder="Ask Moha…"
+                  placeholder={t("Ask Moha…")}
                   value={data.question}
                   maxLength={800}
                   onChange={(e) => setData((d) => ({ ...d, question: e.target.value }))}
@@ -126,11 +129,11 @@ function AskPage() {
               >
                 {loading ? (
                   <>
-                    <Loader2 className="h-5 w-5 animate-spin" /> Submitting…
+                    <Loader2 className="h-5 w-5 animate-spin" /> {t("Submitting...")}
                   </>
                 ) : (
                   <>
-                    <Send className="h-5 w-5" /> Ask Moha
+                    <Send className="h-5 w-5" /> {t("Ask Moha")}
                   </>
                 )}
               </Button>
@@ -141,7 +144,7 @@ function AskPage() {
               <div className="sticky top-24">
                 <h3 className="font-display font-bold text-lg mb-4 flex items-center gap-2">
                   <MessageCircleQuestion className="h-5 w-5 text-gold" />
-                  Popular questions
+                  {t("Popular questions")}
                 </h3>
                 <ul className="space-y-2">
                   {popularQs.map((q, i) => (
@@ -157,13 +160,13 @@ function AskPage() {
                         onClick={() => setData((d) => ({ ...d, question: q }))}
                         className="w-full text-left p-4 rounded-xl bg-card border border-border hover:border-primary hover:bg-primary/5 transition text-sm text-foreground"
                       >
-                        {q}
+                        {t(q)}
                       </button>
                     </motion.li>
                   ))}
                 </ul>
                 <p className="mt-4 text-xs text-muted-foreground">
-                  Tip: try the floating chat (bottom-right) for instant manifesto answers from Moha's AI.
+                  {t("Tip: try the floating chat (bottom-right) for instant manifesto answers from Moha's AI.")}
                 </p>
               </div>
             </aside>

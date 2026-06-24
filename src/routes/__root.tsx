@@ -5,6 +5,7 @@ import { Footer } from "@/components/Footer";
 import { ChatWidget } from "@/components/ChatWidget";
 import { bumpVisitOncePerSession } from "@/lib/loyalty";
 import { SITE_NAME, SITE_URL, DEFAULT_OG_IMAGE, TWITTER_HANDLE, organizationJsonLd } from "@/lib/seo";
+import { LanguageProvider, useLanguage } from "@/hooks/useLanguage";
 
 import appCss from "../styles.css?url";
 
@@ -89,17 +90,28 @@ export const Route = createRootRoute({
   notFoundComponent: NotFoundComponent,
 });
 
+function HtmlWithLang({ children }: { children: React.ReactNode }) {
+  const { language } = useLanguage();
+  return (
+    <html lang={language}>
+      {children}
+    </html>
+  );
+}
+
 function RootShell({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en">
-      <head>
-        <HeadContent />
-      </head>
-      <body>
-        {children}
-        <Scripts />
-      </body>
-    </html>
+    <LanguageProvider>
+      <HtmlWithLang>
+        <head>
+          <HeadContent />
+        </head>
+        <body>
+          {children}
+          <Scripts />
+        </body>
+      </HtmlWithLang>
+    </LanguageProvider>
   );
 }
 

@@ -1,4 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { useLanguage } from "@/hooks/useLanguage";
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -225,13 +226,14 @@ function PrioritiesPage() {
   const [active, setActive] = useState(themes[0].key);
   const current = themes.find((t) => t.key === active)!;
   const [content] = useContent();
+  const { t } = useLanguage();
 
   return (
     <>
       <PageHero
-        eyebrow="The Manifesto"
-        title={content.prioritiesHeadline}
-        subtitle={content.prioritiesSubtitle}
+        eyebrow={t("The Manifesto")}
+        title={t(content.prioritiesHeadline)}
+        subtitle={t(content.prioritiesSubtitle)}
         bgImage={educationImg}
       />
 
@@ -253,7 +255,7 @@ function PrioritiesPage() {
                   )}
                 >
                   <t.icon className="h-4 w-4" />
-                  {t.title}
+                  {t(t.title)}
                 </button>
               );
             })}
@@ -279,8 +281,8 @@ function PrioritiesPage() {
                 <div className={cn("absolute inset-0 bg-gradient-to-br", current.color)} />
                 <div className="relative p-10 h-full flex flex-col justify-end text-white min-h-[320px]">
                   <current.icon className="h-14 w-14 text-gold mb-4" />
-                  <h3 className="text-4xl md:text-5xl font-display font-black">{current.title}</h3>
-                  <p className="mt-3 text-lg text-white/90 italic">{current.tagline}</p>
+                  <h3 className="text-4xl md:text-5xl font-display font-black">{t(current.title)}</h3>
+                  <p className="mt-3 text-lg text-white/90 italic">{t(current.tagline)}</p>
                 </div>
               </div>
 
@@ -348,6 +350,7 @@ function PillarColumn({
   subtitle: string;
   items: string[];
 }) {
+  const { t } = useLanguage();
   return (
     <div className="bg-card rounded-3xl p-7 border border-border shadow-elegant h-full">
       <div className="flex items-center gap-3 mb-5">
@@ -355,13 +358,14 @@ function PillarColumn({
           <Icon className="h-5 w-5" />
         </span>
         <div>
-          <h4 className="font-display font-bold text-lg leading-tight">{title}</h4>
-          <p className="text-xs text-muted-foreground">{subtitle}</p>
+          <h4 className="font-display font-bold text-lg leading-tight">{t(title)}</h4>
+          <p className="text-xs text-muted-foreground">{t(subtitle)}</p>
         </div>
       </div>
       <ul className="space-y-3">
         {items.map((item, i) => {
-          const display = item.length ? item[0].toUpperCase() + item.slice(1) : item;
+          const translated = t(item);
+          const display = translated.length ? translated[0].toUpperCase() + translated.slice(1) : translated;
           return (
             <motion.li
               key={item}

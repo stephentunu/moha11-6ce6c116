@@ -1,4 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
+import { useLanguage } from "@/hooks/useLanguage";
 import { motion } from "framer-motion";
 import {
   ArrowRight,
@@ -66,6 +67,7 @@ function HomePage() {
   const [activitiesAll] = useActivities();
   const upcoming = filterUpcoming(activitiesAll).slice(0, 6);
   const hero = content.heroImageUrl || heroImg;
+  const { language, t } = useLanguage();
   return (
     <>
       {/* HERO */}
@@ -90,9 +92,9 @@ function HomePage() {
               className="inline-flex items-center gap-2 px-4 py-2 mb-6 text-xs font-bold tracking-widest uppercase text-gold bg-gold/10 backdrop-blur-md rounded-full border border-gold/40"
             >
               <Sparkles className="h-3.5 w-3.5" />
-              Mathare MP Aspirant • 2027
+              {t("Mathare MP Aspirant • 2027")}
             </motion.span>
-
+ 
             <motion.h1
               initial={{ opacity: 0, y: 30 }}
               animate={{ opacity: 1, y: 0 }}
@@ -100,29 +102,30 @@ function HomePage() {
               className="text-4xl md:text-5xl lg:text-6xl font-display font-black text-white leading-[0.95] text-balance"
             >
               <span className="bg-gradient-to-r from-gold to-yellow-300 bg-clip-text text-transparent">
-                {content.homeHeadline}
+                {t(content.homeHeadline)}
               </span>
             </motion.h1>
-
+ 
             <motion.p
               initial={{ opacity: 0, y: 30 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.7, delay: 0.25 }}
               className="mt-4 text-xl md:text-2xl font-display italic text-gold"
             >
-              "{content.homeTagline}"
+              "{t(content.homeTagline)}"
             </motion.p>
-
+ 
             <motion.p
               initial={{ opacity: 0, y: 30 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.7, delay: 0.4 }}
               className="mt-4 text-base md:text-lg text-white/85 max-w-2xl leading-relaxed"
             >
-              A son of Mathare. A voice for the hustler, the student, the mama, and the mzee.
-              Building a constituency where every life matters and every dream has a runway.
+              {t("A son of Mathare. A voice for the hustler, the student, the mama, and the mzee.")}
+              {" "}
+              {t("Building a constituency where every life matters and every dream has a runway.")}
             </motion.p>
-
+ 
             <motion.div
               initial={{ opacity: 0, y: 30 }}
               animate={{ opacity: 1, y: 0 }}
@@ -131,7 +134,7 @@ function HomePage() {
             >
               <Button asChild variant="hero" size="xl">
                 <Link to="/donate">
-                  Support the Movement <ArrowRight className="h-5 w-5" />
+                  {t("Support the Movement")} <ArrowRight className="h-5 w-5" />
                 </Link>
               </Button>
               <Button
@@ -139,7 +142,7 @@ function HomePage() {
                 size="xl"
                 className="bg-white/10 backdrop-blur-md border-2 border-white/30 text-white hover:bg-white/20"
               >
-                <Link to="/priorities">Read the Manifesto</Link>
+                <Link to="/priorities">{t("Read the Manifesto")}</Link>
               </Button>
             </motion.div>
           </div>
@@ -151,7 +154,7 @@ function HomePage() {
           transition={{ duration: 2, repeat: Infinity }}
           className="absolute bottom-8 left-1/2 -translate-x-1/2 text-white/60 text-xs font-semibold tracking-widest uppercase"
         >
-          Scroll
+          {t("Scroll")}
         </motion.div>
       </section>
 
@@ -161,22 +164,22 @@ function HomePage() {
           <div className="grid lg:grid-cols-12 gap-8 items-start">
             <div className="lg:col-span-4">
               <span className="inline-block px-3 py-1 mb-3 text-xs font-bold tracking-widest uppercase text-primary bg-primary/10 rounded-full border border-primary/20">
-                Today & Tomorrow
+                {t("Today & Tomorrow")}
               </span>
               <h2 className="text-3xl md:text-4xl font-display font-bold text-foreground text-balance">
-                Daily Campaign Activities
+                {t("Daily Campaign Activities")}
               </h2>
               <p className="mt-3 text-sm text-muted-foreground">
-                Where Moha and the team will be on the ground. Activities disappear automatically after the event date.
+                {t("Where Moha and the team will be on the ground. Activities disappear automatically after the event date.")}
               </p>
             </div>
             <div className="lg:col-span-8">
               {upcoming.length === 0 ? (
                 <div className="bg-card border border-border rounded-2xl p-8 shadow-elegant text-center">
                   <Calendar className="h-8 w-8 text-primary mx-auto mb-2" />
-                  <p className="font-display text-lg font-bold">No public activities scheduled right now</p>
+                  <p className="font-display text-lg font-bold">{t("No public activities scheduled right now")}</p>
                   <p className="mt-1 text-muted-foreground text-sm">
-                    Check back soon — we update this calendar daily.
+                    {t("Check back soon — we update this calendar daily.")}
                   </p>
                 </div>
               ) : (
@@ -192,7 +195,7 @@ function HomePage() {
                     >
                       <div className="flex items-center gap-2 text-[11px] font-bold uppercase tracking-widest text-primary mb-2">
                         <Calendar className="h-3 w-3" />
-                        {new Date(a.date).toLocaleDateString("en-KE", {
+                        {new Date(a.date).toLocaleDateString(language === "sw" ? "sw-KE" : "en-KE", {
                           weekday: "short",
                           day: "numeric",
                           month: "short",
@@ -240,7 +243,7 @@ function HomePage() {
                   {s.value}
                 </div>
                 <div className="mt-1 text-xs md:text-sm font-semibold tracking-wide uppercase text-primary-foreground/70">
-                  {s.label}
+                  {t(s.label)}
                 </div>
               </motion.div>
             ))}
@@ -252,9 +255,9 @@ function HomePage() {
       <section className="py-24 bg-background">
         <div className="container mx-auto px-4 lg:px-8">
           <SectionHeader
-            eyebrow="Our Four Pillars"
-            title="What Moha is delivering"
-            subtitle="A focused, people-first plan grounded in the realities of Mathare — built with the community, for the community."
+            eyebrow={t("Our Four Pillars")}
+            title={t("What Moha is delivering")}
+            subtitle={t("A focused, people-first plan grounded in the realities of Mathare — built with the community, for the community.")}
           />
 
           <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
@@ -273,7 +276,7 @@ function HomePage() {
                   <div className="relative h-48 overflow-hidden">
                     <img
                       src={p.img}
-                      alt={p.title}
+                      alt={t(p.title)}
                       loading="lazy"
                       width={1200}
                       height={800}
@@ -286,11 +289,11 @@ function HomePage() {
                   </div>
                   <div className="p-6">
                     <h3 className="text-xl font-display font-bold text-foreground group-hover:text-primary transition-colors">
-                      {p.title}
+                      {t(p.title)}
                     </h3>
-                    <p className="mt-2 text-sm text-muted-foreground leading-relaxed">{p.desc}</p>
+                    <p className="mt-2 text-sm text-muted-foreground leading-relaxed">{t(p.desc)}</p>
                     <span className="mt-4 inline-flex items-center gap-1 text-sm font-semibold text-primary group-hover:gap-2 transition-all">
-                      Explore <ArrowRight className="h-4 w-4" />
+                      {t("Explore")} <ArrowRight className="h-4 w-4" />
                     </span>
                   </div>
                 </Link>
@@ -304,9 +307,9 @@ function HomePage() {
       <section className="py-24 bg-muted/30">
         <div className="container mx-auto px-4 lg:px-8">
           <SectionHeader
-            eyebrow="On the Ground"
-            title="Real work. Real Mathare."
-            subtitle="Snapshots from bursary drives, water donations, school visits, and community days — the work that doesn't wait for elections."
+            eyebrow={t("On the Ground")}
+            title={t("Real work. Real Mathare.")}
+            subtitle={t("Snapshots from bursary drives, water donations, school visits, and community days — the work that doesn't wait for elections.")}
           />
           <div className="grid grid-cols-2 md:grid-cols-3 gap-4 md:gap-6">
             {[galleryImg1, galleryImg2, galleryImg3, galleryImg4, galleryImg5, galleryImg6].map(
@@ -358,15 +361,15 @@ function HomePage() {
           >
             <Quote className="h-12 w-12 text-gold mb-6" />
             <p className="text-3xl md:text-4xl font-display font-bold leading-tight text-balance">
-              "{content.homeQuote}"
+              "{t(content.homeQuote)}"
             </p>
             <p className="mt-6 text-sm font-semibold tracking-widest uppercase text-gold">
-              — {content.homeQuoteAuthor}
+              — {t(content.homeQuoteAuthor)}
             </p>
             <div className="mt-10 flex flex-wrap gap-4">
               <Button asChild variant="hero" size="lg">
                 <Link to="/foundations">
-                  Meet the Foundation <Users className="h-5 w-5" />
+                  {t("Meet the Foundation")} <Users className="h-5 w-5" />
                 </Link>
               </Button>
               <Button
@@ -374,7 +377,7 @@ function HomePage() {
                 size="lg"
                 className="bg-white/10 backdrop-blur-md border-2 border-white/30 text-white hover:bg-white/20"
               >
-                <Link to="/polling">Vote on the Issues</Link>
+                <Link to="/polling">{t("Vote on the Issues")}</Link>
               </Button>
             </div>
           </motion.div>
@@ -390,12 +393,12 @@ function HomePage() {
               className="group p-8 rounded-2xl bg-card border border-border hover:border-primary shadow-elegant hover:shadow-glow transition-all"
             >
               <Sparkles className="h-10 w-10 text-gold mb-4" />
-              <h3 className="text-2xl font-display font-bold">Ask Moha</h3>
+              <h3 className="text-2xl font-display font-bold">{t("Ask Moha")}</h3>
               <p className="mt-2 text-muted-foreground">
-                Your questions deserve answers. Send a question directly to Moha.
+                {t("Your questions deserve answers. Send a question directly to Moha.")}
               </p>
               <span className="mt-4 inline-flex items-center gap-1 font-semibold text-primary group-hover:gap-2 transition-all">
-                Ask now <ArrowRight className="h-4 w-4" />
+                {t("Ask now")} <ArrowRight className="h-4 w-4" />
               </span>
             </Link>
             <Link
@@ -403,12 +406,12 @@ function HomePage() {
               className="group p-8 rounded-2xl bg-card border border-border hover:border-primary shadow-elegant hover:shadow-glow transition-all"
             >
               <Users className="h-10 w-10 text-accent mb-4" />
-              <h3 className="text-2xl font-display font-bold">Share Your Opinion</h3>
+              <h3 className="text-2xl font-display font-bold">{t("Share Your Opinion")}</h3>
               <p className="mt-2 text-muted-foreground">
-                Tell us what Mathare needs. Every voice shapes the manifesto.
+                {t("Tell us what Mathare needs. Every voice shapes the manifesto.")}
               </p>
               <span className="mt-4 inline-flex items-center gap-1 font-semibold text-primary group-hover:gap-2 transition-all">
-                Send a message <ArrowRight className="h-4 w-4" />
+                {t("Send a message")} <ArrowRight className="h-4 w-4" />
               </span>
             </Link>
           </div>

@@ -1,4 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { useLanguage } from "@/hooks/useLanguage";
 import { useMemo, useState } from "react";
 import { motion } from "framer-motion";
 import { Vote, TrendingUp, CheckCircle2, MapPin, ChevronDown, Star } from "lucide-react";
@@ -58,6 +59,7 @@ function PollingPage() {
   const [phone, setPhone] = useState("");
   const [smsSent, setSmsSent] = useState(false);
   const [sendingSms, setSendingSms] = useState(false);
+  const { language, t } = useLanguage();
 
   const totalVotes = Object.keys(voted).length;
   const siteUrl = typeof window !== "undefined" ? window.location.origin : "https://mohadelivers.com";
@@ -65,7 +67,7 @@ function PollingPage() {
   const sendThankYouSms = async () => {
     const cleaned = phone.replace(/\s+/g, "").replace(/^0/, "254").replace(/^\+/, "");
     if (!/^254[17]\d{8}$/.test(cleaned)) {
-      toast.error("Please enter a valid Kenyan mobile number (07XX or 01XX)");
+      toast.error(t("Please enter a valid Kenyan mobile number (07XX or 01XX)"));
       return;
     }
     setSendingSms(true);
@@ -73,7 +75,7 @@ function PollingPage() {
     await new Promise((r) => setTimeout(r, 1200));
     setSendingSms(false);
     setSmsSent(true);
-    toast.success("Thank-you message sent to your number!");
+    toast.success(t("Thank-you message sent to your number!"));
   };
 
   const { servicePolls, otherPolls } = useMemo(() => {
@@ -84,25 +86,25 @@ function PollingPage() {
 
   const handleVote = (pollId: string, optionId: string) => {
     if (!ward) {
-      toast.error("Please select your ward before voting.");
+      toast.error(t("Please select your ward before voting."));
       return;
     }
     if (voted[pollId]) {
-      toast.info("You've already rated this service.");
+      toast.info(t("You've already rated this service."));
       return;
     }
     votePoll(pollId, optionId, ward);
     setVoted((v) => ({ ...v, [pollId]: optionId }));
-    toast.success(`Asante! Your vote from ${ward} ward has been recorded.`);
+    toast.success(t("Asante! Your vote from {ward} ward has been recorded.").replace("{ward}", ward));
   };
 
   return (
     <>
       <Toaster />
       <PageHero
-        eyebrow="Your Voice"
-        title="Vote on what matters"
-        subtitle="Pick your Mathare ward, then tell Moha where you stand. Every vote shapes the action plan."
+        eyebrow={t("Your Voice")}
+        title={t("Vote on what matters")}
+        subtitle={t("Pick your Mathare ward, then tell Moha where you stand. Every vote shapes the action plan.")}
       />
 
       <section className="py-12 bg-background">
@@ -115,26 +117,26 @@ function PollingPage() {
               </div>
               <div className="flex-1">
                 <h2 className="text-base md:text-lg font-display font-bold text-foreground">
-                  Step 1 — Select your ward
+                  {t("Step 1 — Select your ward")}
                 </h2>
                 <p className="text-xs text-muted-foreground mt-1 mb-3">
-                  We use this only to break results down by ward. One vote per question per device.
+                  {t("We use this only to break results down by ward. One vote per question per device.")}
                 </p>
                 <Select value={ward} onValueChange={setWard}>
                   <SelectTrigger className="w-full md:max-w-sm">
-                    <SelectValue placeholder="Choose your Mathare ward" />
+                    <SelectValue placeholder={t("Choose your Mathare ward")} />
                   </SelectTrigger>
                   <SelectContent>
                     {MATHARE_WARDS.map((w) => (
                       <SelectItem key={w} value={w}>
-                        {w}
+                        {t(w)}
                       </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
                 {ward && (
                   <p className="mt-2 text-xs font-semibold text-gold">
-                    ✓ Voting as a resident of {ward} ward
+                    ✓ {t("Voting as a resident of")} {ward} {t("ward")}
                   </p>
                 )}
               </div>
@@ -150,10 +152,10 @@ function PollingPage() {
                 </div>
                 <div>
                   <h3 className="text-lg md:text-xl font-display font-bold text-foreground">
-                    Rate how the following services are offered in Mathare by the Government and people's Representatives
+                    {t("Rate how the following services are offered in Mathare by the Government and people's Representatives")}
                   </h3>
                   <p className="text-xs text-muted-foreground mt-1">
-                    Click a rating, then tick the services it applies to. One vote per service per device.
+                    {t("Click a rating, then tick the services it applies to. One vote per service per device.")}
                   </p>
                 </div>
               </div>
@@ -174,7 +176,7 @@ function PollingPage() {
 
               {!ward && (
                 <p className="mt-3 text-xs text-muted-foreground text-center">
-                  ↑ Select your ward above to unlock voting.
+                  {t("↑ Select your ward above to unlock voting.")}
                 </p>
               )}
             </div>
@@ -201,11 +203,11 @@ function PollingPage() {
                     </div>
                     <div className="flex-1">
                       <h3 className="text-base md:text-lg font-display font-bold text-foreground text-balance">
-                        {poll.question}
+                        {t(poll.question)}
                       </h3>
                       <p className="text-[11px] text-muted-foreground mt-1 flex items-center gap-1">
                         <TrendingUp className="h-3 w-3" />
-                        Results are kept private and shared with Moha's team only.
+                        {t("Results are kept private and shared with Moha's team only.")}
                       </p>
                     </div>
                   </div>
@@ -230,7 +232,7 @@ function PollingPage() {
                         >
                           <span className="flex items-center gap-2 font-semibold text-foreground text-sm">
                             {isUserChoice && <CheckCircle2 className="h-4 w-4 text-gold" />}
-                            {opt.label}
+                            {t(opt.label)}
                           </span>
                         </button>
                       );
@@ -239,11 +241,11 @@ function PollingPage() {
 
                   {userVote ? (
                     <p className="mt-3 text-xs font-semibold text-gold">
-                      ✓ Asante! Your vote from {ward} ward has been recorded.
+                      ✓ {t("Asante! Your vote from {ward} ward has been recorded.").replace("{ward}", ward)}
                     </p>
                   ) : locked ? (
                     <p className="mt-3 text-xs text-muted-foreground">
-                      Select your ward above to unlock voting.
+                      {t("Select your ward above to unlock voting.")}
                     </p>
                   ) : null}
                 </motion.div>
@@ -260,10 +262,10 @@ function PollingPage() {
                 </div>
                 <div>
                   <h3 className="text-base md:text-lg font-display font-bold text-foreground">
-                    Asante sana for voting! 🙏
+                    {t("Asante sana for voting! 🙏")}
                   </h3>
                   <p className="text-xs text-muted-foreground mt-0.5">
-                    Enter your mobile number to receive a thank-you message with a link you can share with friends.
+                    {t("Enter your mobile number to receive a thank-you message with a link you can share with friends.")}
                   </p>
                 </div>
               </div>
@@ -271,9 +273,9 @@ function PollingPage() {
               {smsSent ? (
                 <div className="rounded-xl bg-emerald-50 border border-emerald-200 p-4 text-center space-y-2">
                   <CheckCircle2 className="h-8 w-8 text-emerald-600 mx-auto" />
-                  <p className="font-semibold text-emerald-700">Message sent to {phone}!</p>
+                  <p className="font-semibold text-emerald-700">{t("Message sent to {phone}!").replace("{phone}", phone)}</p>
                   <p className="text-xs text-emerald-600">
-                    Share the link with your friends so they can also have their say.
+                    {t("Share the link with your friends so they can also have their say.")}
                   </p>
                 </div>
               ) : (
@@ -295,12 +297,11 @@ function PollingPage() {
                       disabled={sendingSms || !phone.trim()}
                       className="shrink-0"
                     >
-                      {sendingSms ? "Sending…" : "Send SMS"}
+                      {sendingSms ? t("Sending…") : t("Send SMS")}
                     </Button>
                   </div>
                   <p className="text-[11px] text-muted-foreground">
-                    The SMS will include a link to <strong>{siteUrl}</strong> that you can forward to friends and family.
-                    Standard Safaricom / Airtel rates may apply.
+                    {t("The SMS will include a link to")} <strong>{siteUrl}</strong> {t("that you can forward to friends and family. Standard Safaricom / Airtel rates may apply.")}
                   </p>
                 </div>
               )}
@@ -309,7 +310,7 @@ function PollingPage() {
 
           <div className="mt-10 text-center">
             <Button asChild variant="hero" size="lg">
-              <a href="/opinion">Have a different idea? Send a message</a>
+              <a href="/opinion">{t("Have a different idea? Send a message")}</a>
             </Button>
           </div>
         </div>
@@ -339,6 +340,7 @@ function RatingAccordion({
   const [open, setOpen] = useState(false);
   const locked = !ward;
   const countVoted = polls.filter((p) => voted[p.id] === rating.id).length;
+  const { t } = useLanguage();
 
   return (
     <Collapsible open={open} onOpenChange={setOpen}>
@@ -351,11 +353,11 @@ function RatingAccordion({
         )}
       >
         <span className={cn("text-base md:text-lg font-display font-bold", rating.color)}>
-          {rating.label}
+          {t(rating.label)}
         </span>
         {countVoted > 0 && (
           <span className={cn("text-[10px] font-bold uppercase tracking-widest px-2 py-0.5 rounded-full", rating.bg, rating.color)}>
-            {countVoted} voted
+            {countVoted} {t("voted")}
           </span>
         )}
         <ChevronDown className={cn("h-4 w-4 text-muted-foreground transition-transform", open && "rotate-180")} />
@@ -365,7 +367,7 @@ function RatingAccordion({
         <div className="mt-2 rounded-xl border border-border overflow-hidden">
           {locked && (
             <p className="px-4 py-3 text-xs text-muted-foreground">
-              Select your ward above to unlock voting.
+              {t("Select your ward above to unlock voting.")}
             </p>
           )}
           {polls.map((p) => {
@@ -402,14 +404,14 @@ function RatingAccordion({
                   )}
                 />
                 <span className="text-sm font-medium text-foreground leading-tight flex-1">
-                  {service}
+                  {t(service)}
                 </span>
                 {votedThisRating && (
                   <CheckCircle2 className={cn("h-4 w-4 shrink-0", rating.color)} />
                 )}
                 {votedOtherRating && (
                   <span className="text-[10px] font-semibold text-muted-foreground uppercase shrink-0">
-                    Rated {RATING_OPTIONS.find((r) => r.id === userVote)?.label}
+                    {t("Rated")} {t(RATING_OPTIONS.find((r) => r.id === userVote)?.label || "")}
                   </span>
                 )}
               </label>

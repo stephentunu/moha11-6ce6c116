@@ -1,4 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
+import { useLanguage } from "@/hooks/useLanguage";
 import { motion } from "framer-motion";
 import {
   HandHeart,
@@ -305,6 +306,7 @@ function FoundationsPage() {
   const [content] = useContent();
   const title = (content.foundationsHeadline || "").replace(/Foundations/gi, "Foundation");
   const { windowStart, loading } = useBursaryWindow();
+  const { language, t } = useLanguage();
 
   // Compute whether the 10-day bursary window is currently open
   const bursaryWindowOpen = (() => {
@@ -325,9 +327,9 @@ function FoundationsPage() {
   return (
     <>
       <PageHero
-        eyebrow="Service in Action"
-        title={title}
-        subtitle={content.foundationsSubtitle}
+        eyebrow={t("Service in Action")}
+        title={t(title)}
+        subtitle={t(content.foundationsSubtitle)}
         bgImage={vulnerableImg}
       />
 
@@ -355,24 +357,33 @@ function FoundationsPage() {
                   <div className="absolute inset-0 bg-gradient-to-t from-primary/95 via-primary/40 to-transparent" />
                   <div className="absolute inset-0 p-8 flex flex-col justify-end text-primary-foreground">
                     <f.icon className="h-12 w-12 text-gold mb-3" strokeWidth={1.5} />
-                    <div className="text-4xl md:text-5xl font-display font-black text-gold leading-none">
-                      {f.impact.split(" ")[0]}
-                    </div>
-                    <div className="mt-2 text-sm font-semibold tracking-wide uppercase text-primary-foreground/90">
-                      {f.impact.split(" ").slice(1).join(" ")}
-                    </div>
+                    {(() => {
+                      const translatedImpact = t(f.impact);
+                      const stat = translatedImpact.match(/[\d,+]+\+?/)?.[0] || "";
+                      const label = translatedImpact.replace(stat, "").trim();
+                      return (
+                        <>
+                          <div className="text-4xl md:text-5xl font-display font-black text-gold leading-none">
+                            {stat}
+                          </div>
+                          <div className="mt-2 text-sm font-semibold tracking-wide uppercase text-primary-foreground/90">
+                            {label}
+                          </div>
+                        </>
+                      );
+                    })()}
                   </div>
                 </div>
               </div>
-
+ 
               <div className="lg:col-span-7">
                 <span className="inline-block px-3 py-1 mb-4 text-xs font-bold tracking-widest uppercase text-accent bg-accent/10 rounded-full border border-accent/20">
-                  {f.pill}
+                  {t(f.pill)}
                 </span>
                 <h2 className="text-4xl md:text-5xl font-display font-bold text-foreground text-balance">
-                  {f.title}
+                  {t(f.title)}
                 </h2>
-                <p className="mt-4 text-lg text-muted-foreground leading-relaxed">{f.desc}</p>
+                <p className="mt-4 text-lg text-muted-foreground leading-relaxed">{t(f.desc)}</p>
                 <ul className="mt-6 grid sm:grid-cols-2 gap-3">
                   {f.points.map((p) => (
                     <li
@@ -380,11 +391,11 @@ function FoundationsPage() {
                       className="flex items-start gap-2 text-sm text-foreground"
                     >
                       <span className="mt-1.5 h-1.5 w-1.5 rounded-full bg-gold flex-shrink-0" />
-                      {p}
+                      {t(p)}
                     </li>
                   ))}
                 </ul>
-
+ 
                 {f.title.startsWith("Bursaries") && (
                   <div className="mt-6">
                     {loading ? (
@@ -394,30 +405,30 @@ function FoundationsPage() {
                         <BursaryApplicationDialog
                           trigger={
                             <Button variant="hero" size="lg">
-                              Apply for bursary <ArrowRight className="h-5 w-5" />
+                              {t("Apply for Bursary")} <ArrowRight className="h-5 w-5" />
                             </Button>
                           }
                         />
                         <p className="mt-2 text-xs text-muted-foreground">
-                          4-step application · Window closes{" "}
-                          {bursaryWindowEnd?.toLocaleDateString("en-KE", { day: "numeric", month: "long", year: "numeric" })}.
+                          {t("4-step application")} · {t("Window closes")}{" "}
+                          {bursaryWindowEnd?.toLocaleDateString(language === "sw" ? "sw-KE" : "en-KE", { day: "numeric", month: "long", year: "numeric" })}.
                         </p>
                       </>
                     ) : (
                       <div className="rounded-xl border-2 border-amber-300 bg-amber-50 px-5 py-4 text-sm text-amber-800 font-medium">
-                        <p className="font-bold text-base mb-1">Applications are currently closed</p>
-                        <p>The bursary application window is not open at the moment. Check back soon or follow our social media for the next opening date.</p>
+                        <p className="font-bold text-base mb-1">{t("Applications are currently closed")}</p>
+                        <p>{t("The bursary application window is not open at the moment. Check back soon or follow our social media for the next opening date.")}</p>
                       </div>
                     )}
                   </div>
                 )}
-
+ 
                 {f.comingSoon.length > 0 && (
                   <div className="mt-6 rounded-2xl border border-accent/20 bg-accent/5 p-5">
                     <div className="flex items-center gap-2 mb-3">
                       <Clock className="h-4 w-4 text-accent" />
                       <span className="text-xs font-bold tracking-widest uppercase text-accent">
-                        Coming Soon
+                        {t("Coming Soon")}
                       </span>
                     </div>
                     <ul className="grid sm:grid-cols-2 gap-2">
@@ -427,7 +438,7 @@ function FoundationsPage() {
                           className="flex items-start gap-2 text-sm text-foreground"
                         >
                           <span className="mt-1.5 h-1.5 w-1.5 rounded-full bg-accent flex-shrink-0" />
-                          {c}
+                          {t(c)}
                         </li>
                       ))}
                     </ul>
@@ -466,7 +477,7 @@ function FoundationsPage() {
           <div className="text-center pt-8">
             <Button asChild variant="hero" size="lg">
               <Link to="/donate">
-                Power the Foundation <ArrowRight className="h-5 w-5" />
+                {t("Power the Foundation")} <ArrowRight className="h-5 w-5" />
               </Link>
             </Button>
           </div>
@@ -478,13 +489,13 @@ function FoundationsPage() {
         <div className="container mx-auto px-4 lg:px-8">
           <div className="max-w-3xl mx-auto text-center mb-12">
             <span className="inline-block px-4 py-1.5 mb-4 text-xs font-bold tracking-widest uppercase text-primary bg-primary/10 rounded-full border border-primary/20">
-              <Users className="inline h-3.5 w-3.5 mr-1" /> Team Moha
+              <Users className="inline h-3.5 w-3.5 mr-1" /> {t("Team Moha")}
             </span>
             <h2 className="text-4xl md:text-5xl font-display font-bold text-foreground">
-              The hands behind every delivery
+              {t("The hands behind every delivery")}
             </h2>
             <p className="mt-4 text-muted-foreground">
-              Volunteers, organisers and friends of Mathare — showing up week after week.
+              {t("Volunteers, organisers and friends of Mathare — showing up week after week.")}
             </p>
           </div>
           <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-3">

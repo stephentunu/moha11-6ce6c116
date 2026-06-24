@@ -4,6 +4,7 @@ import { Menu, X, LogIn } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import mohaLogo from "@/assets/moha/moha-portrait.jpeg";
+import { useLanguage } from "@/hooks/useLanguage";
 
 const links = [
   { to: "/", label: "Home" },
@@ -20,6 +21,7 @@ export function Navbar() {
   const [scrolled, setScrolled] = useState(false);
   const [open, setOpen] = useState(false);
   const location = useLocation();
+  const { language, setLanguage, t } = useLanguage();
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 30);
@@ -85,7 +87,7 @@ export function Navbar() {
                     active && (transparent ? "text-gold" : "text-primary")
                   )}
                 >
-                  {link.label}
+                  {t(link.label)}
                   {active && (
                     <span className="absolute -bottom-0.5 left-3 right-3 h-0.5 bg-gold rounded-full" />
                   )}
@@ -95,6 +97,35 @@ export function Navbar() {
           </nav>
 
           <div className="hidden lg:flex items-center gap-3">
+            <div className={cn(
+              "flex items-center gap-1 rounded-lg p-0.5 border transition-all mr-2",
+              transparent
+                ? "bg-white/10 border-white/20"
+                : "bg-muted/50 border-border"
+            )}>
+              <button
+                onClick={() => setLanguage("en")}
+                className={cn(
+                  "px-2 py-1 text-xs font-bold rounded-md transition-all cursor-pointer",
+                  language === "en"
+                    ? (transparent ? "bg-white text-primary" : "bg-primary text-primary-foreground")
+                    : (transparent ? "text-white/70 hover:text-white" : "text-muted-foreground hover:text-foreground")
+                )}
+              >
+                EN
+              </button>
+              <button
+                onClick={() => setLanguage("sw")}
+                className={cn(
+                  "px-2 py-1 text-xs font-bold rounded-md transition-all cursor-pointer",
+                  language === "sw"
+                    ? (transparent ? "bg-white text-primary" : "bg-primary text-primary-foreground")
+                    : (transparent ? "text-white/70 hover:text-white" : "text-muted-foreground hover:text-foreground")
+                )}
+              >
+                SW
+              </button>
+            </div>
             <Link
               to="/admin/login"
               className={cn(
@@ -105,10 +136,10 @@ export function Navbar() {
               )}
             >
               <LogIn className="h-4 w-4" />
-              Sign In
+              {t("Sign In")}
             </Link>
             <Button asChild variant="hero" size="default">
-              <Link to="/donate">Donate</Link>
+              <Link to="/donate">{t("Donate")}</Link>
             </Button>
           </div>
 
@@ -127,13 +158,41 @@ export function Navbar() {
         {open && (
           <div className="lg:hidden pb-6 pt-2 animate-fade-in">
             <nav className="flex flex-col gap-1 bg-background/95 rounded-xl border border-border p-3">
+              <div className="flex items-center justify-between px-4 py-2 border-b border-border mb-2">
+                <span className="text-xs font-semibold text-muted-foreground">Language / Lugha</span>
+                <div className="flex items-center gap-1 bg-muted/50 rounded-lg p-0.5 border border-border">
+                  <button
+                    onClick={() => setLanguage("en")}
+                    className={cn(
+                      "px-2 py-0.5 text-xs font-bold rounded-md transition-all cursor-pointer",
+                      language === "en"
+                        ? "bg-primary text-primary-foreground shadow-sm"
+                        : "text-muted-foreground hover:text-foreground"
+                    )}
+                  >
+                    EN
+                  </button>
+                  <button
+                    onClick={() => setLanguage("sw")}
+                    className={cn(
+                      "px-2 py-0.5 text-xs font-bold rounded-md transition-all cursor-pointer",
+                      language === "sw"
+                        ? "bg-primary text-primary-foreground shadow-sm"
+                        : "text-muted-foreground hover:text-foreground"
+                    )}
+                  >
+                    SW
+                  </button>
+                </div>
+              </div>
+
               {links.map((link) => (
                 <Link
                   key={link.to}
                   to={link.to}
                   className="px-4 py-3 rounded-md text-foreground hover:bg-primary/5 hover:text-primary font-semibold transition"
                 >
-                  {link.label}
+                  {t(link.label)}
                 </Link>
               ))}
 
@@ -142,11 +201,11 @@ export function Navbar() {
                 className="flex items-center gap-2 px-4 py-3 rounded-md text-foreground hover:bg-primary/5 hover:text-primary font-semibold transition"
               >
                 <LogIn className="h-4 w-4" />
-                Sign In
+                {t("Sign In")}
               </Link>
 
               <Button asChild variant="hero" className="mt-2">
-                <Link to="/donate">Donate Now</Link>
+                <Link to="/donate">{t("Donate Now")}</Link>
               </Button>
             </nav>
           </div>

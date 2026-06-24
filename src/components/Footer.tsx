@@ -1,6 +1,7 @@
 import { Link } from "@tanstack/react-router";
 import { Mail, Phone, MapPin } from "lucide-react";
 import mohaLogo from "@/assets/moha/moha-portrait.jpeg";
+import { useLanguage } from "@/hooks/useLanguage";
 
 // Official Facebook "f" logo
 function FacebookIcon({ className }: { className?: string }) {
@@ -56,6 +57,7 @@ const values = [
 
 
 export function Footer() {
+  const { t } = useLanguage();
   return (
     <footer className="bg-gradient-to-b from-primary to-[oklch(0.18_0.05_150)] text-primary-foreground mt-20">
       <div className="container mx-auto px-4 lg:px-8 py-16">
@@ -74,16 +76,14 @@ export function Footer() {
               </div>
             </div>
             <p className="text-sm text-primary-foreground/80 leading-relaxed mb-4">
-              <span className="font-bold text-gold">Moha Delivers.</span> A movement
-              for Mathare — building a constituency where every youth, mama, and mzee
-              has dignity, opportunity, and a voice.
+              <span className="font-bold text-gold">{t("Moha Delivers.")}</span> {t("A movement for Mathare — building a constituency where every youth, mama, and mzee has dignity, opportunity, and a voice.")}
             </p>
-            <p className="font-display italic text-gold text-lg">"Kuna More na Moha!"</p>
+            <p className="font-display italic text-gold text-lg">"{t("Kuna More na Moha!")}"</p>
           </div>
 
           {/* Quick Links */}
           <div>
-            <h4 className="font-display font-bold text-lg mb-4 text-gold">Explore</h4>
+            <h4 className="font-display font-bold text-lg mb-4 text-gold">{t("Explore")}</h4>
             <ul className="space-y-2 text-sm">
               {[
                 { to: "/", label: "Home" },
@@ -101,7 +101,7 @@ export function Footer() {
                     to={l.to}
                     className="text-primary-foreground/80 hover:text-gold transition-colors"
                   >
-                    {l.label}
+                    {t(l.label)}
                   </Link>
                 </li>
               ))}
@@ -110,14 +110,14 @@ export function Footer() {
 
           {/* Core Values + Partners */}
           <div>
-            <h4 className="font-display font-bold text-lg mb-4 text-gold">Core Values</h4>
+            <h4 className="font-display font-bold text-lg mb-4 text-gold">{t("Core Values")}</h4>
             <div className="flex flex-wrap gap-2 mb-6">
               {values.map((v) => (
                 <span
                   key={v}
                   className="px-3 py-1 text-xs font-semibold rounded-full bg-primary-foreground/10 border border-gold/30 text-primary-foreground/90"
                 >
-                  {v}
+                  {t(v)}
                 </span>
               ))}
             </div>
@@ -125,13 +125,13 @@ export function Footer() {
               to="/advertise"
               className="inline-block px-4 py-2 text-sm font-semibold rounded-full border-2 border-gold text-gold hover:bg-gold hover:text-primary transition-colors"
             >
-              PARTNER WITH US
+              {t("PARTNER WITH US")}
             </Link>
           </div>
 
           {/* Contact */}
           <div>
-            <h4 className="font-display font-bold text-lg mb-4 text-gold">Get in Touch</h4>
+            <h4 className="font-display font-bold text-lg mb-4 text-gold">{t("Get in Touch")}</h4>
             <ul className="space-y-3 text-sm text-primary-foreground/90 mb-6">
               <li className="flex items-start gap-2">
                 <MapPin className="h-4 w-4 mt-0.5 text-gold shrink-0" />
@@ -147,7 +147,7 @@ export function Footer() {
               </li>
             </ul>
 
-            <h4 className="font-display font-bold text-base mb-3 text-gold">Follow the Movement</h4>
+            <h4 className="font-display font-bold text-base mb-3 text-gold">{t("Follow the Movement")}</h4>
             <div className="flex gap-3">
               {socials.map(({ href, label, icon: Icon, brand }) => (
                 <a
@@ -167,8 +167,8 @@ export function Footer() {
         </div>
 
         <div className="mt-12 pt-6 border-t border-primary-foreground/10 flex flex-col md:flex-row justify-between items-center gap-4 text-xs text-primary-foreground/60">
-          <p>© {new Date().getFullYear()} Moha for Mathare. Paid for by friends of Moha.</p>
-          <p className="italic">Built for the people of Mathare. 🇰🇪</p>
+          <p>© {new Date().getFullYear()} {t("Moha for Mathare. Paid for by friends of Moha.")}</p>
+          <p className="italic">{t("Built for the people of Mathare. 🇰🇪")}</p>
         </div>
       </div>
     </footer>
