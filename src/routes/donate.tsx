@@ -10,6 +10,7 @@ import { cn } from "@/lib/utils";
 import { z } from "zod";
 import { toast } from "sonner";
 import { Toaster } from "@/components/ui/sonner";
+import { useLanguage } from "@/hooks/useLanguage";
 import impactImg1 from "@/assets/moha/donation3.jpeg";
 import impactImg2 from "@/assets/moha/foundation1.jpeg";
 import impactImg3 from "@/assets/moha/bursary1.jpeg";
@@ -43,6 +44,7 @@ function DonatePage() {
   const [phone, setPhone] = useState("");
   const [name, setName] = useState("");
   const [status, setStatus] = useState<"idle" | "loading" | "success">("idle");
+  const { t } = useLanguage();
 
   const finalAmount = custom ? Number(custom) : amount;
 
@@ -85,7 +87,7 @@ function DonatePage() {
     return (
       <>
         <Toaster />
-        <PageHero eyebrow="Asante Sana" title="You powered the movement" />
+        <PageHero eyebrow={t("Asante Sana")} title={t("You powered the movement")} />
         <section className="py-20 bg-background">
           <div className="container mx-auto px-4 max-w-xl text-center">
             <motion.div
@@ -97,12 +99,12 @@ function DonatePage() {
               <CheckCircle2 className="h-12 w-12 text-gold-foreground" />
             </motion.div>
             <h2 className="text-3xl md:text-4xl font-display font-bold">
-              Asante kwa kuwa pamoja nasi!
+              {t("Asante kwa kuwa pamoja nasi!")}
             </h2>
             <p className="mt-4 text-muted-foreground text-lg">
-              Your contribution of{" "}
+              {t("Your contribution of")}{" "}
               <span className="font-bold text-primary">KSh {finalAmount.toLocaleString()}</span>{" "}
-              is fueling real change in Mathare. We'll send a receipt shortly.
+              {t("is fueling real change in Mathare. We'll send a receipt shortly.")}
             </p>
             <Button
               variant="hero"
@@ -114,7 +116,7 @@ function DonatePage() {
                 setName("");
               }}
             >
-              Donate Again
+              {t("Donate Again")}
             </Button>
           </div>
         </section>
@@ -126,9 +128,9 @@ function DonatePage() {
     <>
       <Toaster />
       <PageHero
-        eyebrow="Power the Movement"
-        title="Every shilling delivers."
-        subtitle="From KSh 500 to KSh 10,000 — your donation funds bursaries, clinics, clean-ups, and youth programs across Mathare."
+        eyebrow={t("Power the Movement")}
+        title={t("Every shilling delivers.")}
+        subtitle={t("From KSh 500 to KSh 10,000 — your donation funds bursaries, clinics, clean-ups, and youth programs across Mathare.")}
       />
 
       <section className="py-20 bg-background">
@@ -165,7 +167,7 @@ function DonatePage() {
             {/* Amount tiers */}
             <div className="mb-8">
               <Label className="text-sm font-bold text-foreground mb-3 block">
-                Choose an amount (KSh)
+                {t("Choose an amount (KSh)")}
               </Label>
               <div className="grid grid-cols-3 sm:grid-cols-5 gap-2">
                 {tiers.map((t) => (
@@ -189,7 +191,7 @@ function DonatePage() {
               <div className="mt-3">
                 <Input
                   type="number"
-                  placeholder="Or enter custom amount"
+                  placeholder={t("Or enter custom amount")}
                   value={custom}
                   min={10}
                   max={5000000}
@@ -204,7 +206,7 @@ function DonatePage() {
               <form onSubmit={handleMpesa} className="space-y-5">
                 <div>
                   <Label htmlFor="phone" className="text-sm font-bold mb-2 block">
-                    M-Pesa Phone Number
+                    {t("M-Pesa Phone Number")}
                   </Label>
                   <Input
                     id="phone"
@@ -216,12 +218,12 @@ function DonatePage() {
                     required
                   />
                   <p className="mt-2 text-xs text-muted-foreground">
-                    You will receive an STK Push prompt to confirm.
+                    {t("You will receive an STK Push prompt to confirm.")}
                   </p>
                 </div>
 
                 <div className="rounded-xl bg-primary/5 border border-primary/20 p-4 text-sm">
-                  <p className="font-bold text-foreground mb-1">Or use Paybill manually:</p>
+                  <p className="font-bold text-foreground mb-1">{t("Or use Paybill manually:")}</p>
                   <p className="text-muted-foreground">
                     Paybill:{" "}
                     <span className="font-mono font-bold text-primary">247247</span> • Account:{" "}
@@ -238,11 +240,11 @@ function DonatePage() {
                 >
                   {status === "loading" ? (
                     <>
-                      <Loader2 className="h-5 w-5 animate-spin" /> Sending STK Push…
+                      <Loader2 className="h-5 w-5 animate-spin" /> {t("Sending STK Push…")}
                     </>
                   ) : (
                     <>
-                      <Heart className="h-5 w-5" /> Support Moha — KSh{" "}
+                      <Heart className="h-5 w-5" /> {t("Support Moha")} — KSh{" "}
                       {finalAmount.toLocaleString()}
                     </>
                   )}
@@ -252,11 +254,11 @@ function DonatePage() {
               <form onSubmit={handleCard} className="space-y-5">
                 <div>
                   <Label htmlFor="name" className="text-sm font-bold mb-2 block">
-                    Cardholder Name
+                    {t("Cardholder Name")}
                   </Label>
                   <Input
                     id="name"
-                    placeholder="Full name on card"
+                    placeholder={t("Full name on card")}
                     value={name}
                     onChange={(e) => setName(e.target.value)}
                     maxLength={100}
@@ -266,7 +268,7 @@ function DonatePage() {
                 </div>
                 <div>
                   <Label htmlFor="card" className="text-sm font-bold mb-2 block">
-                    Card Number
+                    {t("Card Number")}
                   </Label>
                   <Input
                     id="card"
@@ -279,7 +281,7 @@ function DonatePage() {
                 <div className="grid grid-cols-2 gap-3">
                   <div>
                     <Label htmlFor="exp" className="text-sm font-bold mb-2 block">
-                      Expiry
+                      {t("Expiry")}
                     </Label>
                     <Input id="exp" placeholder="MM/YY" maxLength={5} className="h-12 font-mono" required />
                   </div>
@@ -300,11 +302,11 @@ function DonatePage() {
                 >
                   {status === "loading" ? (
                     <>
-                      <Loader2 className="h-5 w-5 animate-spin" /> Processing…
+                      <Loader2 className="h-5 w-5 animate-spin" /> {t("Processing…")}
                     </>
                   ) : (
                     <>
-                      <Heart className="h-5 w-5" /> Donate KSh {finalAmount.toLocaleString()}
+                      <Heart className="h-5 w-5" /> {t("Donate KSh")} {finalAmount.toLocaleString()}
                     </>
                   )}
                 </Button>
@@ -312,7 +314,7 @@ function DonatePage() {
             )}
 
             <p className="mt-6 text-xs text-center text-muted-foreground flex items-center justify-center gap-1">
-              <Shield className="h-3 w-3" /> Secure payment. Your information is never shared.
+              <Shield className="h-3 w-3" /> {t("Secure payment. Your information is never shared.")}
             </p>
           </div>
         </div>
@@ -323,14 +325,13 @@ function DonatePage() {
         <div className="container mx-auto px-4 lg:px-8 max-w-6xl">
           <div className="text-center mb-12">
             <span className="inline-block px-4 py-1.5 mb-4 text-xs font-bold tracking-widest uppercase text-primary bg-primary/10 rounded-full">
-              Your Impact
+              {t("Your Impact")}
             </span>
             <h2 className="text-3xl md:text-5xl font-display font-bold text-foreground text-balance">
-              Where every shilling goes
+              {t("Where every shilling goes")}
             </h2>
             <p className="mt-4 text-muted-foreground max-w-2xl mx-auto">
-              From food parcels to bursaries to clean water tanks — your donation funds the work
-              that's already happening, every single week, on the streets of Mathare.
+              {t("From food parcels to bursaries to clean water tanks — your donation funds the work that's already happening, every single week, on the streets of Mathare.")}
             </p>
           </div>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
@@ -340,6 +341,7 @@ function DonatePage() {
               { img: impactImg3, label: "Student bursaries" },
               { img: impactImg4, label: "Hustler tools & capital" },
             ].map((item, i) => (
+              // labels are passed through t() below
               <motion.div
                 key={item.label}
                 initial={{ opacity: 0, y: 20 }}
@@ -356,7 +358,7 @@ function DonatePage() {
                 />
                 <div className="absolute inset-0 bg-gradient-to-t from-primary via-primary/40 to-transparent" />
                 <div className="absolute bottom-0 left-0 right-0 p-4 text-primary-foreground">
-                  <p className="font-display font-bold text-sm md:text-base">{item.label}</p>
+                  <p className="font-display font-bold text-sm md:text-base">{t(item.label)}</p>
                 </div>
               </motion.div>
             ))}

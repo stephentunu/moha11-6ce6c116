@@ -1,5 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useMemo, useState, useRef, type ChangeEvent, type FormEvent } from "react";
+import { useLanguage } from "@/hooks/useLanguage";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Search,
@@ -192,6 +193,7 @@ const EMPTY_FORM: FormState = {
 };
 
 function AdvertisePage() {
+  const { t } = useLanguage();
   const [allBusinesses] = useBusinesses();
   const businesses = useMemo(
     () => allBusinesses.filter((b) => b.status === "active"),
@@ -234,28 +236,28 @@ function AdvertisePage() {
   return (
     <div className="min-h-screen bg-background">
       <PageHero
-        eyebrow="Mathare Business Hub"
-        title="Advertise With Us"
-        subtitle="Supporting Mathare Businesses — Moha Delivers. List your hustle for free with photos, payment options and delivery info."
+        eyebrow={t("Mathare Business Hub")}
+        title={t("Advertise With Us")}
+        subtitle={t("Supporting Mathare Businesses — Moha Delivers. List your hustle for free with photos, payment options and delivery info.")}
       />
 
       <section className="container mx-auto px-4 lg:px-8 -mt-8 relative z-10">
         <div className="bg-card border border-border rounded-2xl shadow-elegant p-6 md:p-8 flex flex-col md:flex-row items-center justify-between gap-4">
           <div>
-            <h2 className="font-display text-xl md:text-2xl font-bold">Ready to grow your customer base?</h2>
-            <p className="text-sm text-muted-foreground">List your business in under 2 minutes. Always free.</p>
+            <h2 className="font-display text-xl md:text-2xl font-bold">{t("Ready to grow your customer base?")}</h2>
+            <p className="text-sm text-muted-foreground">{t("List your business in under 2 minutes. Always free.")}</p>
           </div>
           <div className="flex flex-wrap gap-3">
             <Button size="lg" variant="hero" onClick={() => setOpen(true)}>
               <Plus className="h-5 w-5" />
-              Advertise Your Business
+              {t("Advertise Your Business")}
             </Button>
             <Button
               size="lg"
               variant="outline"
               onClick={() => document.getElementById("marketplace")?.scrollIntoView({ behavior: "smooth" })}
             >
-              Browse Marketplace
+              {t("Browse Marketplace")}
             </Button>
           </div>
         </div>
@@ -264,13 +266,13 @@ function AdvertisePage() {
       <section id="marketplace" className="container mx-auto px-4 lg:px-8 py-16">
         <div className="max-w-3xl mx-auto text-center mb-10">
           <Badge variant="secondary" className="mb-4">
-            {businesses.length} businesses listed
+            {businesses.length} {t("businesses listed")}
           </Badge>
           <h2 className="font-display text-3xl md:text-5xl font-black mb-4">
-            Mathare's <span className="text-gradient-primary">Marketplace</span>
+            {t("Mathare's")} <span className="text-gradient-primary">{t("Marketplace")}</span>
           </h2>
           <p className="text-muted-foreground text-lg">
-            Discover trusted local businesses run by your neighbours. Filter by ward or category to find exactly what you need.
+            {t("Discover trusted local businesses run by your neighbours. Filter by ward or category to find exactly what you need.")}
           </p>
         </div>
 
@@ -280,7 +282,7 @@ function AdvertisePage() {
             <div className="md:col-span-6 relative">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
-                placeholder="Search businesses, owners or services..."
+                placeholder={t("Search businesses, owners or services...")}
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 className="pl-9 h-11"
@@ -289,10 +291,10 @@ function AdvertisePage() {
             <div className="md:col-span-3">
               <Select value={wardFilter} onValueChange={setWardFilter}>
                 <SelectTrigger className="h-11">
-                  <SelectValue placeholder="All Wards" />
+                  <SelectValue placeholder={t("All Wards")} />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">All Wards</SelectItem>
+                  <SelectItem value="all">{t("All Wards")}</SelectItem>
                   {WARDS.map((w) => (
                     <SelectItem key={w} value={w}>
                       {w}
@@ -304,10 +306,10 @@ function AdvertisePage() {
             <div className="md:col-span-3">
               <Select value={categoryFilter} onValueChange={setCategoryFilter}>
                 <SelectTrigger className="h-11">
-                  <SelectValue placeholder="All Categories" />
+                  <SelectValue placeholder={t("All Categories")} />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">All Categories</SelectItem>
+                  <SelectItem value="all">{t("All Categories")}</SelectItem>
                   {CATEGORIES.map((c) => (
                     <SelectItem key={c.value} value={c.value}>
                       {c.value}
@@ -320,7 +322,7 @@ function AdvertisePage() {
 
           {(wardFilter !== "all" || categoryFilter !== "all" || search) && (
             <div className="flex flex-wrap items-center gap-2 mt-4 pt-4 border-t border-border">
-              <span className="text-xs uppercase tracking-wider text-muted-foreground font-semibold">Active filters:</span>
+              <span className="text-xs uppercase tracking-wider text-muted-foreground font-semibold">{t("Active filters:")}</span>
               {wardFilter !== "all" && (
                 <Badge variant="secondary" className="gap-1">
                   {wardFilter}
@@ -352,11 +354,11 @@ function AdvertisePage() {
         {filtered.length === 0 ? (
           <div className="text-center py-20 border-2 border-dashed border-border rounded-2xl">
             <Store className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-            <h3 className="font-display text-2xl font-bold mb-2">No businesses match your search</h3>
-            <p className="text-muted-foreground mb-6">Try clearing filters or be the first to list in this category.</p>
+            <h3 className="font-display text-2xl font-bold mb-2">{t("No businesses match your search")}</h3>
+            <p className="text-muted-foreground mb-6">{t("Try clearing filters or be the first to list in this category.")}</p>
             <Button onClick={() => setOpen(true)} variant="hero">
               <Plus className="h-4 w-4" />
-              List Your Business
+              {t("List Your Business")}
             </Button>
           </div>
         ) : (
@@ -373,10 +375,10 @@ function AdvertisePage() {
       <section className="container mx-auto px-4 lg:px-8 pb-20">
         <div className="bg-gradient-primary rounded-3xl p-8 md:p-14 text-center shadow-glow">
           <h2 className="font-display text-3xl md:text-5xl font-black text-primary-foreground mb-4">
-            Your hustle deserves to be seen
+            {t("Your hustle deserves to be seen")}
           </h2>
           <p className="text-primary-foreground/90 text-lg max-w-2xl mx-auto mb-8">
-            Join hundreds of Mathare entrepreneurs growing their customer base through Moha's free community marketplace.
+            {t("Join hundreds of Mathare entrepreneurs growing their customer base through Moha's free community marketplace.")}
           </p>
           <Button
             size="xl"
@@ -385,7 +387,7 @@ function AdvertisePage() {
             className="bg-gold text-gold-foreground hover:bg-gold/90"
           >
             <Plus className="h-5 w-5" />
-            Advertise Your Business — Free
+            {t("Advertise Your Business — Free")}
           </Button>
         </div>
       </section>
@@ -396,6 +398,7 @@ function AdvertisePage() {
 }
 
 function BusinessCard({ business, index }: { business: Business; index: number }) {
+  const { t } = useLanguage();
   const Icon = categoryIcon(business.category);
   const loyalty = useLoyalty();
   const images = business.imageUrls.length ? business.imageUrls : business.imageUrl ? [business.imageUrl] : [];
@@ -473,7 +476,7 @@ function BusinessCard({ business, index }: { business: Business; index: number }
           {business.deliveryAvailable && (
             <Badge className="bg-emerald-600 text-white border-none gap-1.5">
               <Truck className="h-3 w-3" />
-              Delivery
+              {t("Delivery")}
             </Badge>
           )}
         </div>
@@ -519,7 +522,9 @@ function BusinessCard({ business, index }: { business: Business; index: number }
             {business.paymentMethods.map((m) => (
               <Badge key={m} variant="outline" className="text-[10px] gap-1">
                 <Banknote className="h-3 w-3" />
-                {PAYMENT_LABELS[m]}
+                {PAYMENT_LABELS[m]
+                  ? t(PAYMENT_LABELS[m])
+                  : m}
                 {(m === "till" || m === "paybill") && business.tillPaybillNumber
                   ? ` ${business.tillPaybillNumber}`
                   : ""}
@@ -536,7 +541,7 @@ function BusinessCard({ business, index }: { business: Business; index: number }
             className="flex items-center justify-center gap-2 w-full h-11 rounded-md bg-[#25D366] hover:bg-[#1ebe5b] text-white font-semibold transition-colors"
           >
             <MessageCircle className="h-4 w-4" />
-            Contact via WhatsApp
+            {t("Contact via WhatsApp")}
           </a>
           {loyalty.unlocked && (
             <button
@@ -545,7 +550,7 @@ function BusinessCard({ business, index }: { business: Business; index: number }
               className="flex items-center justify-center gap-2 w-full h-10 rounded-md border border-gold text-gold hover:bg-gold hover:text-gold-foreground font-semibold transition-colors text-sm"
             >
               <Share2 className="h-4 w-4" />
-              Share this business
+              {t("Share this business")}
             </button>
           )}
           <button
@@ -553,7 +558,7 @@ function BusinessCard({ business, index }: { business: Business; index: number }
             onClick={() => setEditOpen(true)}
             className="flex items-center justify-center gap-2 w-full h-10 rounded-md border border-border text-muted-foreground hover:border-primary hover:text-primary font-semibold transition-colors text-sm"
           >
-            Request edits to this listing
+            {t("Request edits to this listing")}
           </button>
         </div>
       </div>
@@ -571,6 +576,7 @@ function EditRequestDialog({
   open: boolean;
   onOpenChange: (v: boolean) => void;
 }) {
+  const { t } = useLanguage();
   const [name, setName] = useState(business.ownerName);
   const [contact, setContact] = useState(business.phone);
   const [changes, setChanges] = useState("");
@@ -603,23 +609,23 @@ function EditRequestDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-md">
         <DialogHeader>
-          <DialogTitle className="font-display">Request edits to your listing</DialogTitle>
+          <DialogTitle className="font-display">{t("Request edits to your listing")}</DialogTitle>
           <DialogDescription>
-            Tell the admin what to change about <strong>{business.businessName}</strong> (location,
+            {t("Tell the admin what to change about")} <strong>{business.businessName}</strong> (location,
             contacts, photos, payment details, etc.). The team will verify and update for you.
           </DialogDescription>
         </DialogHeader>
         <div className="space-y-3">
           <div className="space-y-1.5">
-            <Label htmlFor="er-name">Your name</Label>
+            <Label htmlFor="er-name">{t("Your name")}</Label>
             <Input id="er-name" value={name} onChange={(e) => setName(e.target.value)} maxLength={80} />
           </div>
           <div className="space-y-1.5">
-            <Label htmlFor="er-contact">Phone / WhatsApp contact</Label>
+            <Label htmlFor="er-contact">{t("Phone / WhatsApp contact")}</Label>
             <Input id="er-contact" value={contact} onChange={(e) => setContact(e.target.value)} maxLength={40} />
           </div>
           <div className="space-y-1.5">
-            <Label htmlFor="er-changes">What needs to change?</Label>
+            <Label htmlFor="er-changes">{t("What needs to change?")}</Label>
             <Textarea
               id="er-changes"
               rows={5}
@@ -631,8 +637,8 @@ function EditRequestDialog({
           </div>
         </div>
         <div className="flex justify-end gap-2 pt-2">
-          <Button variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
-          <Button variant="hero" onClick={submit} disabled={busy}>Send request</Button>
+          <Button variant="outline" onClick={() => onOpenChange(false)}>{t("Cancel")}</Button>
+          <Button variant="hero" onClick={submit} disabled={busy}>{t("Send request")}</Button>
         </div>
       </DialogContent>
     </Dialog>
@@ -648,6 +654,7 @@ function RegistrationDialog({
   onOpenChange: (v: boolean) => void;
   onSubmit: (b: Business) => void;
 }) {
+  const { t } = useLanguage();
   const [step, setStep] = useState(0);
   const [form, setForm] = useState<FormState>(EMPTY_FORM);
   const fileRef = useRef<HTMLInputElement>(null);
@@ -781,14 +788,14 @@ function RegistrationDialog({
     handleClose(false);
   };
 
-  const steps = ["About You", "Location & Contact", "Payments & Service", "Photos & Launch"];
+  const steps = [t("About You"), t("Location & Contact"), t("Payments & Service"), t("Photos & Launch")];
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle className="font-display text-2xl">List Your Business</DialogTitle>
-          <DialogDescription>Free for every Mathare entrepreneur. Takes about 3 minutes.</DialogDescription>
+          <DialogTitle className="font-display text-2xl">{t("List Your Business")}</DialogTitle>
+          <DialogDescription>{t("Free for every Mathare entrepreneur. Takes about 3 minutes.")}</DialogDescription>
         </DialogHeader>
 
         <div className="flex items-center gap-2 my-2">
@@ -824,18 +831,18 @@ function RegistrationDialog({
             {step === 0 && (
               <motion.div key="step-0" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} transition={{ duration: 0.2 }} className="space-y-4">
                 <div className="space-y-2">
-                  <Label htmlFor="ownerName">Your Name *</Label>
+                  <Label htmlFor="ownerName">{t("Your Name *")}</Label>
                   <Input id="ownerName" placeholder="e.g. Jane Wanjiku" value={form.ownerName} onChange={(e) => update("ownerName", e.target.value)} maxLength={80} />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="businessName">Business Name *</Label>
+                  <Label htmlFor="businessName">{t("Business Name *")}</Label>
                   <Input id="businessName" placeholder="e.g. Jane's Fresh Mboga" value={form.businessName} onChange={(e) => update("businessName", e.target.value)} maxLength={80} />
                 </div>
                 <div className="space-y-2">
-                  <Label>Business Type *</Label>
+                  <Label>{t("Business Type *")}</Label>
                   <Select value={form.category} onValueChange={(v) => update("category", v)}>
                     <SelectTrigger>
-                      <SelectValue placeholder="Choose a category" />
+                      <SelectValue placeholder={t("Choose a category")} />
                     </SelectTrigger>
                     <SelectContent>
                       {CATEGORIES.map((c) => {
@@ -854,10 +861,10 @@ function RegistrationDialog({
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="websiteUrl" className="flex items-center gap-1.5">
-                    <Globe className="h-3.5 w-3.5" /> Website / Social Page (optional)
+                    <Globe className="h-3.5 w-3.5" /> {t("Website / Social Page (optional)")}
                   </Label>
                   <Input id="websiteUrl" type="url" placeholder="https://yourbiz.co.ke" value={form.websiteUrl} onChange={(e) => update("websiteUrl", e.target.value)} maxLength={200} />
-                  <p className="text-xs text-muted-foreground">Your photos will open this link when customers click them.</p>
+                  <p className="text-xs text-muted-foreground">{t("Your photos will open this link when customers click them.")}</p>
                 </div>
               </motion.div>
             )}
@@ -865,10 +872,10 @@ function RegistrationDialog({
             {step === 1 && (
               <motion.div key="step-1" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} transition={{ duration: 0.2 }} className="space-y-4">
                 <div className="space-y-2">
-                  <Label>Ward *</Label>
+                  <Label>{t("Ward *")}</Label>
                   <Select value={form.ward} onValueChange={(v) => update("ward", v)}>
                     <SelectTrigger>
-                      <SelectValue placeholder="Select your Mathare ward" />
+                      <SelectValue placeholder={t("Select your Mathare ward")} />
                     </SelectTrigger>
                     <SelectContent>
                       {WARDS.map((w) => (
@@ -880,27 +887,27 @@ function RegistrationDialog({
                   </Select>
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="location">Area / Estate *</Label>
+                  <Label htmlFor="location">{t("Area / Estate *")}</Label>
                   <Input id="location" placeholder="e.g. Mathare 4A" value={form.location} onChange={(e) => update("location", e.target.value)} maxLength={120} />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="street">Street / Precise Location</Label>
+                  <Label htmlFor="street">{t("Street / Precise Location")}</Label>
                   <Input id="street" placeholder="e.g. Opposite Huruma Stage, 1st floor" value={form.street} onChange={(e) => update("street", e.target.value)} maxLength={120} />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="phone">WhatsApp / Phone Contact *</Label>
+                  <Label htmlFor="phone">{t("WhatsApp / Phone Contact *")}</Label>
                   <div className="relative">
                     <Phone className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                     <Input id="phone" type="tel" placeholder="07XX XXX XXX" value={form.phone} onChange={(e) => update("phone", e.target.value)} className="pl-9" maxLength={20} />
                   </div>
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="contacts">Additional Contacts (optional)</Label>
+                  <Label htmlFor="contacts">{t("Additional Contacts (optional)")}</Label>
                   <Input id="contacts" placeholder="e.g. 07XX XXX XXX, info@biz.co.ke" value={form.contacts} onChange={(e) => update("contacts", e.target.value)} maxLength={200} />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="description">Short Description (optional)</Label>
-                  <Textarea id="description" placeholder="What do you sell or offer?" value={form.description} onChange={(e) => update("description", e.target.value)} maxLength={200} rows={3} />
+                  <Label htmlFor="description">{t("Short Description (optional)")}</Label>
+                  <Textarea id="description" placeholder={t("What do you sell or offer?")} value={form.description} onChange={(e) => update("description", e.target.value)} maxLength={200} rows={3} />
                 </div>
               </motion.div>
             )}
@@ -908,7 +915,7 @@ function RegistrationDialog({
             {step === 2 && (
               <motion.div key="step-2" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} transition={{ duration: 0.2 }} className="space-y-4">
                 <div className="space-y-2">
-                  <Label>Payment Methods Accepted *</Label>
+                  <Label>{t("Payment Methods Accepted *")}</Label>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                     {PAYMENT_OPTIONS.map((opt) => {
                       const checked = form.paymentMethods.includes(opt.value);
@@ -921,7 +928,7 @@ function RegistrationDialog({
                           )}
                         >
                           <Checkbox checked={checked} onCheckedChange={() => togglePayment(opt.value)} />
-                          <span className="text-sm font-semibold">{opt.label}</span>
+                          <span className="text-sm font-semibold">{t(opt.label)}</span>
                         </label>
                       );
                     })}
@@ -934,13 +941,13 @@ function RegistrationDialog({
                   </div>
                 )}
                 <div className="space-y-2">
-                  <Label htmlFor="nearestTransport">Means of Transport</Label>
+                  <Label htmlFor="nearestTransport">{t("Means of Transport")}</Label>
                   <Input id="nearestTransport" placeholder="e.g. Taxi, Bodaboda, Matatu, Tuk-tuk" value={form.nearestTransport} onChange={(e) => update("nearestTransport", e.target.value)} maxLength={120} />
                 </div>
                 <div className="flex items-center justify-between p-3 rounded-lg border border-border">
                   <div>
-                    <Label htmlFor="delivery" className="cursor-pointer">Delivery Available</Label>
-                    <p className="text-xs text-muted-foreground">Toggle on if you deliver to customers.</p>
+                    <Label htmlFor="delivery" className="cursor-pointer">{t("Delivery Available")}</Label>
+                    <p className="text-xs text-muted-foreground">{t("Toggle on if you deliver to customers.")}</p>
                   </div>
                   <Switch id="delivery" checked={form.deliveryAvailable} onCheckedChange={(v) => update("deliveryAvailable", v)} />
                 </div>
@@ -950,7 +957,7 @@ function RegistrationDialog({
             {step === 3 && (
               <motion.div key="step-3" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} transition={{ duration: 0.2 }} className="space-y-4">
                 <div className="space-y-2">
-                  <Label>Business Photos * (up to 5)</Label>
+                  <Label>{t("Business Photos * (up to 5)")}</Label>
                   <input ref={fileRef} type="file" accept="image/*" multiple onChange={handleFiles} className="hidden" />
                   <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
                     {form.imageUrls.map((src, idx) => (
@@ -974,19 +981,19 @@ function RegistrationDialog({
                         className="aspect-square rounded-xl border-2 border-dashed border-border hover:border-primary hover:bg-primary/5 transition-colors flex flex-col items-center justify-center gap-1 text-muted-foreground hover:text-primary disabled:opacity-60 disabled:cursor-wait"
                       >
                         <Upload className="h-6 w-6" />
-                        <span className="text-xs font-semibold">{uploading ? "Uploading…" : "Add photo"}</span>
+                        <span className="text-xs font-semibold">{uploading ? t("Uploading…") : t("Add photo")}</span>
                       </button>
                     )}
                   </div>
-                  <p className="text-xs text-muted-foreground">JPG or PNG, up to 5MB each. The first photo becomes your cover.</p>
+                  <p className="text-xs text-muted-foreground">{t("JPG or PNG, up to 5MB each. The first photo becomes your cover.")}</p>
                 </div>
 
                 <div className="bg-muted/50 rounded-xl p-4 text-sm space-y-1">
-                  <p className="font-semibold text-foreground">Preview:</p>
-                  <p><span className="text-muted-foreground">Business:</span> {form.businessName || "—"}</p>
-                  <p><span className="text-muted-foreground">Ward:</span> {form.ward || "—"}</p>
-                  <p><span className="text-muted-foreground">Payments:</span> {form.paymentMethods.map((m) => PAYMENT_LABELS[m]).join(", ") || "—"}</p>
-                  <p><span className="text-muted-foreground">Delivery:</span> {form.deliveryAvailable ? "Yes" : "No"}</p>
+                  <p className="font-semibold text-foreground">{t("Preview:")}</p>
+                  <p><span className="text-muted-foreground">{t("Business:")}</span> {form.businessName || "—"}</p>
+                  <p><span className="text-muted-foreground">{t("Ward")}:</span> {form.ward || "—"}</p>
+                  <p><span className="text-muted-foreground">{t("Payments:")}</span> {form.paymentMethods.map((m) => PAYMENT_LABELS[m]).join(", ") || "—"}</p>
+                  <p><span className="text-muted-foreground">{t("Delivery:")}</span> {form.deliveryAvailable ? t("Yes") : t("No")}</p>
                 </div>
 
                 {/* Data Policy & Consent */}
@@ -1009,8 +1016,7 @@ function RegistrationDialog({
                       className="mt-0.5 shrink-0"
                     />
                     <span className="text-xs font-semibold text-foreground group-hover:text-primary transition-colors">
-                      I have read and understood the data policy. I consent to my business information being displayed
-                      publicly on the Mathare Business Hub. *
+                      {t("I have read and understood the data policy. I consent to my business information being displayed publicly on the Mathare Business Hub. *")}
                     </span>
                   </label>
                 </div>
@@ -1021,18 +1027,18 @@ function RegistrationDialog({
           <div className="flex items-center justify-between gap-3 pt-4 border-t border-border">
             {step > 0 ? (
               <Button type="button" variant="outline" onClick={back}>
-                <ChevronLeft className="h-4 w-4" /> Back
+                <ChevronLeft className="h-4 w-4" /> {t("Back")}
               </Button>
             ) : (
               <span />
             )}
             {step < 3 ? (
               <Button type="button" variant="default" onClick={next}>
-                Next <ChevronRight className="h-4 w-4" />
+                {t("Next")} <ChevronRight className="h-4 w-4" />
               </Button>
             ) : (
               <Button type="submit" variant="hero" disabled={!form.dataConsent}>
-                <CheckCircle2 className="h-4 w-4" /> Publish My Business
+                <CheckCircle2 className="h-4 w-4" /> {t("Publish My Business")}
               </Button>
             )}
           </div>

@@ -1,4 +1,5 @@
 import { useState, useMemo, type ReactNode } from "react";
+import { useLanguage } from "@/hooks/useLanguage";
 import { z } from "zod";
 import { toast } from "sonner";
 import {
@@ -153,6 +154,7 @@ const SCHOOL_CATEGORIES = [
 // ─── Main component ───────────────────────────────────────────────────────────
 
 export function BursaryApplicationDialog({ trigger }: { trigger: ReactNode }) {
+  const { t } = useLanguage();
   const [open, setOpen] = useState(false);
   const [step, setStep] = useState(1);
   const [form, setForm] = useState<Form>(EMPTY);
@@ -338,11 +340,10 @@ export function BursaryApplicationDialog({ trigger }: { trigger: ReactNode }) {
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2 font-display text-2xl">
             <GraduationCap className="h-6 w-6 text-gold" />
-            Constituency Bursary Application Form
+            {t("Constituency Bursary Application Form")}
           </DialogTitle>
           <DialogDescription>
-            Ward Bursary Application Form — Term 2 (2026/2027). Complete all four sections and download
-            your application form to sign and submit at the Moha Coordination Office, Kiamaiko-Mathare.
+            {t("Ward Bursary Application Form — Term 2 (2026/2027). Complete all four sections and download your application form to sign and submit at the Moha Coordination Office, Kiamaiko-Mathare.")}
           </DialogDescription>
         </DialogHeader>
 
@@ -351,17 +352,16 @@ export function BursaryApplicationDialog({ trigger }: { trigger: ReactNode }) {
             <div className="mx-auto h-16 w-16 rounded-full bg-gold/15 flex items-center justify-center">
               <CheckCircle2 className="h-8 w-8 text-gold" />
             </div>
-            <h3 className="text-xl font-display font-bold">Application received!</h3>
+            <h3 className="text-xl font-display font-bold">{t("Application received!")}</h3>
             <p className="text-2xl font-bold tracking-wider text-primary">{result.reference}</p>
             <p className="text-sm text-muted-foreground max-w-md mx-auto">
-              Download the pre-filled form, attach the required documents (National ID, birth certificate, fee structure,
-              report form, NCPWD card, etc.), sign, and drop it at the Moha Coordination Office, Kiamaiko-Mathare.
+              {t("Download the pre-filled form, attach the required documents (National ID, birth certificate, fee structure, report form, NCPWD card, etc.), sign, and drop it at the Moha Coordination Office, Kiamaiko-Mathare.")}
             </p>
 
             {/* Share link */}
             <div className="rounded-xl border border-border bg-muted/30 p-4 text-left space-y-2">
               <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
-                <Share2 className="h-3.5 w-3.5" /> Know someone who needs to apply? Share this link
+                <Share2 className="h-3.5 w-3.5" /> {t("Know someone who needs to apply? Share this link")}
               </p>
               <div className="flex gap-2">
                 <Input
@@ -378,62 +378,62 @@ export function BursaryApplicationDialog({ trigger }: { trigger: ReactNode }) {
                     navigator.clipboard.writeText(url).then(() => toast.success("Application link copied!"));
                   }}
                 >
-                  Copy
+                  {t("Copy")}
                 </Button>
               </div>
               <p className="text-[11px] text-muted-foreground">
-                Share with friends or family in Mathare who also need bursary support.
+                {t("Share with friends or family in Mathare who also need bursary support.")}
               </p>
             </div>
 
             <div className="flex flex-col sm:flex-row gap-2 justify-center">
               <Button onClick={downloadPdf} variant="hero" className="gap-2">
-                <Download className="h-4 w-4" /> Download Application Form (PDF)
+                <Download className="h-4 w-4" /> {t("Download Application Form (PDF)")}
               </Button>
-              <Button onClick={() => setOpen(false)} variant="outline">Close</Button>
+              <Button onClick={() => setOpen(false)} variant="outline">{t("Close")}</Button>
             </div>
           </div>
         ) : (
           <>
-            <Stepper step={step} />
+            <Stepper step={step} t={t} />
 
             {/* ── STEP 1: STUDENT ─────────────────────────────────────────── */}
             {step === 1 && (
               <div className="space-y-5">
-                <SectionLabel icon={User}>Student's Details</SectionLabel>
+                <SectionLabel icon={User}>{t("Student's Details")}</SectionLabel>
 
                 <div className="grid sm:grid-cols-2 gap-4">
-                  <Field label="Student name *">
-                    <Input value={form.studentName} onChange={(e) => set("studentName", e.target.value)} placeholder="Full legal name" />
+                  <Field label={t("Student name *")}>
+                    <Input value={form.studentName} onChange={(e) => set("studentName", e.target.value)} placeholder={t("Full legal name")} />
                   </Field>
-                  <Field label="Admission / Registration number">
+                  <Field label={t("Admission / Registration number")}>
                     <Input value={form.admissionNumber} onChange={(e) => set("admissionNumber", e.target.value)} placeholder="e.g. ADM/2024/001" />
                   </Field>
-                  <Field label="Date of birth">
+                  <Field label={t("Date of birth")}>
                     <Input type="date" value={form.dob} onChange={(e) => set("dob", e.target.value)} />
                   </Field>
-                  <Field label="Gender">
+                  <Field label={t("Gender")}>
                     <Select value={form.gender} onValueChange={(v) => set("gender", v)}>
-                      <SelectTrigger><SelectValue placeholder="Select" /></SelectTrigger>
+                      <SelectTrigger><SelectValue placeholder={t("Select")} /></SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="female">Female</SelectItem>
-                        <SelectItem value="male">Male</SelectItem>
+                        <SelectItem value="female">{t("Female")}</SelectItem>
+                        <SelectItem value="male">{t("Male")}</SelectItem>
                       </SelectContent>
                     </Select>
                   </Field>
-                  <Field label="Grade / Class *">
+                  <Field label={t("Grade / Class *")}>
                     <Select value={form.currentGrade} onValueChange={(v) => set("currentGrade", v)}>
-                      <SelectTrigger><SelectValue placeholder="Select grade" /></SelectTrigger>
+                      <SelectTrigger><SelectValue placeholder={t("Select grade")} /></SelectTrigger>
                       <SelectContent className="max-h-72">
                         {GRADES.map((g) => <SelectItem key={g} value={g}>{g}</SelectItem>)}
                       </SelectContent>
                     </Select>
                   </Field>
-                  <Field label="Birth certificate number">
+                  <Field label={t("Birth certificate number")}>
                     <Input
                       value={form.birthCertNumber}
                       onChange={(e) => set("birthCertNumber", e.target.value)}
-                      placeholder="As on birth certificate"
+                      placeholder={t("As on birth certificate")}
                     />
                   </Field>
                 </div>
@@ -442,7 +442,7 @@ export function BursaryApplicationDialog({ trigger }: { trigger: ReactNode }) {
                 <div className="rounded-lg border border-border bg-muted/30 p-4 space-y-3">
                   <div className="flex items-center justify-between">
                     <Label htmlFor="studentDisabilityToggle" className="text-sm font-semibold cursor-pointer">
-                      Student lives with a disability
+                      {t("Student lives with a disability")}
                     </Label>
                     <Switch
                       id="studentDisabilityToggle"
@@ -451,30 +451,30 @@ export function BursaryApplicationDialog({ trigger }: { trigger: ReactNode }) {
                     />
                   </div>
                   {form.studentDisability && (
-                    <Field label="Please specify (NCPWD card / nature of disability)">
+                    <Field label={t("Please specify (NCPWD card / nature of disability)")}>
                       <Input value={form.studentDisabilityDetail} onChange={(e) => set("studentDisabilityDetail", e.target.value)} />
                     </Field>
                   )}
                 </div>
 
                 <div className="grid sm:grid-cols-2 gap-4">
-                  <Field label="Student's outstanding ability / achievement">
+                  <Field label={t("Student's outstanding ability / achievement")}>
                     <Textarea
                       rows={3}
                       value={form.studentOutstanding}
                       onChange={(e) => set("studentOutstanding", e.target.value)}
-                      placeholder="Academic performance, talent, conduct…"
+                      placeholder={t("Academic performance, talent, conduct…")}
                       maxLength={500}
                     />
                   </Field>
                   <div className="space-y-4">
-                    <Field label="Student annual fee payable (KSh)">
+                    <Field label={t("Student annual fee payable (KSh)")}>
                       <Input type="number" min="0" value={form.studentAnnualFee} onChange={(e) => set("studentAnnualFee", e.target.value)} placeholder="0" />
                     </Field>
-                    <Field label="Student's outstanding fee balance (KSh)">
+                    <Field label={t("Student's outstanding fee balance (KSh)")}>
                       <Input type="number" min="0" value={form.outstandingBalance} onChange={(e) => set("outstandingBalance", e.target.value)} placeholder="0" />
                     </Field>
-                    <Field label="Amount applying for (KSh)">
+                    <Field label={t("Amount applying for (KSh)")}>
                       <Input type="number" min="0" value={form.amountRequested} onChange={(e) => set("amountRequested", e.target.value)} placeholder="0" />
                     </Field>
                   </div>
@@ -483,7 +483,7 @@ export function BursaryApplicationDialog({ trigger }: { trigger: ReactNode }) {
                 {/* Bursary history — Yes/No checkboxes */}
                 <div className="rounded-lg border border-border bg-muted/30 p-4 space-y-3">
                   <p className="text-sm font-semibold text-foreground">
-                    Have you ever received a Bursary or support from Moha Foundation or any other public source in the last 6 months?
+                    {t("Have you ever received a Bursary or support from Moha Foundation or any other public source in the last 6 months?")}
                   </p>
                   <div className="flex gap-6">
                     <label className="flex items-center gap-2 cursor-pointer text-sm font-medium">
@@ -491,22 +491,22 @@ export function BursaryApplicationDialog({ trigger }: { trigger: ReactNode }) {
                         checked={form.receivedBursaryBefore === true}
                         onCheckedChange={() => set("receivedBursaryBefore", true)}
                       />
-                      Yes
+                      {t("Yes")}
                     </label>
                     <label className="flex items-center gap-2 cursor-pointer text-sm font-medium">
                       <Checkbox
                         checked={form.receivedBursaryBefore === false}
                         onCheckedChange={() => set("receivedBursaryBefore", false)}
                       />
-                      No
+                      {t("No")}
                     </label>
                   </div>
                   {form.receivedBursaryBefore === true && (
                     <div className="grid sm:grid-cols-2 gap-4 pt-1">
-                      <Field label="If yes, state the source (e.g. Moha Foundation, NG-CDF, Equity Wings)">
+                      <Field label={t("If yes, state the source (e.g. Moha Foundation, NG-CDF, Equity Wings)")}>
                         <Input value={form.previousBursarySource} onChange={(e) => set("previousBursarySource", e.target.value)} />
                       </Field>
-                      <Field label="Amount received (KSh)">
+                      <Field label={t("Amount received (KSh)")}>
                         <Input type="number" min="0" value={form.previousBursaryAmount} onChange={(e) => set("previousBursaryAmount", e.target.value)} placeholder="0" />
                       </Field>
                     </div>
@@ -518,14 +518,14 @@ export function BursaryApplicationDialog({ trigger }: { trigger: ReactNode }) {
             {/* ── STEP 2: SCHOOL ──────────────────────────────────────────── */}
             {step === 2 && (
               <div className="space-y-4">
-                <SectionLabel icon={School}>School's Details</SectionLabel>
+                <SectionLabel icon={School}>{t("School's Details")}</SectionLabel>
                 <div className="grid sm:grid-cols-2 gap-4">
-                  <Field label="School name *">
+                  <Field label={t("School name *")}>
                     <Input value={form.schoolName} onChange={(e) => set("schoolName", e.target.value)} />
                   </Field>
-                  <Field label="School category *">
+                  <Field label={t("School category *")}>
                     <Select value={form.schoolCategory} onValueChange={(v) => set("schoolCategory", v)}>
-                      <SelectTrigger><SelectValue placeholder="Select category" /></SelectTrigger>
+                      <SelectTrigger><SelectValue placeholder={t("Select category")} /></SelectTrigger>
                       <SelectContent>
                         {SCHOOL_CATEGORIES.map((c) => (
                           <SelectItem key={c.v} value={c.v}>{c.l}</SelectItem>
@@ -533,35 +533,35 @@ export function BursaryApplicationDialog({ trigger }: { trigger: ReactNode }) {
                       </SelectContent>
                     </Select>
                   </Field>
-                  <Field label="County *">
+                  <Field label={t("County *")}>
                     <Select
                       value={form.schoolCounty}
                       onValueChange={(v) => { set("schoolCounty", v); set("schoolSubCounty", ""); }}
                     >
-                      <SelectTrigger><SelectValue placeholder="Select county" /></SelectTrigger>
+                      <SelectTrigger><SelectValue placeholder={t("Select county")} /></SelectTrigger>
                       <SelectContent className="max-h-72">
                         {COUNTY_NAMES.map((c) => <SelectItem key={c} value={c}>{c}</SelectItem>)}
                       </SelectContent>
                     </Select>
                   </Field>
-                  <Field label="Sub-county *">
+                  <Field label={t("Sub-county *")}>
                     <Select
                       value={form.schoolSubCounty}
                       onValueChange={(v) => set("schoolSubCounty", v)}
                       disabled={!form.schoolCounty}
                     >
                       <SelectTrigger>
-                        <SelectValue placeholder={form.schoolCounty ? "Select sub-county" : "Pick county first"} />
+                        <SelectValue placeholder={form.schoolCounty ? t("Select sub-county") : t("Pick county first")} />
                       </SelectTrigger>
                       <SelectContent className="max-h-72">
                         {schoolSubCounties.map((s) => <SelectItem key={s} value={s}>{s}</SelectItem>)}
                       </SelectContent>
                     </Select>
                   </Field>
-                  <Field label="Year of admission">
+                  <Field label={t("Year of admission")}>
                     <Input value={form.yearOfAdmission} onChange={(e) => set("yearOfAdmission", e.target.value)} placeholder="e.g. 2024" />
                   </Field>
-                  <Field label="School bank account">
+                  <Field label={t("School bank account")}>
                     <Input value={form.schoolBankAccount} onChange={(e) => set("schoolBankAccount", e.target.value)} placeholder="Bank · Branch · A/C No." />
                   </Field>
                 </div>
@@ -571,35 +571,35 @@ export function BursaryApplicationDialog({ trigger }: { trigger: ReactNode }) {
             {/* ── STEP 3: PARENT / GUARDIAN ───────────────────────────────── */}
             {step === 3 && (
               <div className="space-y-5">
-                <SectionLabel icon={Users}>Parent / Guardian's Details</SectionLabel>
+                <SectionLabel icon={Users}>{t("Parent / Guardian's Details")}</SectionLabel>
 
                 {/* Parent alive flags */}
                 <div className="rounded-lg border border-border bg-muted/30 p-4 space-y-3">
                   <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
-                    Parents — alive / deceased
+                    {t("Parents — alive / deceased")}
                   </p>
                   <div className="grid grid-cols-2 gap-3">
-                    <CheckboxRow label="Father alive" checked={form.fatherAlive} onChange={(v) => set("fatherAlive", v)} />
-                    <CheckboxRow label="Mother alive" checked={form.motherAlive} onChange={(v) => set("motherAlive", v)} />
+                    <CheckboxRow label={t("Father alive")} checked={form.fatherAlive} onChange={(v) => set("fatherAlive", v)} />
+                    <CheckboxRow label={t("Mother alive")} checked={form.motherAlive} onChange={(v) => set("motherAlive", v)} />
                   </div>
                 </div>
 
                 {/* Father */}
                 {form.fatherAlive && (
                   <div className="rounded-lg border border-border bg-muted/30 p-4 space-y-3">
-                    <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Father's Details</p>
+                    <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">{t("Father's Details")}</p>
                     <div className="grid sm:grid-cols-2 gap-4">
-                      <Field label="Name"><Input value={form.fatherName} onChange={(e) => set("fatherName", e.target.value)} /></Field>
-                      <Field label="Phone contact"><Input value={form.fatherPhone} onChange={(e) => set("fatherPhone", e.target.value)} placeholder="07XX XXX XXX" /></Field>
-                      <Field label="National ID"><Input value={form.fatherNationalId} onChange={(e) => set("fatherNationalId", e.target.value)} /></Field>
-                      <Field label="Occupation"><Input value={form.fatherOccupation} onChange={(e) => set("fatherOccupation", e.target.value)} /></Field>
+                      <Field label={t("Name")}><Input value={form.fatherName} onChange={(e) => set("fatherName", e.target.value)} /></Field>
+                      <Field label={t("Phone contact")}><Input value={form.fatherPhone} onChange={(e) => set("fatherPhone", e.target.value)} placeholder="07XX XXX XXX" /></Field>
+                      <Field label={t("National ID")}><Input value={form.fatherNationalId} onChange={(e) => set("fatherNationalId", e.target.value)} /></Field>
+                      <Field label={t("Occupation")}><Input value={form.fatherOccupation} onChange={(e) => set("fatherOccupation", e.target.value)} /></Field>
                     </div>
                     <div className="flex items-center justify-between pt-1">
-                      <Label className="text-sm font-semibold cursor-pointer">Father lives with a disability</Label>
+                      <Label className="text-sm font-semibold cursor-pointer">{t("Father lives with a disability")}</Label>
                       <Switch checked={form.fatherDisability} onCheckedChange={(v) => set("fatherDisability", v)} />
                     </div>
                     {form.fatherDisability && (
-                      <Field label="Please specify"><Input value={form.fatherDisabilityDetail} onChange={(e) => set("fatherDisabilityDetail", e.target.value)} /></Field>
+                      <Field label={t("Please specify")}><Input value={form.fatherDisabilityDetail} onChange={(e) => set("fatherDisabilityDetail", e.target.value)} /></Field>
                     )}
                   </div>
                 )}
@@ -607,19 +607,19 @@ export function BursaryApplicationDialog({ trigger }: { trigger: ReactNode }) {
                 {/* Mother */}
                 {form.motherAlive && (
                   <div className="rounded-lg border border-border bg-muted/30 p-4 space-y-3">
-                    <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Mother's Details</p>
+                    <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">{t("Mother's Details")}</p>
                     <div className="grid sm:grid-cols-2 gap-4">
-                      <Field label="Name"><Input value={form.motherName} onChange={(e) => set("motherName", e.target.value)} /></Field>
-                      <Field label="Phone contact"><Input value={form.motherPhone} onChange={(e) => set("motherPhone", e.target.value)} placeholder="07XX XXX XXX" /></Field>
-                      <Field label="National ID"><Input value={form.motherNationalId} onChange={(e) => set("motherNationalId", e.target.value)} /></Field>
-                      <Field label="Occupation"><Input value={form.motherOccupation} onChange={(e) => set("motherOccupation", e.target.value)} /></Field>
+                      <Field label={t("Name")}><Input value={form.motherName} onChange={(e) => set("motherName", e.target.value)} /></Field>
+                      <Field label={t("Phone contact")}><Input value={form.motherPhone} onChange={(e) => set("motherPhone", e.target.value)} placeholder="07XX XXX XXX" /></Field>
+                      <Field label={t("National ID")}><Input value={form.motherNationalId} onChange={(e) => set("motherNationalId", e.target.value)} /></Field>
+                      <Field label={t("Occupation")}><Input value={form.motherOccupation} onChange={(e) => set("motherOccupation", e.target.value)} /></Field>
                     </div>
                     <div className="flex items-center justify-between pt-1">
-                      <Label className="text-sm font-semibold cursor-pointer">Mother lives with a disability</Label>
+                      <Label className="text-sm font-semibold cursor-pointer">{t("Mother lives with a disability")}</Label>
                       <Switch checked={form.motherDisability} onCheckedChange={(v) => set("motherDisability", v)} />
                     </div>
                     {form.motherDisability && (
-                      <Field label="Please specify"><Input value={form.motherDisabilityDetail} onChange={(e) => set("motherDisabilityDetail", e.target.value)} /></Field>
+                      <Field label={t("Please specify")}><Input value={form.motherDisabilityDetail} onChange={(e) => set("motherDisabilityDetail", e.target.value)} /></Field>
                     )}
                   </div>
                 )}
@@ -627,54 +627,54 @@ export function BursaryApplicationDialog({ trigger }: { trigger: ReactNode }) {
                 {/* Guardian */}
                 <div className="rounded-lg border border-border bg-muted/30 p-4 space-y-3">
                   <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
-                    Primary Contactable Parent / Guardian <span className="text-[10px] normal-case text-muted-foreground">(The parent or guardian who can be reached for communication)</span>
+                    {t("Primary Contactable Parent / Guardian")} <span className="text-[10px] normal-case text-muted-foreground">(The parent or guardian who can be reached for communication)</span>
                   </p>
                   <div className="grid sm:grid-cols-2 gap-4">
-                    <Field label="Name *"><Input value={form.guardianName} onChange={(e) => set("guardianName", e.target.value)} placeholder="Full name" /></Field>
-                    <Field label="Phone contact *"><Input value={form.guardianPhone} onChange={(e) => set("guardianPhone", e.target.value)} placeholder="07XX XXX XXX" /></Field>
-                    <Field label="National ID"><Input value={form.guardianNationalId} onChange={(e) => set("guardianNationalId", e.target.value)} /></Field>
-                    <Field label="Occupation"><Input value={form.guardianOccupation} onChange={(e) => set("guardianOccupation", e.target.value)} /></Field>
+                    <Field label={t("Name *")}><Input value={form.guardianName} onChange={(e) => set("guardianName", e.target.value)} placeholder="Full name" /></Field>
+                    <Field label={t("Phone contact *")}><Input value={form.guardianPhone} onChange={(e) => set("guardianPhone", e.target.value)} placeholder="07XX XXX XXX" /></Field>
+                    <Field label={t("National ID")}><Input value={form.guardianNationalId} onChange={(e) => set("guardianNationalId", e.target.value)} /></Field>
+                    <Field label={t("Occupation")}><Input value={form.guardianOccupation} onChange={(e) => set("guardianOccupation", e.target.value)} /></Field>
                   </div>
                   <div className="flex items-center justify-between pt-1">
-                    <Label className="text-sm font-semibold cursor-pointer">Guardian lives with a disability</Label>
+                    <Label className="text-sm font-semibold cursor-pointer">{t("Guardian lives with a disability")}</Label>
                     <Switch checked={form.guardianDisability} onCheckedChange={(v) => set("guardianDisability", v)} />
                   </div>
                   {form.guardianDisability && (
-                    <Field label="Please specify"><Input value={form.guardianDisabilityDetail} onChange={(e) => set("guardianDisabilityDetail", e.target.value)} /></Field>
+                    <Field label={t("Please specify")}><Input value={form.guardianDisabilityDetail} onChange={(e) => set("guardianDisabilityDetail", e.target.value)} /></Field>
                   )}
                 </div>
 
                 {/* Household & Residence */}
                 <div className="grid sm:grid-cols-2 gap-4">
-                  <Field label="Residential sub-county">
+                  <Field label={t("Residential sub-county")}>
                     <Input value={form.parentResidenceSubCounty} onChange={(e) => set("parentResidenceSubCounty", e.target.value)} />
                   </Field>
-                  <Field label="Ward">
+                  <Field label={t("Ward")}>
                     <Select value={form.ward} onValueChange={(v) => set("ward", v)}>
-                      <SelectTrigger><SelectValue placeholder="Select ward" /></SelectTrigger>
+                      <SelectTrigger><SelectValue placeholder={t("Select your Ward")} /></SelectTrigger>
                       <SelectContent>
                         {MATHARE_WARDS.map((w) => <SelectItem key={w} value={w}>{w}</SelectItem>)}
                       </SelectContent>
                     </Select>
                   </Field>
-                  <Field label="Polling station">
+                  <Field label={t("Polling station")}>
                     <Input value={form.pollingStation} onChange={(e) => set("pollingStation", e.target.value)} />
                   </Field>
-                  <Field label="Number of children in school / University">
+                  <Field label={t("Number of children in school / University")}>
                     <Input type="number" min="0" value={form.siblingsInSchool} onChange={(e) => set("siblingsInSchool", e.target.value)} placeholder="0" />
                   </Field>
-                  <Field label="Monthly budget (KSh)">
+                  <Field label={t("Monthly budget (KSh)")}>
                     <Input type="number" min="0" value={form.monthlyBudget} onChange={(e) => set("monthlyBudget", e.target.value)} placeholder="0" />
                   </Field>
                 </div>
 
-                <Field label="Brief description of reason for application">
+                <Field label={t("Brief description of reason for application")}>
                   <Textarea
                     rows={4}
                     maxLength={1000}
                     value={form.reason}
                     onChange={(e) => set("reason", e.target.value)}
-                    placeholder="Tell us briefly why you need support…"
+                    placeholder={t("Tell us briefly why you need support…")}
                   />
                 </Field>
               </div>
@@ -683,29 +683,29 @@ export function BursaryApplicationDialog({ trigger }: { trigger: ReactNode }) {
             {/* ── STEP 4: REVIEW & CONSENT ─────────────────────────────────── */}
             {step === 4 && (
               <div className="space-y-4">
-                <SectionLabel icon={ShieldCheck}>Review & Data Consent</SectionLabel>
+                <SectionLabel icon={ShieldCheck}>{t("Review & Data Consent")}</SectionLabel>
 
                 <div className="space-y-1.5 text-sm">
-                  <Row label="Student" value={`${form.studentName} · ${form.currentGrade}`} />
-                  <Row label="Admission No." value={form.admissionNumber} />
-                  <Row label="Birth Cert No." value={form.birthCertNumber} />
-                  <Row label="School" value={`${form.schoolName} (${form.schoolCategory || "—"})`} />
-                  <Row label="School location" value={`${form.schoolCounty || "—"} / ${form.schoolSubCounty || "—"}`} />
-                  <Row label="Annual fee" value={form.studentAnnualFee ? `KSh ${Number(form.studentAnnualFee).toLocaleString()}` : "—"} />
-                  <Row label="Outstanding balance" value={form.outstandingBalance ? `KSh ${Number(form.outstandingBalance).toLocaleString()}` : "—"} />
-                  <Row label="Amount requested" value={form.amountRequested ? `KSh ${Number(form.amountRequested).toLocaleString()}` : "—"} />
-                  <Row label="Guardian" value={`${form.guardianName} · ${form.guardianPhone}`} />
-                  <Row label="Ward / Polling" value={`${form.ward || "—"} · ${form.pollingStation || "—"}`} />
-                  <Row label="Children in school" value={form.siblingsInSchool || "0"} />
-                  <Row label="Monthly budget" value={form.monthlyBudget ? `KSh ${Number(form.monthlyBudget).toLocaleString()}` : "—"} />
-                  <Row label="Previous bursary" value={form.receivedBursaryBefore === null ? "Not answered" : form.receivedBursaryBefore ? `Yes — ${form.previousBursarySource || "—"} (KSh ${Number(form.previousBursaryAmount || 0).toLocaleString()})` : "No"} />
+                  <Row label={t("Student")} value={`${form.studentName} · ${form.currentGrade}`} />
+                  <Row label={t("Admission No.")} value={form.admissionNumber} />
+                  <Row label={t("Birth Cert No.")} value={form.birthCertNumber} />
+                  <Row label={t("School")} value={`${form.schoolName} (${form.schoolCategory || "—"})`} />
+                  <Row label={t("School location")} value={`${form.schoolCounty || "—"} / ${form.schoolSubCounty || "—"}`} />
+                  <Row label={t("Annual fee")} value={form.studentAnnualFee ? `KSh ${Number(form.studentAnnualFee).toLocaleString()}` : "—"} />
+                  <Row label={t("Outstanding balance")} value={form.outstandingBalance ? `KSh ${Number(form.outstandingBalance).toLocaleString()}` : "—"} />
+                  <Row label={t("Amount requested")} value={form.amountRequested ? `KSh ${Number(form.amountRequested).toLocaleString()}` : "—"} />
+                  <Row label={t("Guardian")} value={`${form.guardianName} · ${form.guardianPhone}`} />
+                  <Row label={t("Ward / Polling")} value={`${form.ward || "—"} · ${form.pollingStation || "—"}`} />
+                  <Row label={t("Children in school")} value={form.siblingsInSchool || "0"} />
+                  <Row label={t("Monthly budget")} value={form.monthlyBudget ? `KSh ${Number(form.monthlyBudget).toLocaleString()}` : "—"} />
+                  <Row label={t("Previous bursary")} value={form.receivedBursaryBefore === null ? t("Not answered") : form.receivedBursaryBefore ? `${t("Yes")} — ${form.previousBursarySource || "—"} (KSh ${Number(form.previousBursaryAmount || 0).toLocaleString()})` : t("No")} />
                 </div>
 
                 {/* Data Policy / Consent */}
                 <div className="rounded-xl border-2 border-gold/40 bg-gold/5 p-5 space-y-3">
                   <div className="flex items-center gap-2 mb-1">
                     <ShieldCheck className="h-5 w-5 text-gold shrink-0" />
-                    <h4 className="font-display font-bold text-base text-foreground">Data Policy & Consent</h4>
+                    <h4 className="font-display font-bold text-base text-foreground">{t("Data Policy & Consent")}</h4>
                   </div>
                   <div className="text-sm text-muted-foreground space-y-2 leading-relaxed">
                     <p>
@@ -731,8 +731,7 @@ export function BursaryApplicationDialog({ trigger }: { trigger: ReactNode }) {
                       className="mt-0.5 shrink-0"
                     />
                     <span className="text-sm font-semibold text-foreground group-hover:text-primary transition-colors">
-                      I have read and understood the data policy above. I consent to the collection and use of my
-                      personal information for bursary application processing purposes. *
+                      {t("I have read and understood the data policy above. I consent to the collection and use of my personal information for bursary application processing purposes. *")}
                     </span>
                   </label>
                 </div>
@@ -742,16 +741,16 @@ export function BursaryApplicationDialog({ trigger }: { trigger: ReactNode }) {
             <DialogFooter className="gap-2 sm:gap-2">
               {step > 1 && (
                 <Button variant="outline" onClick={() => setStep((s) => s - 1)} disabled={submitting}>
-                  <ArrowLeft className="h-4 w-4" /> Back
+                  <ArrowLeft className="h-4 w-4" /> {t("Back")}
                 </Button>
               )}
               {step < 4 ? (
                 <Button variant="hero" onClick={async () => { if (await validateStep()) setStep((s) => s + 1); }}>
-                  Next <ArrowRight className="h-4 w-4" />
+                  {t("Next")} <ArrowRight className="h-4 w-4" />
                 </Button>
               ) : (
                 <Button variant="hero" onClick={submit} disabled={submitting || !form.dataConsent}>
-                  {submitting ? "Submitting…" : "Submit Application"}
+                  {submitting ? t("Submitting…") : t("Submit Application")}
                 </Button>
               )}
             </DialogFooter>
@@ -764,8 +763,8 @@ export function BursaryApplicationDialog({ trigger }: { trigger: ReactNode }) {
 
 // ─── Sub-components ───────────────────────────────────────────────────────────
 
-function Stepper({ step }: { step: number }) {
-  const labels = ["Student", "School", "Guardian", "Review"];
+function Stepper({ step, t }: { step: number; t: (s: string) => string }) {
+  const labels = [t("Student"), t("School"), t("Guardian"), t("Review")];
   return (
     <div className="flex items-center gap-2 py-2">
       {labels.map((l, i) => {

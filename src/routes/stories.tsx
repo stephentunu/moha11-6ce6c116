@@ -2,6 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { motion } from "framer-motion";
 import { Quote } from "lucide-react";
 import { PageHero } from "@/components/PageHero";
+import { useLanguage } from "@/hooks/useLanguage";
 import wanjikuImg from "@/assets/moha/foundation5.jpeg";
 import brianImg from "@/assets/moha/moha30.jpeg";
 import atienoImg from "@/assets/moha/donation3.jpeg";
@@ -68,12 +69,13 @@ const stories = [
 ];
 
 function StoriesPage() {
+  const { t } = useLanguage();
   return (
     <>
       <PageHero
-        eyebrow="Voices of Mathare"
-        title="Real people. Real impact."
-        subtitle="These are the stories of mama mbogas, students, elders, and youth whose lives Moha has changed — long before any campaign poster went up."
+        eyebrow={t("Voices of Mathare")}
+        title={t("Real people. Real impact.")}
+        subtitle={t("These are the stories of mama mbogas, students, elders, and youth whose lives Moha has changed — long before any campaign poster went up.")}
         bgImage={wanjikuImg}
       />
 
@@ -90,7 +92,7 @@ function StoriesPage() {
                 className="group bg-card border border-border rounded-2xl p-7 shadow-elegant hover:shadow-glow hover:-translate-y-1 transition-all duration-500"
               >
                 <Quote className="h-8 w-8 text-gold mb-4" />
-                <p className="text-foreground leading-relaxed italic">"{s.quote}"</p>
+                <p className="text-foreground leading-relaxed italic">"{t(s.quote)}"</p>
                 <div className="mt-6 flex items-center gap-3 pt-5 border-t border-border">
                   <img
                     src={s.img}
@@ -100,7 +102,7 @@ function StoriesPage() {
                   />
                   <div>
                     <div className="font-semibold text-foreground">{s.name}</div>
-                    <div className="text-xs text-muted-foreground">{s.role}</div>
+                    <div className="text-xs text-muted-foreground">{t(s.role)}</div>
                   </div>
                 </div>
               </motion.article>

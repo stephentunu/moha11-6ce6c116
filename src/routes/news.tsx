@@ -2,6 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { motion } from "framer-motion";
 import { Calendar, ArrowRight } from "lucide-react";
 import { PageHero } from "@/components/PageHero";
+import { useLanguage } from "@/hooks/useLanguage";
 import rallyImg from "@/assets/moha/foundation1.jpeg";
 import educationImg from "@/assets/moha/bursary1.jpeg";
 import healthImg from "@/assets/moha/moha10.jpeg";
@@ -64,12 +65,13 @@ const news = [
 
 function NewsPage() {
   const [featured, ...rest] = news;
+  const { t } = useLanguage();
   return (
     <>
       <PageHero
-        eyebrow="Top Stories"
-        title="The latest from the movement"
-        subtitle="Campaign milestones, community wins, and the work happening on the ground every single day."
+        eyebrow={t("Top Stories")}
+        title={t("The latest from the movement")}
+        subtitle={t("Campaign milestones, community wins, and the work happening on the ground every single day.")}
         bgImage={rallyImg}
       />
 
@@ -97,7 +99,7 @@ function NewsPage() {
               <div className="p-8 md:p-12 flex flex-col justify-center">
                 <div className="flex items-center gap-3 mb-4">
                   <span className="px-3 py-1 text-xs font-bold tracking-widest uppercase text-gold-foreground bg-gold rounded-full">
-                    Featured • {featured.tag}
+                    {t("Featured")} • {t(featured.tag)}
                   </span>
                   <span className="flex items-center gap-1 text-xs text-muted-foreground">
                     <Calendar className="h-3 w-3" />
@@ -105,11 +107,11 @@ function NewsPage() {
                   </span>
                 </div>
                 <h2 className="text-3xl md:text-4xl font-display font-bold text-foreground text-balance">
-                  {featured.title}
+                  {t(featured.title)}
                 </h2>
-                <p className="mt-4 text-muted-foreground leading-relaxed">{featured.excerpt}</p>
+                <p className="mt-4 text-muted-foreground leading-relaxed">{t(featured.excerpt)}</p>
                 <button className="mt-6 inline-flex items-center gap-2 font-semibold text-primary self-start group-hover:gap-3 transition-all">
-                  Read more <ArrowRight className="h-4 w-4" />
+                  {t("Read more")} <ArrowRight className="h-4 w-4" />
                 </button>
               </div>
             </div>
@@ -139,7 +141,7 @@ function NewsPage() {
                 <div className="p-5 md:py-6 md:pr-6 flex-1">
                   <div className="flex items-center gap-3 mb-2">
                     <span className="px-2.5 py-0.5 text-[10px] font-bold tracking-widest uppercase text-primary bg-primary/10 rounded-full">
-                      {n.tag}
+                      {t(n.tag)}
                     </span>
                     <span className="flex items-center gap-1 text-xs text-muted-foreground">
                       <Calendar className="h-3 w-3" />
@@ -147,10 +149,10 @@ function NewsPage() {
                     </span>
                   </div>
                   <h3 className="font-display font-bold text-lg text-foreground group-hover:text-primary transition-colors text-balance">
-                    {n.title}
+                    {t(n.title)}
                   </h3>
                   <p className="mt-2 text-sm text-muted-foreground leading-relaxed">
-                    {n.excerpt}
+                    {t(n.excerpt)}
                   </p>
                 </div>
               </motion.article>
