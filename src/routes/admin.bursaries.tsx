@@ -20,12 +20,15 @@ import {
   Dialog, DialogContent, DialogDescription, DialogFooter,
   DialogHeader, DialogTitle,
 } from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { Toaster } from "@/components/ui/sonner";
 import { AdminLayout } from "@/components/AdminLayout";
 import { supabase } from "@/integrations/supabase/client";
 import { sendBursarySms } from "@/lib/bursary.functions";
 import { cn } from "@/lib/utils";
+import { MATHARE_WARDS } from "@/lib/admin-store";
+import { COUNTY_NAMES, KENYA_COUNTIES } from "@/lib/kenya-counties";
 
 export const Route = createFileRoute("/admin/bursaries")({
   head: () => ({
@@ -154,6 +157,21 @@ function AdminBursariesPage() {
   const [editAmountValue, setEditAmountValue] = useState("");
   const [editAmountBusy, setEditAmountBusy] = useState(false);
 
+  // Application Details Editing
+  const [isEditing, setIsEditing] = useState(false);
+  const [editFields, setEditFields] = useState({
+    student_name: "",
+    school_name: "",
+    canonical_school_name: "",
+    school_category: "",
+    school_county: "",
+    school_sub_county: "",
+    ward: "",
+    amount_requested: "",
+    status: "",
+  });
+  const [editBusy, setEditBusy] = useState(false);
+
   const load = async () => {
     const { data, error } = await supabase
       .from("bursary_applications" as never)
@@ -181,9 +199,12 @@ function AdminBursariesPage() {
       return (
         r.student_name.toLowerCase().includes(q) ||
         (r.school_name || "").toLowerCase().includes(q) ||
+        (r.canonical_school_name || "").toLowerCase().includes(q) ||
         (r.ward || "").toLowerCase().includes(q) ||
         (r.reference || "").toLowerCase().includes(q) ||
-        (r.guardian_name || "").toLowerCase().includes(q)
+        (r.guardian_name || "").toLowerCase().includes(q) ||
+        (r.school_county || "").toLowerCase().includes(q) ||
+        (r.school_sub_county || "").toLowerCase().includes(q)
       );
     });
   }, [rows, filter, search]);
@@ -496,6 +517,81 @@ function AdminBursariesPage() {
     setEditAmountValue("");
   };
 
+  const startEditing = (r: Row) => {
+    setEditFields({
+      student_name: r.student_name || "",
+      school_name: r.school_name || "",
+      canonical_school_name: r.canonical_school_name || "",
+      school_category: r.school_category || "",
+      school_county: r.school_county || "",
+      school_sub_county: r.school_sub_county || "",
+      ward: r.ward || "",
+      amount_requested: r.amount_requested !== null && r.amount_requested !== undefined ? String(r.amount_requested) : "",
+      status: r.status || "pending",
+    });
+    setIsEditing(true);
+  };
+
+  const saveEditApplication = async () => {
+    if (!selected) return;
+    const studentName = editFields.student_name.trim();
+    if (!studentName) {
+      toast.error("Student name is required");
+      return;
+    }
+    const schoolName = editFields.school_name.trim();
+    if (!schoolName) {
+      toast.error("School name is required");
+      return;
+    }
+
+    setEditBusy(true);
+    const parsedAmount = editFields.amount_requested ? parseFloat(editFields.amount_requested) : null;
+    const { error } = await supabase
+      .from("bursary_applications" as never)
+      .update({
+        student_name: studentName,
+        school_name: schoolName,
+        canonical_school_name: editFields.canonical_school_name.trim() || null,
+        school_category: editFields.school_category || null,
+        school_county: editFields.school_county || null,
+        school_sub_county: editFields.school_sub_county || null,
+        ward: editFields.ward || null,
+        amount_requested: parsedAmount,
+        status: editFields.status,
+      } as never)
+      .eq("id", selected.id);
+
+    setEditBusy(false);
+    if (error) {
+      toast.error(error.message);
+      return;
+    }
+
+    toast.success("Application updated successfully");
+    setIsEditing(false);
+
+    // Update the selected state so the detail dialog gets updated values
+    setSelected((prev) =>
+      prev
+        ? {
+            ...prev,
+            student_name: studentName,
+            school_name: schoolName,
+            canonical_school_name: editFields.canonical_school_name.trim() || null,
+            school_category: editFields.school_category || null,
+            school_county: editFields.school_county || null,
+            school_sub_county: editFields.school_sub_county || null,
+            ward: editFields.ward || null,
+            amount_requested: parsedAmount,
+            status: editFields.status,
+          }
+        : null
+    );
+
+    load();
+  };
+
   const remove = async (id: string) => {
     if (!confirm("Delete this application permanently?")) return;
     const { error } = await supabase
@@ -803,6 +899,9 @@ function AdminBursariesPage() {
                               <Button size="icon" variant="ghost" onClick={() => setSelected(r)} title="View">
                                 <Eye className="h-4 w-4" />
                               </Button>
+                              <Button size="icon" variant="ghost" onClick={() => { setSelected(r); startEditing(r); }} title="Edit">
+                                <Pencil className="h-4 w-4 text-primary" />
+                              </Button>
                               <Button size="icon" variant="ghost" onClick={() => openSms(r)} title="Send SMS">
                                 <Send className="h-4 w-4" />
                               </Button>
@@ -872,6 +971,9 @@ function AdminBursariesPage() {
                     <div className="flex items-center gap-2 pt-2 border-t border-border">
                       <Button size="sm" variant="outline" className="flex-1" onClick={() => setSelected(r)}>
                         <Eye className="h-3.5 w-3.5 mr-1" /> View
+                      </Button>
+                      <Button size="sm" variant="outline" className="flex-1" onClick={() => { setSelected(r); startEditing(r); }}>
+                        <Pencil className="h-3.5 w-3.5 mr-1" /> Edit
                       </Button>
                       <Button size="sm" variant="outline" className="flex-1" onClick={() => openSms(r)}>
                         <Send className="h-3.5 w-3.5 mr-1" /> SMS
@@ -1631,102 +1733,262 @@ function AdminBursariesPage() {
       </div>
 
       {/* ── Detail dialog ────────────────────────────────────────────────────── */}
-      <Dialog open={!!selected} onOpenChange={(o) => !o && setSelected(null)}>
+      <Dialog open={!!selected} onOpenChange={(o) => { if (!o) { setSelected(null); setIsEditing(false); } }}>
         <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
           {selected && (
             <>
-              <DialogHeader>
-                <DialogTitle className="flex items-center gap-2">
-                  <GraduationCap className="h-5 w-5 text-gold" />
-                  {selected.student_name}
-                </DialogTitle>
-                <DialogDescription>
-                  Ref <span className="font-mono font-bold text-primary">{selected.reference}</span>
-                  {" · "}
-                  <Badge className={STATUS_COLORS[selected.status] ?? ""}>{selected.status}</Badge>
-                </DialogDescription>
-              </DialogHeader>
-              <div className="space-y-4">
-                <DetailGroup title="Student">
-                  <Detail label="Registration No." value={selected.registration_number} />
-                  <Detail label="DOB" value={selected.dob} />
-                  <Detail label="Gender" value={selected.gender} />
-                  <Detail label="Grade" value={selected.current_grade} />
-                  <Detail label="Father alive" value={yn(selected.father_alive)} />
-                  <Detail label="Mother alive" value={yn(selected.mother_alive)} />
-                  <Detail label="Student disability" value={selected.student_disability ? (selected.student_disability_detail || "Yes") : "No"} />
-                  <Detail label="Student annual fee" value={selected.student_annual_fee ? `KSh ${Number(selected.student_annual_fee).toLocaleString()}` : null} />
-                  <Detail label="Outstanding balance" value={selected.outstanding_balance ? `KSh ${Number(selected.outstanding_balance).toLocaleString()}` : null} />
-                  <Detail
-                    label="Received bursary before"
-                    value={selected.received_bursary_before ? `Yes${selected.previous_bursary_source ? ` — ${selected.previous_bursary_source}` : ""}${selected.previous_bursary_amount ? ` (KSh ${Number(selected.previous_bursary_amount).toLocaleString()})` : ""}` : "No"}
-                  />
-                </DetailGroup>
-                {selected.father_alive && (
-                  <DetailGroup title="Father">
-                    <Detail label="Name" value={selected.father_name} />
-                    <Detail label="Phone" value={selected.father_phone} />
-                    <Detail label="Occupation" value={selected.father_occupation} />
-                    <Detail label="National ID" value={selected.father_national_id} />
-                  </DetailGroup>
-                )}
-                {selected.mother_alive && (
-                  <DetailGroup title="Mother">
-                    <Detail label="Name" value={selected.mother_name} />
-                    <Detail label="Phone" value={selected.mother_phone} />
-                    <Detail label="Occupation" value={selected.mother_occupation} />
-                    <Detail label="National ID" value={selected.mother_national_id} />
-                  </DetailGroup>
-                )}
-                <DetailGroup title="School">
-                  <Detail label="School (as typed by applicant)" value={selected.school_name} />
-                  {selected.canonical_school_name && selected.canonical_school_name.trim() !== selected.school_name.trim() && (
-                    <Detail label="Standardized school name" value={selected.canonical_school_name} />
+              {isEditing ? (
+                <>
+                  <DialogHeader>
+                    <DialogTitle className="flex items-center gap-2">
+                      <Pencil className="h-5 w-5 text-gold" />
+                      Edit Application: {selected.student_name}
+                    </DialogTitle>
+                    <DialogDescription>
+                      Ref <span className="font-mono font-bold text-primary">{selected.reference}</span>
+                    </DialogDescription>
+                  </DialogHeader>
+                  <div className="space-y-4 py-2">
+                    <div className="grid sm:grid-cols-2 gap-4 text-sm">
+                      <div className="space-y-1.5">
+                        <Label htmlFor="edit-student-name">Student Name</Label>
+                        <Input
+                          id="edit-student-name"
+                          value={editFields.student_name}
+                          onChange={(e) => setEditFields(prev => ({ ...prev, student_name: e.target.value }))}
+                        />
+                      </div>
+                      <div className="space-y-1.5">
+                        <Label htmlFor="edit-status">Status (Approval)</Label>
+                        <Select
+                          value={editFields.status}
+                          onValueChange={(val) => setEditFields(prev => ({ ...prev, status: val }))}
+                        >
+                          <SelectTrigger id="edit-status" className="w-full">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="pending">Pending</SelectItem>
+                            <SelectItem value="reviewing">Reviewing</SelectItem>
+                            <SelectItem value="approved">Approved</SelectItem>
+                            <SelectItem value="rejected">Rejected</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div className="space-y-1.5">
+                        <Label htmlFor="edit-school-name">School (as typed by applicant)</Label>
+                        <Input
+                          id="edit-school-name"
+                          value={editFields.school_name}
+                          onChange={(e) => setEditFields(prev => ({ ...prev, school_name: e.target.value }))}
+                          list="school-suggestions"
+                        />
+                      </div>
+                      <div className="space-y-1.5">
+                        <Label htmlFor="edit-canonical-school-name">Standardized School Name</Label>
+                        <Input
+                          id="edit-canonical-school-name"
+                          value={editFields.canonical_school_name}
+                          onChange={(e) => setEditFields(prev => ({ ...prev, canonical_school_name: e.target.value }))}
+                          list="school-suggestions"
+                          placeholder="e.g. KANGA HIGH SCHOOL"
+                        />
+                      </div>
+                      <div className="space-y-1.5">
+                        <Label htmlFor="edit-school-category">Category</Label>
+                        <Select
+                          value={editFields.school_category}
+                          onValueChange={(val) => setEditFields(prev => ({ ...prev, school_category: val }))}
+                        >
+                          <SelectTrigger id="edit-school-category" className="w-full">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="C1">C1 — National</SelectItem>
+                            <SelectItem value="C2">C2 — Extra-County</SelectItem>
+                            <SelectItem value="C3">C3 — County</SelectItem>
+                            <SelectItem value="C4">C4 — Sub-County / Day</SelectItem>
+                            <SelectItem value="Private">Private</SelectItem>
+                            <SelectItem value="TVET">TVET / Vocational</SelectItem>
+                            <SelectItem value="University">University</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div className="space-y-1.5">
+                        <Label htmlFor="edit-school-county">School County</Label>
+                        <Select
+                          value={editFields.school_county}
+                          onValueChange={(val) => {
+                            const subcounties = KENYA_COUNTIES[val] || [];
+                            setEditFields(prev => ({
+                              ...prev,
+                              school_county: val,
+                              school_sub_county: subcounties.includes(prev.school_sub_county) ? prev.school_sub_county : (subcounties[0] || ""),
+                            }));
+                          }}
+                        >
+                          <SelectTrigger id="edit-school-county" className="w-full">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {COUNTY_NAMES.map(c => (
+                              <SelectItem key={c} value={c}>{c}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div className="space-y-1.5">
+                        <Label htmlFor="edit-school-sub-county">School Sub-county</Label>
+                        <Select
+                          value={editFields.school_sub_county}
+                          onValueChange={(val) => setEditFields(prev => ({ ...prev, school_sub_county: val }))}
+                          disabled={!editFields.school_county}
+                        >
+                          <SelectTrigger id="edit-school-sub-county" className="w-full">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {(KENYA_COUNTIES[editFields.school_county] || []).map(sc => (
+                              <SelectItem key={sc} value={sc}>{sc}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div className="space-y-1.5">
+                        <Label htmlFor="edit-ward">Ward</Label>
+                        <Select
+                          value={editFields.ward}
+                          onValueChange={(val) => setEditFields(prev => ({ ...prev, ward: val }))}
+                        >
+                          <SelectTrigger id="edit-ward" className="w-full">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {MATHARE_WARDS.map(w => (
+                              <SelectItem key={w} value={w}>{w}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div className="space-y-1.5 sm:col-span-2">
+                        <Label htmlFor="edit-amount-requested">Amount Awarded (KSh)</Label>
+                        <Input
+                          id="edit-amount-requested"
+                          type="number"
+                          min="0"
+                          step="500"
+                          value={editFields.amount_requested}
+                          onChange={(e) => setEditFields(prev => ({ ...prev, amount_requested: e.target.value }))}
+                        />
+                      </div>
+                    </div>
+                  </div>
+                  <DialogFooter className="gap-2 sm:gap-2 pt-4 border-t">
+                    <Button variant="outline" onClick={() => setIsEditing(false)} disabled={editBusy}>Cancel</Button>
+                    <Button variant="hero" onClick={saveEditApplication} disabled={editBusy}>
+                      {editBusy ? "Saving..." : "Save Changes"}
+                    </Button>
+                  </DialogFooter>
+                </>
+              ) : (
+                <>
+                  <DialogHeader>
+                    <DialogTitle className="flex items-center gap-2">
+                      <GraduationCap className="h-5 w-5 text-gold" />
+                      {selected.student_name}
+                    </DialogTitle>
+                    <DialogDescription>
+                      Ref <span className="font-mono font-bold text-primary">{selected.reference}</span>
+                      {" · "}
+                      <Badge className={STATUS_COLORS[selected.status] ?? ""}>{selected.status}</Badge>
+                    </DialogDescription>
+                  </DialogHeader>
+                  <div className="space-y-4">
+                    <DetailGroup title="Student">
+                      <Detail label="Registration No." value={selected.registration_number} />
+                      <Detail label="DOB" value={selected.dob} />
+                      <Detail label="Gender" value={selected.gender} />
+                      <Detail label="Grade" value={selected.current_grade} />
+                      <Detail label="Father alive" value={yn(selected.father_alive)} />
+                      <Detail label="Mother alive" value={yn(selected.mother_alive)} />
+                      <Detail label="Student disability" value={selected.student_disability ? (selected.student_disability_detail || "Yes") : "No"} />
+                      <Detail label="Student annual fee" value={selected.student_annual_fee ? `KSh ${Number(selected.student_annual_fee).toLocaleString()}` : null} />
+                      <Detail label="Outstanding balance" value={selected.outstanding_balance ? `KSh ${Number(selected.outstanding_balance).toLocaleString()}` : null} />
+                      <Detail
+                        label="Received bursary before"
+                        value={selected.received_bursary_before ? `Yes${selected.previous_bursary_source ? ` — ${selected.previous_bursary_source}` : ""}${selected.previous_bursary_amount ? ` (KSh ${Number(selected.previous_bursary_amount).toLocaleString()})` : ""}` : "No"}
+                      />
+                    </DetailGroup>
+                    {selected.father_alive && (
+                      <DetailGroup title="Father">
+                        <Detail label="Name" value={selected.father_name} />
+                        <Detail label="Phone" value={selected.father_phone} />
+                        <Detail label="Occupation" value={selected.father_occupation} />
+                        <Detail label="National ID" value={selected.father_national_id} />
+                      </DetailGroup>
+                    )}
+                    {selected.mother_alive && (
+                      <DetailGroup title="Mother">
+                        <Detail label="Name" value={selected.mother_name} />
+                        <Detail label="Phone" value={selected.mother_phone} />
+                        <Detail label="Occupation" value={selected.mother_occupation} />
+                        <Detail label="National ID" value={selected.mother_national_id} />
+                      </DetailGroup>
+                    )}
+                    <DetailGroup title="School">
+                      <Detail label="School (as typed by applicant)" value={selected.school_name} />
+                      {selected.canonical_school_name && selected.canonical_school_name.trim() !== selected.school_name.trim() && (
+                        <Detail label="Standardized school name" value={selected.canonical_school_name} />
+                      )}
+                      <Detail label="Category" value={selected.school_category} />
+                      <Detail label="County" value={selected.school_county} />
+                      <Detail label="Sub-county" value={selected.school_sub_county} />
+                      <Detail label="Year of admission" value={selected.year_of_admission} />
+                      <Detail label="Bank account" value={selected.school_bank_account} />
+                    </DetailGroup>
+                    <DetailGroup title="Primary Contactable Parent / Guardian">
+                      <Detail label="Name" value={selected.guardian_name} />
+                      <Detail label="Phone" value={selected.guardian_phone} />
+                      <Detail label="National ID" value={selected.parent_national_id} />
+                      <Detail label="Occupation" value={selected.parent_occupation} />
+                      <Detail label="Sub-county" value={selected.parent_residence_sub_county} />
+                      <Detail label="Ward" value={selected.ward} />
+                      <Detail label="Polling station" value={selected.polling_station} />
+                      <Detail label="Disability" value={selected.parent_disability ? (selected.parent_disability_detail || "Yes") : "No"} />
+                      <Detail label="Children in school" value={String(selected.siblings_in_school ?? "0")} />
+                      <Detail label="Monthly budget" value={selected.monthly_budget ? `KSh ${Number(selected.monthly_budget).toLocaleString()}` : null} />
+                      <Detail label="Amount requested" value={selected.amount_requested ? `KSh ${Number(selected.amount_requested).toLocaleString()}` : null} />
+                      <Detail label="Submitted" value={new Date(selected.created_at).toLocaleString()} />
+                    </DetailGroup>
+                  </div>
+                  {selected.reason && (
+                    <div className="mt-3">
+                      <p className="text-xs uppercase tracking-wider text-muted-foreground mb-1">Reason</p>
+                      <p className="text-sm whitespace-pre-line bg-muted/40 p-3 rounded-lg">{selected.reason}</p>
+                    </div>
                   )}
-                  <Detail label="Category" value={selected.school_category} />
-                  <Detail label="County" value={selected.school_county} />
-                  <Detail label="Sub-county" value={selected.school_sub_county} />
-                  <Detail label="Year of admission" value={selected.year_of_admission} />
-                  <Detail label="Bank account" value={selected.school_bank_account} />
-                </DetailGroup>
-                <DetailGroup title="Primary Contactable Parent / Guardian">
-                  <Detail label="Name" value={selected.guardian_name} />
-                  <Detail label="Phone" value={selected.guardian_phone} />
-                  <Detail label="National ID" value={selected.parent_national_id} />
-                  <Detail label="Occupation" value={selected.parent_occupation} />
-                  <Detail label="Sub-county" value={selected.parent_residence_sub_county} />
-                  <Detail label="Ward" value={selected.ward} />
-                  <Detail label="Polling station" value={selected.polling_station} />
-                  <Detail label="Disability" value={selected.parent_disability ? (selected.parent_disability_detail || "Yes") : "No"} />
-                  <Detail label="Children in school" value={String(selected.siblings_in_school ?? "0")} />
-                  <Detail label="Monthly budget" value={selected.monthly_budget ? `KSh ${Number(selected.monthly_budget).toLocaleString()}` : null} />
-                  <Detail label="Amount requested" value={selected.amount_requested ? `KSh ${Number(selected.amount_requested).toLocaleString()}` : null} />
-                  <Detail label="Submitted" value={new Date(selected.created_at).toLocaleString()} />
-                </DetailGroup>
-              </div>
-              {selected.reason && (
-                <div className="mt-3">
-                  <p className="text-xs uppercase tracking-wider text-muted-foreground mb-1">Reason</p>
-                  <p className="text-sm whitespace-pre-line bg-muted/40 p-3 rounded-lg">{selected.reason}</p>
-                </div>
+                  {selected.sms_last_message && (
+                    <div className="mt-3">
+                      <p className="text-xs uppercase tracking-wider text-muted-foreground mb-1">
+                        Last SMS · {selected.sms_last_sent_at ? new Date(selected.sms_last_sent_at).toLocaleString() : ""}
+                      </p>
+                      <p className="text-sm bg-gold/10 p-3 rounded-lg">{selected.sms_last_message}</p>
+                    </div>
+                  )}
+                  <DialogFooter className="gap-2 sm:gap-2">
+                    <Button variant="outline" onClick={() => setSelected(null)}>Close</Button>
+                    <Button variant="outline" onClick={() => startEditing(selected)} className="gap-1.5">
+                      <Pencil className="h-4 w-4 text-primary" /> Edit Details
+                    </Button>
+                    <Button variant="outline" onClick={() => generateBursaryPdf(toPdfData(selected))}>
+                      <Download className="h-4 w-4" /> Download PDF
+                    </Button>
+                    <Button variant="hero" onClick={() => { openSms(selected); setSelected(null); }}>
+                      <Send className="h-4 w-4" /> Send SMS
+                    </Button>
+                  </DialogFooter>
+                </>
               )}
-              {selected.sms_last_message && (
-                <div className="mt-3">
-                  <p className="text-xs uppercase tracking-wider text-muted-foreground mb-1">
-                    Last SMS · {selected.sms_last_sent_at ? new Date(selected.sms_last_sent_at).toLocaleString() : ""}
-                  </p>
-                  <p className="text-sm bg-gold/10 p-3 rounded-lg">{selected.sms_last_message}</p>
-                </div>
-              )}
-              <DialogFooter className="gap-2 sm:gap-2">
-                <Button variant="outline" onClick={() => setSelected(null)}>Close</Button>
-                <Button variant="outline" onClick={() => generateBursaryPdf(toPdfData(selected))}>
-                  <Download className="h-4 w-4" /> Download PDF
-                </Button>
-                <Button variant="hero" onClick={() => { openSms(selected); setSelected(null); }}>
-                  <Send className="h-4 w-4" /> Send SMS
-                </Button>
-              </DialogFooter>
             </>
           )}
         </DialogContent>
