@@ -145,7 +145,14 @@ function AdminBursariesPage() {
   const [reviewSchool, setReviewSchool] = useState<string | null>(null);
   const [renameSchoolOpen, setRenameSchoolOpen] = useState(false);
   const [renameSchoolDraft, setRenameSchoolDraft] = useState("");
+  const [renameSubCountyDraft, setRenameSubCountyDraft] = useState("");
+  const [renameCountyDraft, setRenameCountyDraft] = useState("");
   const [renameSchoolBusy, setRenameSchoolBusy] = useState(false);
+
+  // Inline amount editing in Review by Location
+  const [editAmountId, setEditAmountId] = useState<string | null>(null);
+  const [editAmountValue, setEditAmountValue] = useState("");
+  const [editAmountBusy, setEditAmountBusy] = useState(false);
 
   const load = async () => {
     const { data, error } = await supabase
@@ -340,6 +347,22 @@ function AdminBursariesPage() {
     return Array.from(names).sort();
   }, [rows]);
 
+  const allSubCounties = useMemo(() => {
+    const names = new Set<string>();
+    for (const r of rows) {
+      if (r.school_sub_county) names.add(r.school_sub_county.trim().toUpperCase());
+    }
+    return Array.from(names).sort();
+  }, [rows]);
+
+  const allCounties = useMemo(() => {
+    const names = new Set<string>();
+    for (const r of rows) {
+      if (r.school_county) names.add(r.school_county.trim().toUpperCase());
+    }
+    return Array.from(names).sort();
+  }, [rows]);
+
   // ── Bulk selection helpers ───────────────────────────────────────────────
   const filteredIds = filtered.map((r) => r.id);
   const allChecked = filteredIds.length > 0 && filteredIds.every((id) => checkedIds.has(id));
@@ -411,6 +434,8 @@ function AdminBursariesPage() {
    */
   const renameSchool = async () => {
     const newName = renameSchoolDraft.trim();
+    const newSubCounty = renameSubCountyDraft.trim();
+    const newCounty = renameCountyDraft.trim();
     if (!newName || !reviewSchool) {
       toast.error("Enter a school name");
       return;
@@ -419,22 +444,56 @@ function AdminBursariesPage() {
     const ids = reviewStudents.map((r) => r.id);
     const { error } = await supabase
       .from("bursary_applications" as never)
-      .update({ canonical_school_name: newName } as never)
+      .update({
+        canonical_school_name: newName,
+        school_sub_county: newSubCounty || null,
+        school_county: newCounty || null,
+      } as never)
       .in("id", ids);
     setRenameSchoolBusy(false);
 
-    if (error && /column .* does not exist/i.test(error.message)) {
-      toast.error(
-        "School renaming needs a database update. Run: ALTER TABLE bursary_applications ADD COLUMN canonical_school_name TEXT; in Supabase, then try again.",
-      );
-      return;
-    }
     if (error) { toast.error(error.message); return; }
 
-    toast.success(`${ids.length} application${ids.length !== 1 ? "s" : ""} now show as "${newName}"`);
+    toast.success(`${ids.length} application${ids.length !== 1 ? "s" : ""} updated`);
     setRenameSchoolOpen(false);
-    setReviewSchool(newName);
+
+    // If location changed, clear the selected county/subcounty/school so the UI resets cleanly
+    if (newCounty !== reviewCounty || newSubCounty !== reviewSubCounty || newName !== reviewSchool) {
+      setReviewSchool(null);
+      if (newSubCounty !== reviewSubCounty) setReviewSubCounty(null);
+      if (newCounty !== reviewCounty) setReviewCounty(null);
+    } else {
+      setReviewSchool(newName);
+    }
     load();
+  };
+
+  /**
+   * Persist a manually-entered awarded amount for a single application.
+   * Called from the inline editor in the Review by Location student table.
+   */
+  const saveAmount = async (id: string) => {
+    const parsed = parseFloat(editAmountValue.replace(/,/g, ""));
+    if (isNaN(parsed) || parsed < 0) {
+      toast.error("Enter a valid amount (numbers only)");
+      return;
+    }
+    setEditAmountBusy(true);
+    const { error } = await supabase
+      .from("bursary_applications" as never)
+      .update({ amount_requested: parsed } as never)
+      .eq("id", id);
+    setEditAmountBusy(false);
+    if (error) { toast.error(error.message); return; }
+    toast.success("Amount updated");
+    setEditAmountId(null);
+    setEditAmountValue("");
+    load();
+  };
+
+  const cancelEditAmount = () => {
+    setEditAmountId(null);
+    setEditAmountValue("");
   };
 
   const remove = async (id: string) => {
@@ -481,9 +540,10 @@ function AdminBursariesPage() {
       guardian_phone: r.guardian_phone,
       ward: r.ward,
       amount_requested: r.amount_requested,
-      school_name: r.school_name,
+      school_name: effectiveSchoolName(r),   // use canonical name if set
       school_category: r.school_category,
       school_bank_account: r.school_bank_account,
+      school_county: r.school_county,         // needed for County → School grouping
     }));
     generateBroadsheetPdf(bsRows, `Moha Bursary Broadsheet — ${new Date().toLocaleDateString("en-KE")}`);
     toast.success("Broadsheet PDF generated!");
@@ -528,6 +588,16 @@ function AdminBursariesPage() {
       <Toaster />
       <datalist id="school-suggestions">
         {allSchoolNames.map((name) => (
+          <option key={name} value={name} />
+        ))}
+      </datalist>
+      <datalist id="subcounty-suggestions">
+        {allSubCounties.map((name) => (
+          <option key={name} value={name} />
+        ))}
+      </datalist>
+      <datalist id="county-suggestions">
+        {allCounties.map((name) => (
           <option key={name} value={name} />
         ))}
       </datalist>
@@ -973,10 +1043,15 @@ function AdminBursariesPage() {
                   <Button
                     variant="outline"
                     size="sm"
-                    onClick={() => { setRenameSchoolDraft(reviewSchool); setRenameSchoolOpen(true); }}
+                    onClick={() => {
+                      setRenameSchoolDraft(reviewSchool || "");
+                      setRenameSubCountyDraft(reviewSubCounty || "");
+                      setRenameCountyDraft(reviewCounty || "");
+                      setRenameSchoolOpen(true);
+                    }}
                     className="gap-1.5"
                   >
-                    <Pencil className="h-3.5 w-3.5" /> Fix / Standardize School Name
+                    <Pencil className="h-3.5 w-3.5" /> Fix / Standardize School Details
                   </Button>
                 </div>
 
@@ -985,7 +1060,7 @@ function AdminBursariesPage() {
                     <p className="font-semibold mb-1">⚠ Multiple spellings found for this school</p>
                     <p className="text-xs">
                       Applicants entered: {reviewSchoolVariants.map((v) => `"${v}"`).join(", ")}.
-                      Use "Fix / Standardize School Name" above to merge them into one consistent name.
+                      Use "Fix / Standardize School Details" above to merge them and ensure they have consistent county and sub-county values.
                     </p>
                   </div>
                 )}
@@ -1004,7 +1079,12 @@ function AdminBursariesPage() {
                           <th className="text-left px-4 py-2.5">Student</th>
                           <th className="text-left px-4 py-2.5">Grade</th>
                           <th className="text-left px-4 py-2.5">Guardian</th>
-                          <th className="text-right px-4 py-2.5">Amount</th>
+                          <th className="text-right px-4 py-2.5">
+                            <span className="flex items-center justify-end gap-1" title="Click row amount to edit">
+                              Amount Awarded
+                              <Pencil className="h-2.5 w-2.5 opacity-50" />
+                            </span>
+                          </th>
                           <th className="text-left px-4 py-2.5">Status</th>
                           <th className="text-right px-4 py-2.5">Actions</th>
                         </tr>
@@ -1021,8 +1101,56 @@ function AdminBursariesPage() {
                               <p>{r.guardian_name}</p>
                               <p className="text-xs text-muted-foreground">{r.guardian_phone}</p>
                             </td>
-                            <td className="px-4 py-3 text-right font-semibold">
-                              {r.amount_requested ? `KSh ${Number(r.amount_requested).toLocaleString()}` : "—"}
+                            <td className="px-4 py-3 text-right">
+                              {editAmountId === r.id ? (
+                                <div className="flex items-center justify-end gap-1.5" onClick={(e) => e.stopPropagation()}>
+                                  <Input
+                                    type="number"
+                                    min="0"
+                                    step="500"
+                                    value={editAmountValue}
+                                    onChange={(e) => setEditAmountValue(e.target.value)}
+                                    className="h-8 w-28 text-right text-sm border-primary/50 focus-visible:ring-primary"
+                                    autoFocus
+                                    onKeyDown={(e) => {
+                                      if (e.key === "Enter") saveAmount(r.id);
+                                      if (e.key === "Escape") cancelEditAmount();
+                                    }}
+                                  />
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    className="h-8 gap-1 border-emerald-300 text-emerald-700 hover:bg-emerald-50 px-2 shrink-0"
+                                    onClick={() => saveAmount(r.id)}
+                                    disabled={editAmountBusy}
+                                  >
+                                    {editAmountBusy ? "…" : <CheckCircle2 className="h-3.5 w-3.5" />}
+                                  </Button>
+                                  <Button
+                                    size="sm"
+                                    variant="ghost"
+                                    className="h-8 px-2 text-muted-foreground shrink-0"
+                                    onClick={cancelEditAmount}
+                                    disabled={editAmountBusy}
+                                  >
+                                    <X className="h-3.5 w-3.5" />
+                                  </Button>
+                                </div>
+                              ) : (
+                                <div
+                                  className="inline-flex items-center justify-end gap-1.5 cursor-pointer group hover:text-primary transition-colors py-1 pl-3 pr-1 rounded-md hover:bg-muted/40"
+                                  onClick={() => {
+                                    setEditAmountId(r.id);
+                                    setEditAmountValue(String(r.amount_requested ?? ""));
+                                  }}
+                                  title="Click to edit awarded amount"
+                                >
+                                  <span className="font-semibold border-b border-dashed border-muted-foreground/35 group-hover:border-primary/50">
+                                    {r.amount_requested ? `KSh ${Number(r.amount_requested).toLocaleString()}` : "—"}
+                                  </span>
+                                  <Pencil className="h-3.5 w-3.5 opacity-40 group-hover:opacity-100 transition-opacity text-muted-foreground shrink-0" />
+                                </div>
+                              )}
                             </td>
                             <td className="px-4 py-3">
                               <Badge className={STATUS_COLORS[r.status] ?? ""}>{r.status}</Badge>
@@ -1629,12 +1757,11 @@ function AdminBursariesPage() {
         <DialogContent>
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
-              <Pencil className="h-4 w-4 text-gold" /> Standardize School Name
+              <Pencil className="h-4 w-4 text-gold" /> Standardize School Details
             </DialogTitle>
             <DialogDescription>
-              This sets one consistent school name across all {reviewStudents.length} application
-              {reviewStudents.length !== 1 ? "s" : ""} currently grouped here. It won't change what the
-              applicant originally typed — it just controls what shows on the broadsheet and confirmation letters.
+              This sets one consistent school name, sub-county, and county across all {reviewStudents.length} application
+              {reviewStudents.length !== 1 ? "s" : ""} currently grouped here. This corrects cases where applicants placed the school in the wrong sub-county.
             </DialogDescription>
           </DialogHeader>
 
@@ -1647,18 +1774,46 @@ function AdminBursariesPage() {
             </div>
           )}
 
-          <div>
-            <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
-              Official school name
-            </label>
-            <Input
-              list="school-suggestions"
-              value={renameSchoolDraft}
-              onChange={(e) => setRenameSchoolDraft(e.target.value)}
-              placeholder="e.g. KANGA HIGH SCHOOL"
-              className="mt-1.5"
-              autoFocus
-            />
+          <div className="space-y-4">
+            <div>
+              <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+                Official school name
+              </label>
+              <Input
+                list="school-suggestions"
+                value={renameSchoolDraft}
+                onChange={(e) => setRenameSchoolDraft(e.target.value)}
+                placeholder="e.g. KANGA HIGH SCHOOL"
+                className="mt-1.5"
+                autoFocus
+              />
+            </div>
+
+            <div>
+              <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+                Sub-county
+              </label>
+              <Input
+                list="subcounty-suggestions"
+                value={renameSubCountyDraft}
+                onChange={(e) => setRenameSubCountyDraft(e.target.value)}
+                placeholder="e.g. MATHARE"
+                className="mt-1.5"
+              />
+            </div>
+
+            <div>
+              <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+                County
+              </label>
+              <Input
+                list="county-suggestions"
+                value={renameCountyDraft}
+                onChange={(e) => setRenameCountyDraft(e.target.value)}
+                placeholder="e.g. NAIROBI"
+                className="mt-1.5"
+              />
+            </div>
           </div>
 
           <DialogFooter>
