@@ -632,21 +632,31 @@ export function generateBroadsheetPdf(rows: BroadsheetRow[], title = "Approved B
   const generated = new Date().toLocaleDateString("en-KE", { day: "numeric", month: "short", year: "numeric" });
   const grandTotal = rows.reduce((s, r) => s + (r.amount_requested ?? 0), 0);
 
-  // Sort: school name asc, then student name asc
+  // Sort: county asc → school name asc → student name asc
   const sorted = [...rows].sort((a, b) => {
+    const ca = (a.school_county || "UNSPECIFIED").toUpperCase().trim();
+    const cb = (b.school_county || "UNSPECIFIED").toUpperCase().trim();
+    if (ca !== cb) return ca.localeCompare(cb);
     const sa = a.school_name.toUpperCase().trim();
     const sb = b.school_name.toUpperCase().trim();
     if (sa !== sb) return sa.localeCompare(sb);
     return a.student_name.localeCompare(b.student_name);
   });
 
-  // Group by school
-  const bySchool = new Map<string, BroadsheetRow[]>();
+  // Group: county → Map<schoolName, rows[]>
+  const byCounty = new Map<string, Map<string, BroadsheetRow[]>>();
   for (const r of sorted) {
-    const key = r.school_name.toUpperCase().trim();
-    if (!bySchool.has(key)) bySchool.set(key, []);
-    bySchool.get(key)!.push(r);
+    const countyKey = (r.school_county || "UNSPECIFIED").toUpperCase().trim();
+    const schoolKey = r.school_name.toUpperCase().trim();
+    if (!byCounty.has(countyKey)) byCounty.set(countyKey, new Map());
+    const schoolMap = byCounty.get(countyKey)!;
+    if (!schoolMap.has(schoolKey)) schoolMap.set(schoolKey, []);
+    schoolMap.get(schoolKey)!.push(r);
   }
+
+  // Total school count across all counties
+  let totalSchools = 0;
+  for (const sm of byCounty.values()) totalSchools += sm.size;
 
   let page = 1;
   let y = 0;
@@ -664,9 +674,10 @@ export function generateBroadsheetPdf(rows: BroadsheetRow[], title = "Approved B
     bank:     { x: M+220,    w: 69 },
   };
 
-  const ROW_H  = 5.5;
-  const HEAD_H = 6.5;
-  const SCH_H  = 5.5;
+  const ROW_H    = 5.5;
+  const HEAD_H   = 6.5;
+  const SCH_H    = 5.5;
+  const COUNTY_H = 6.5;
 
   const addPageHeader = () => {
     doc.setFillColor(20, 83, 45);
@@ -678,7 +689,7 @@ export function generateBroadsheetPdf(rows: BroadsheetRow[], title = "Approved B
     doc.setFont("helvetica", "normal");
     doc.setFontSize(7);
     doc.text(
-      `${rows.length} students  |  ${bySchool.size} schools  |  Grand Total: KSh ${grandTotal.toLocaleString()}  |  ${generated}  |  Page ${page}`,
+      `${rows.length} students  |  ${totalSchools} schools  |  ${byCounty.size} counties  |  Grand Total: KSh ${grandTotal.toLocaleString()}  |  ${generated}  |  Page ${page}`,
       W - M, 8, { align: "right" }
     );
     doc.setTextColor(0, 0, 0);
@@ -762,9 +773,25 @@ export function generateBroadsheetPdf(rows: BroadsheetRow[], title = "Approved B
     y += ROW_H;
   };
 
+  const drawCountyHeader = (countyName: string, countyTotal: number, countyStudents: number, countySchoolCount: number) => {
+    doc.setFillColor(20, 83, 45);
+    doc.rect(M, y, W - 2*M, COUNTY_H, "F");
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(7.5);
+    doc.setTextColor(255, 255, 255);
+    doc.text(`COUNTY: ${countyName}`, M + 2, y + 4.5);
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(6.5);
+    doc.text(
+      `${countySchoolCount} school${countySchoolCount !== 1 ? "s" : ""}  ·  ${countyStudents} student${countyStudents !== 1 ? "s" : ""}  ·  KSh ${countyTotal.toLocaleString()}`,
+      W - M - 1, y + 4.5, { align: "right" }
+    );
+    doc.setTextColor(0, 0, 0);
+    y += COUNTY_H;
+  };
+
   const drawSchoolHeader = (schoolName: string, schoolRows: BroadsheetRow[]) => {
     const category = schoolRows[0].school_category ? ` · ${schoolRows[0].school_category}` : "";
-    const county   = schoolRows[0].school_county    ? ` · ${schoolRows[0].school_county}`    : "";
     const subTotal = schoolRows.reduce((s, r) => s + (r.amount_requested ?? 0), 0);
 
     doc.setFillColor(229, 237, 231);
@@ -774,7 +801,8 @@ export function generateBroadsheetPdf(rows: BroadsheetRow[], title = "Approved B
     doc.setFont("helvetica", "bold");
     doc.setFontSize(7);
     doc.setTextColor(20, 83, 45);
-    doc.text(`${schoolName}${category}${county}`, M + 1.5, y + 3.9);
+    // Indent school header slightly to show hierarchy under county
+    doc.text(`  ${schoolName}${category}`, M + 1.5, y + 3.9);
     doc.setFont("helvetica", "normal");
     doc.setFontSize(6.5);
     doc.text(
@@ -785,17 +813,55 @@ export function generateBroadsheetPdf(rows: BroadsheetRow[], title = "Approved B
     y += SCH_H;
   };
 
-  // Render
+  const drawSchoolSubtotal = (schoolRows: BroadsheetRow[]) => {
+    const subTotal = schoolRows.reduce((s, r) => s + (r.amount_requested ?? 0), 0);
+    doc.setFillColor(245, 255, 248);
+    doc.rect(M, y, W - 2*M, 5, "F");
+    doc.setDrawColor(160, 200, 170);
+    doc.rect(M, y, W - 2*M, 5);
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(6.5);
+    doc.setTextColor(20, 83, 45);
+    doc.text(
+      `School Sub-total — ${schoolRows.length} student${schoolRows.length !== 1 ? "s" : ""}`,
+      M + 2, y + 3.4
+    );
+    doc.text(
+      `KSh ${subTotal.toLocaleString()}`,
+      cols.amount.x + cols.amount.w - 1, y + 3.4, { align: "right" }
+    );
+    doc.setTextColor(0, 0, 0);
+    y += 5;
+  };
+
+  // ── Render ──────────────────────────────────────────────────────────────────
   addPageHeader();
   drawColumnHeaders();
 
   let serial = 1;
-  for (const [schoolKey, schoolRows] of bySchool) {
-    checkY(SCH_H + ROW_H + 1);
-    drawSchoolHeader(schoolKey, schoolRows);
-    for (let i = 0; i < schoolRows.length; i++) {
-      checkY(ROW_H + 1);
-      drawRow(schoolRows[i], serial++, i % 2 === 1);
+  for (const [countyKey, schoolMap] of byCounty) {
+    // Compute county-level totals
+    const countyStudents = Array.from(schoolMap.values()).reduce((s, arr) => s + arr.length, 0);
+    const countyTotal    = Array.from(schoolMap.values()).reduce((s, arr) => s + arr.reduce((ss, r) => ss + (r.amount_requested ?? 0), 0), 0);
+
+    // County header — keep it with at least one school+student row
+    checkY(COUNTY_H + SCH_H + ROW_H + 1);
+    drawCountyHeader(countyKey, countyTotal, countyStudents, schoolMap.size);
+    drawColumnHeaders();
+
+    for (const [, schoolRows] of schoolMap) {
+      // Keep school header with at least its first student row
+      checkY(SCH_H + ROW_H + 1);
+      drawSchoolHeader(schoolRows[0].school_name.toUpperCase().trim(), schoolRows);
+
+      for (let i = 0; i < schoolRows.length; i++) {
+        checkY(ROW_H + 1);
+        drawRow(schoolRows[i], serial++, i % 2 === 1);
+      }
+
+      // School sub-total row
+      checkY(5 + 1);
+      drawSchoolSubtotal(schoolRows);
     }
   }
 
@@ -807,7 +873,7 @@ export function generateBroadsheetPdf(rows: BroadsheetRow[], title = "Approved B
   doc.setFontSize(8);
   doc.setTextColor(255, 255, 255);
   doc.text(
-    `GRAND TOTAL — ${rows.length} student${rows.length !== 1 ? "s" : ""} across ${bySchool.size} school${bySchool.size !== 1 ? "s" : ""}`,
+    `GRAND TOTAL — ${rows.length} student${rows.length !== 1 ? "s" : ""} across ${totalSchools} school${totalSchools !== 1 ? "s" : ""} in ${byCounty.size} county${byCounty.size !== 1 ? "s" : ""}`,
     M + 2, y + 4.8
   );
   doc.text(`KSh ${grandTotal.toLocaleString()}`, cols.amount.x + cols.amount.w - 1, y + 4.8, { align: "right" });
