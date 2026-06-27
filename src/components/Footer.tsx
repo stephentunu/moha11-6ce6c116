@@ -139,7 +139,7 @@ export function Footer() {
               </li>
               <li className="flex items-start gap-2">
                 <Phone className="h-4 w-4 mt-0.5 text-gold shrink-0" />
-                +254 728484883
+                +254 72882798
               </li>
               <li className="flex items-start gap-2">
                 <Mail className="h-4 w-4 mt-0.5 text-gold shrink-0" />
