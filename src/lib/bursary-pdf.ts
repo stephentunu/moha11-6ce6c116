@@ -1,4 +1,5 @@
 ﻿import { jsPDF } from "jspdf";
+import * as XLSX from "@e965/xlsx";
 
 export type BursaryPdfData = {
   reference: string;
@@ -883,4 +884,167 @@ export function generateBroadsheetPdf(rows: BroadsheetRow[], title = "Approved B
 
   const safeTitle = title.replace(/[^a-z0-9]/gi, "-").slice(0, 40);
   doc.save(`Moha-Broadsheet-${safeTitle}-${Date.now()}.pdf`);
+}
+
+
+
+// ── CHEQUE SUMMARY EXCEL EXPORT ────────────────────────────────────────────
+// Single-sheet workbook laid out for cheque-writing:
+//
+//   MOHA EDUCATION KITTY — BURSARY CHEQUE SUMMARY          [title row]
+//   Generated: …                                            [date row]
+//   (blank)
+//   ┌──────────────────────────────────────────────────────────────────────┐
+//   │ COUNTY: NAIROBI                                                      │  ← county header (merged)
+//   ├──────────────────────┬───────────────┬──────────────┬────────────────┤
+//   │ SCHOOL NAME          │ BANK ACCOUNT  │ NO. OF STDS  │ TOTAL (KSh)   │  ← column headers
+//   ├──────────────────────┼───────────────┼──────────────┼────────────────┤
+//   │ KANGA HIGH SCHOOL    │ 1234567890    │     3        │    45,000      │
+//   │ MATHARE GIRLS        │ 0987654321    │     2        │    30,000      │
+//   ├──────────────────────┴───────────────┼──────────────┼────────────────┤
+//   │ NAIROBI COUNTY TOTAL (2 schools)     │     5        │    75,000      │
+//   └──────────────────────────────────────┴──────────────┴────────────────┘
+//   (blank)
+//   … next county …
+//   (blank)
+//   GRAND TOTAL                            │    XX        │   XXX,000      │
+//
+// Individual students are NOT listed — purely for cheque-writing.
+
+export function generateBroadsheetExcel(
+  rows: BroadsheetRow[],
+  title = "Moha Bursary Cheque Summary",
+) {
+  // ── Build county → school summaries ───────────────────────────────────────
+  type SchoolSummary = {
+    school: string;
+    bankAccount: string;
+    students: number;
+    total: number;
+  };
+  const byCounty = new Map<string, SchoolSummary[]>();
+
+  for (const r of rows) {
+    const county = (r.school_county || "UNSPECIFIED").toUpperCase().trim();
+    const school = r.school_name.toUpperCase().trim();
+    const bank   = (r.school_bank_account || "—").trim();
+
+    if (!byCounty.has(county)) byCounty.set(county, []);
+    const list = byCounty.get(county)!;
+    const existing = list.find((s) => s.school === school);
+    if (existing) {
+      existing.students += 1;
+      existing.total    += r.amount_requested ?? 0;
+      // Use the first non-empty bank account we find for this school
+      if (existing.bankAccount === "—" && bank !== "—") existing.bankAccount = bank;
+    } else {
+      list.push({ school, bankAccount: bank, students: 1, total: r.amount_requested ?? 0 });
+    }
+  }
+
+  // Sort counties alphabetically; schools within each county alphabetically
+  const sortedCounties = Array.from(byCounty.entries())
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([county, schools]) => ({
+      county,
+      schools: [...schools].sort((a, b) => a.school.localeCompare(b.school)),
+    }));
+
+  const grandTotal    = rows.reduce((s, r) => s + (r.amount_requested ?? 0), 0);
+  const grandStudents = rows.length;
+  const totalSchools  = sortedCounties.reduce((s, { schools }) => s + schools.length, 0);
+
+  // ── Build a single flat array of rows ─────────────────────────────────────
+  // Each element: [col-A, col-B, col-C, col-D]
+  //   col-A = School Name  (or county label, or total label)
+  //   col-B = Bank Account
+  //   col-C = No. of Students
+  //   col-D = Total Amount (KSh)
+  // We track which row index each "special" row lands on so we can merge cells.
+
+  type AoaRow = (string | number)[];
+  const data: AoaRow[] = [];
+
+  // Row 0: Title
+  data.push(["MOHA EDUCATION KITTY — BURSARY CHEQUE SUMMARY", "", "", ""]);
+  // Row 1: Generated date
+  data.push([
+    `Generated: ${new Date().toLocaleDateString("en-KE", {
+      day: "numeric", month: "long", year: "numeric",
+    })}`,
+    "", "", "",
+  ]);
+  // Row 2: blank
+  data.push(["", "", "", ""]);
+  // Row 3: global column headers
+  data.push(["SCHOOL NAME", "BANK ACCOUNT NO.", "NO. OF STUDENTS", "TOTAL AMOUNT (KSh)"]);
+
+  const FIXED_HEADER_ROWS = 4; // rows 0-3 above
+
+  // Merges we'll accumulate (0-indexed)
+  const merges: { s: { r: number; c: number }; e: { r: number; c: number } }[] = [
+    // Title row — merge A:D
+    { s: { r: 0, c: 0 }, e: { r: 0, c: 3 } },
+    // Date row — merge A:D
+    { s: { r: 1, c: 0 }, e: { r: 1, c: 3 } },
+    // Blank row — merge A:D
+    { s: { r: 2, c: 0 }, e: { r: 2, c: 3 } },
+  ];
+
+  for (const { county, schools } of sortedCounties) {
+    const countyTotal    = schools.reduce((s, sc) => s + sc.total,    0);
+    const countyStudents = schools.reduce((s, sc) => s + sc.students, 0);
+
+    // County header row — merge A:D
+    const countyRowIdx = data.length;
+    data.push([`COUNTY: ${county}`, "", "", ""]);
+    merges.push({ s: { r: countyRowIdx, c: 0 }, e: { r: countyRowIdx, c: 3 } });
+
+    // School rows
+    for (const sc of schools) {
+      data.push([sc.school, sc.bankAccount, sc.students, sc.total]);
+    }
+
+    // County subtotal row — merge A:B for the label
+    const subtotalRowIdx = data.length;
+    data.push([
+      `${county} TOTAL  (${schools.length} school${schools.length !== 1 ? "s" : ""})`,
+      "",
+      countyStudents,
+      countyTotal,
+    ]);
+    merges.push({ s: { r: subtotalRowIdx, c: 0 }, e: { r: subtotalRowIdx, c: 1 } });
+
+    // Blank separator
+    data.push(["", "", "", ""]);
+  }
+
+  // Grand total row — merge A:B for the label
+  const grandRowIdx = data.length;
+  data.push([
+    `GRAND TOTAL — ${byCounty.size} ${byCounty.size !== 1 ? "counties" : "county"}  ·  ${totalSchools} schools  ·  ${grandStudents} students`,
+    "",
+    grandStudents,
+    grandTotal,
+  ]);
+  merges.push({ s: { r: grandRowIdx, c: 0 }, e: { r: grandRowIdx, c: 1 } });
+
+  // ── Build worksheet ────────────────────────────────────────────────────────
+  const ws = XLSX.utils.aoa_to_sheet(data);
+
+  ws["!cols"] = [
+    { wch: 52 }, // School Name / county label
+    { wch: 24 }, // Bank Account
+    { wch: 16 }, // No. of Students
+    { wch: 22 }, // Total Amount
+  ];
+
+  ws["!merges"] = merges;
+
+  // ── Workbook ───────────────────────────────────────────────────────────────
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, "CHEQUE SUMMARY");
+
+  const safeTitle = title.replace(/[^a-z0-9]/gi, "-").slice(0, 40);
+  XLSX.writeFile(wb, `Moha-Cheque-Summary-${safeTitle}-${Date.now()}.xlsx`);
 }

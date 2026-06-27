@@ -7,7 +7,7 @@ import {
   CheckSquare, X, Mail, FileText, Calendar,
   MapPin, Pencil, ArrowLeft, XCircle, Clock3, UserPlus,
 } from "lucide-react";
-import { generateBursaryPdf, generateBroadsheetPdf, generateConfirmationLetter, type BroadsheetRow, type BursaryPdfData, type ConfirmationLetterRow } from "@/lib/bursary-pdf";
+import { generateBursaryPdf, generateBroadsheetPdf, generateBroadsheetExcel, generateConfirmationLetter, type BroadsheetRow, type BursaryPdfData, type ConfirmationLetterRow } from "@/lib/bursary-pdf";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -644,6 +644,30 @@ function AdminBursariesPage() {
     }));
     generateBroadsheetPdf(bsRows, `Moha Bursary Broadsheet — ${new Date().toLocaleDateString("en-KE")}`);
     toast.success("Broadsheet PDF generated!");
+  };
+
+  const downloadBroadsheetExcel = () => {
+    if (approvedRows.length === 0) {
+      toast.error("No approved applications to include in the cheque summary.");
+      return;
+    }
+    const bsRows: BroadsheetRow[] = approvedRows.map((r) => ({
+      reference: r.reference,
+      student_name: r.student_name,
+      registration_number: r.registration_number,
+      current_grade: r.current_grade,
+      gender: r.gender,
+      guardian_name: r.guardian_name,
+      guardian_phone: r.guardian_phone,
+      ward: r.ward,
+      amount_requested: r.amount_requested,
+      school_name: effectiveSchoolName(r),
+      school_category: r.school_category,
+      school_bank_account: r.school_bank_account,
+      school_county: r.school_county,
+    }));
+    generateBroadsheetExcel(bsRows, `Moha Bursary Cheque Summary — ${new Date().toLocaleDateString("en-KE")}`);
+    toast.success("Cheque summary Excel generated!");
   };
 
   const downloadConfirmationLetter = () => {
@@ -1333,18 +1357,29 @@ function AdminBursariesPage() {
                     Approved Bursary Broadsheet
                   </h2>
                   <p className="text-sm text-muted-foreground mt-0.5">
-                    All approved applications sorted and grouped by school. Download as a PDF to send to schools.
+                    All approved applications grouped by county and school. Download as a PDF (full detail) or Excel (cheque summary — county totals only).
                   </p>
                 </div>
-                <Button
-                  variant="hero"
-                  onClick={downloadBroadsheet}
-                  disabled={approvedRows.length === 0}
-                  className="gap-2 shrink-0"
-                >
-                  <Download className="h-4 w-4" />
-                  Download Broadsheet PDF
-                </Button>
+                <div className="flex flex-col sm:flex-row gap-2 shrink-0">
+                  <Button
+                    variant="hero"
+                    onClick={downloadBroadsheet}
+                    disabled={approvedRows.length === 0}
+                    className="gap-2"
+                  >
+                    <Download className="h-4 w-4" />
+                    Download PDF
+                  </Button>
+                  <Button
+                    variant="outline"
+                    onClick={downloadBroadsheetExcel}
+                    disabled={approvedRows.length === 0}
+                    className="gap-2 border-emerald-400 text-emerald-700 hover:bg-emerald-50"
+                  >
+                    <FileSpreadsheet className="h-4 w-4" />
+                    Cheque Summary Excel
+                  </Button>
+                </div>
               </div>
 
               {/* Summary stats */}
@@ -1534,13 +1569,22 @@ function AdminBursariesPage() {
                       {approvedRows.length} students across {bySchool.size} school{bySchool.size !== 1 ? "s" : ""}
                     </p>
                   </div>
-                  <Button
-                    variant="outline"
-                    className="border-white/40 text-white hover:bg-white/10 gap-2"
-                    onClick={downloadBroadsheet}
-                  >
-                    <Download className="h-4 w-4" /> Download Full Broadsheet PDF
-                  </Button>
+                  <div className="flex flex-col sm:flex-row gap-2">
+                    <Button
+                      variant="outline"
+                      className="border-white/40 text-white hover:bg-white/10 gap-2"
+                      onClick={downloadBroadsheet}
+                    >
+                      <Download className="h-4 w-4" /> Download PDF
+                    </Button>
+                    <Button
+                      variant="outline"
+                      className="border-emerald-300 bg-emerald-600 text-white hover:bg-emerald-500 gap-2"
+                      onClick={downloadBroadsheetExcel}
+                    >
+                      <FileSpreadsheet className="h-4 w-4" /> Cheque Summary Excel
+                    </Button>
+                  </div>
                 </div>
               </div>
             )}
