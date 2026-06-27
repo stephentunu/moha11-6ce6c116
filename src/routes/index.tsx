@@ -16,8 +16,11 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { SectionHeader } from "@/components/SectionHeader";
-import { useContent, useActivities, filterUpcoming } from "@/lib/admin-store";
+import { useContent, useActivities, filterUpcoming, useBursaryWindow } from "@/lib/admin-store";
 import { seoMeta, seoLinks, personJsonLd } from "@/lib/seo";
+import { useState, useEffect, useMemo } from "react";
+import { BursaryApplicationDialog } from "@/components/BursaryApplicationDialog";
+import { Toaster } from "@/components/ui/sonner";
 import heroImg from "@/assets/moha/moha-portrait.jpeg";
 import rallyImg from "@/assets/moha/foundation1.jpeg";
 import educationImg from "@/assets/moha/moha35.jpeg";
@@ -68,8 +71,45 @@ function HomePage() {
   const upcoming = filterUpcoming(activitiesAll).slice(0, 6);
   const hero = content.heroImageUrl || heroImg;
   const { language, t } = useLanguage();
+  const { windowStart, loading: windowLoading } = useBursaryWindow();
+
+  // Stable end-date timestamp — only recomputes when windowStart changes
+  const bursaryWindowEndMs = useMemo(() => {
+    if (!windowStart) return null;
+    const end = new Date(windowStart);
+    end.setDate(end.getDate() + 10);
+    return end.getTime();
+  }, [windowStart]);
+
+  const bursaryWindowOpen = useMemo(() => {
+    if (!bursaryWindowEndMs || !windowStart) return false;
+    const now = Date.now();
+    return now >= new Date(windowStart).getTime() && now <= bursaryWindowEndMs;
+  }, [windowStart, bursaryWindowEndMs]);
+
+  // Live countdown — interval only starts when window is open
+  const [countdown, setCountdown] = useState({ days: 0, hours: 0, minutes: 0, seconds: 0 });
+
+  useEffect(() => {
+    if (!bursaryWindowOpen || !bursaryWindowEndMs) return;
+    const tick = () => {
+      const diff = bursaryWindowEndMs - Date.now();
+      if (diff <= 0) { setCountdown({ days: 0, hours: 0, minutes: 0, seconds: 0 }); return; }
+      setCountdown({
+        days: Math.floor(diff / 86400000),
+        hours: Math.floor((diff % 86400000) / 3600000),
+        minutes: Math.floor((diff % 3600000) / 60000),
+        seconds: Math.floor((diff % 60000) / 1000),
+      });
+    };
+    tick();
+    const id = setInterval(tick, 1000);
+    return () => clearInterval(id);
+  }, [bursaryWindowOpen, bursaryWindowEndMs]);
+
   return (
     <>
+      <Toaster />
       {/* HERO */}
       <section className="relative min-h-[60vh] flex items-center overflow-hidden">
         <div className="absolute inset-0">
@@ -157,6 +197,73 @@ function HomePage() {
           {t("Scroll")}
         </motion.div>
       </section>
+
+      {/* BURSARY COUNTDOWN — only visible when window is open */}
+      {!windowLoading && bursaryWindowOpen && (
+        <motion.section
+          initial={{ opacity: 0, y: -10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5 }}
+          className="py-6 bg-gradient-to-r from-primary via-primary/95 to-gold/80 border-b border-gold/30"
+        >
+          <div className="container mx-auto px-4 lg:px-8">
+            <div className="flex flex-col md:flex-row items-center justify-between gap-6">
+              <div className="text-center md:text-left">
+                <div className="flex items-center gap-2 justify-center md:justify-start mb-1">
+                  <GraduationCap className="h-5 w-5 text-gold" />
+                  <span className="text-xs font-bold tracking-widest uppercase text-gold">
+                    {t("Bursary Applications Open")}
+                  </span>
+                </div>
+                <p className="text-white font-display font-bold text-xl">
+                  {t("Window closes in")}:
+                </p>
+                <p className="text-white/70 text-xs mt-0.5">
+                  {t("Closes")}{" "}
+                  {bursaryWindowEndMs ? new Date(bursaryWindowEndMs).toLocaleDateString(language === "sw" ? "sw-KE" : "en-KE", {
+                    weekday: "short", day: "numeric", month: "long", year: "numeric",
+                  }) : null}
+                </p>
+              </div>
+
+              <div className="flex items-center gap-3">
+                {/* Countdown blocks */}
+                {[
+                  { value: countdown.days, label: t("Days") },
+                  { value: countdown.hours, label: t("Hours") },
+                  { value: countdown.minutes, label: t("Mins") },
+                  { value: countdown.seconds, label: t("Secs") },
+                ].map(({ value, label }, i) => (
+                  <div key={i} className="flex items-center gap-3">
+                    {i > 0 && <span className="text-gold/60 font-bold text-xl hidden sm:block">:</span>}
+                    <div className="bg-white/10 backdrop-blur-sm border border-white/20 rounded-xl px-3 py-2 min-w-[60px] text-center shadow-lg">
+                      <div className="text-2xl sm:text-3xl font-display font-black text-white leading-none tabular-nums">
+                        {String(value).padStart(2, "0")}
+                      </div>
+                      <div className="text-[10px] font-bold uppercase tracking-wider text-gold mt-0.5">
+                        {label}
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              <BursaryApplicationDialog
+                trigger={
+                  <Button
+                    variant="outline"
+                    className="border-white/40 text-white hover:bg-white/20 gap-2 font-bold shrink-0"
+                    size="lg"
+                  >
+                    <GraduationCap className="h-5 w-5" />
+                    {t("Apply Now")}
+                  </Button>
+                }
+              />
+            </div>
+          </div>
+        </motion.section>
+      )}
 
       {/* DAILY ACTIVITIES — moved to top for easy visibility */}
       <section className="py-14 bg-gradient-card border-b border-border">

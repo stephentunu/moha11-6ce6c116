@@ -5,7 +5,7 @@ import {
   FileSpreadsheet, CheckCircle2, School, ArrowUpDown,
   ChevronDown, ChevronRight, Users, Banknote,
   CheckSquare, X, Mail, FileText, Calendar,
-  MapPin, Pencil, ArrowLeft, XCircle, Clock3,
+  MapPin, Pencil, ArrowLeft, XCircle, Clock3, UserPlus,
 } from "lucide-react";
 import { generateBursaryPdf, generateBroadsheetPdf, generateConfirmationLetter, type BroadsheetRow, type BursaryPdfData, type ConfirmationLetterRow } from "@/lib/bursary-pdf";
 import { Button } from "@/components/ui/button";
@@ -29,6 +29,7 @@ import { sendBursarySms } from "@/lib/bursary.functions";
 import { cn } from "@/lib/utils";
 import { MATHARE_WARDS } from "@/lib/admin-store";
 import { COUNTY_NAMES, KENYA_COUNTIES } from "@/lib/kenya-counties";
+import { BursaryApplicationDialog } from "@/components/BursaryApplicationDialog";
 
 export const Route = createFileRoute("/admin/bursaries")({
   head: () => ({
@@ -700,7 +701,8 @@ function AdminBursariesPage() {
       <div className="space-y-6">
 
         {/* Tab switcher */}
-        <div className="flex gap-1 bg-muted/50 border border-border rounded-xl p-1 w-fit">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="flex gap-1 bg-muted/50 border border-border rounded-xl p-1 w-fit">
           <button
             onClick={() => setTab("applications")}
             className={`px-5 py-2 rounded-lg text-sm font-semibold transition-all ${
@@ -759,6 +761,17 @@ function AdminBursariesPage() {
               <Mail className="h-4 w-4" /> School Confirmation Letters
             </span>
           </button>
+        </div>
+
+          {/* Late application button — always available regardless of window status */}
+          <BursaryApplicationDialog
+            trigger={
+              <Button variant="outline" className="gap-2 border-amber-300 text-amber-700 hover:bg-amber-50 shrink-0">
+                <UserPlus className="h-4 w-4" />
+                Add Late Application
+              </Button>
+            }
+          />
         </div>
 
         {/* ── APPLICATIONS TAB ──────────────────────────────────────────────── */}
