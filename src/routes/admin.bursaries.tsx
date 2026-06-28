@@ -6,6 +6,7 @@ import {
   ChevronDown, ChevronRight, Users, Banknote,
   CheckSquare, X, Mail, FileText, Calendar,
   MapPin, Pencil, ArrowLeft, XCircle, Clock3, UserPlus,
+  Archive, ArchiveRestore, ArchiveX,
 } from "lucide-react";
 import { generateBursaryPdf, generateBroadsheetPdf, generateBroadsheetExcel, generateConfirmationLetter, type BroadsheetRow, type BursaryPdfData, type ConfirmationLetterRow } from "@/lib/bursary-pdf";
 import { Button } from "@/components/ui/button";
@@ -143,6 +144,12 @@ function AdminBursariesPage() {
   const [letterOfficerPhone, setLetterOfficerPhone] = useState("0725104771");
   const [letterTerm, setLetterTerm] = useState(`${new Date().getFullYear()} T2`);
 
+  // Archive state for confirmation letters
+  const [archivedSchools, setArchivedSchools] = useState<Map<string, { archived_at: string; id: string }>>(new Map());
+  const [showArchived, setShowArchived] = useState(false);
+  const [archiveBusy, setArchiveBusy] = useState<string | null>(null);
+  const [archiveConfirmSchool, setArchiveConfirmSchool] = useState<string | null>(null);
+
   // Review by Location tab — County → Sub-county → School → Students drill-down
   const [reviewCounty, setReviewCounty] = useState<string | null>(null);
   const [reviewSubCounty, setReviewSubCounty] = useState<string | null>(null);
@@ -182,14 +189,68 @@ function AdminBursariesPage() {
     else setRows((data as unknown as Row[]) || []);
   };
 
+  const loadArchives = async () => {
+    const { data, error } = await supabase
+      .from("letter_archives" as never)
+      .select("*");
+    if (!error && data) {
+      const map = new Map<string, { archived_at: string; id: string }>();
+      for (const row of data as Array<{ id: string; school_name: string; archived_at: string }>) {
+        map.set(row.school_name, { archived_at: row.archived_at, id: row.id });
+      }
+      setArchivedSchools(map);
+    }
+  };
+
   useEffect(() => {
     load();
+    loadArchives();
     const ch = supabase
       .channel("bursary-changes")
       .on("postgres_changes", { event: "*", schema: "public", table: "bursary_applications" }, () => load())
       .subscribe();
-    return () => { supabase.removeChannel(ch); };
+    const archiveCh = supabase
+      .channel("archive-changes")
+      .on("postgres_changes", { event: "*", schema: "public", table: "letter_archives" }, () => loadArchives())
+      .subscribe();
+    return () => {
+      supabase.removeChannel(ch);
+      supabase.removeChannel(archiveCh);
+    };
   }, []);
+
+  const archiveSchool = async (school: string) => {
+    setArchiveBusy(school);
+    const { error } = await supabase
+      .from("letter_archives" as never)
+      .insert({ school_name: school } as never);
+    if (error) {
+      toast.error("Failed to archive: " + error.message);
+    } else {
+      toast.success(`"${school}" archived — it will no longer appear in the letters list.`);
+      if (letterSelectedSchool === school) setLetterSelectedSchool(null);
+      await loadArchives();
+    }
+    setArchiveBusy(null);
+    setArchiveConfirmSchool(null);
+  };
+
+  const unarchiveSchool = async (school: string) => {
+    setArchiveBusy(school);
+    const entry = archivedSchools.get(school);
+    if (!entry) { setArchiveBusy(null); return; }
+    const { error } = await supabase
+      .from("letter_archives" as never)
+      .delete()
+      .eq("id", entry.id as never);
+    if (error) {
+      toast.error("Failed to unarchive: " + error.message);
+    } else {
+      toast.success(`"${school}" restored — it's back in the active letters list.`);
+      await loadArchives();
+    }
+    setArchiveBusy(null);
+  };
 
   // ── Filtered list (Applications tab) ────────────────────────────────────────
   const filtered = useMemo(() => {
@@ -247,7 +308,7 @@ function AdminBursariesPage() {
 
   // Schools available for confirmation letters (only schools with at least
   // one APPROVED applicant — this is what gets confirmed and sent for cheque
-  // distribution).
+  // distribution). Archived schools are hidden unless showArchived is true.
   const letterSchoolList = useMemo(() => {
     const q = letterSchoolSearch.trim().toLowerCase();
     return Array.from(bySchool.entries())
@@ -256,10 +317,13 @@ function AdminBursariesPage() {
         count: schoolRows.length,
         total: schoolRows.reduce((s, r) => s + (r.amount_requested ?? 0), 0),
         category: schoolRows[0]?.school_category ?? null,
+        isArchived: archivedSchools.has(school),
+        archivedAt: archivedSchools.get(school)?.archived_at ?? null,
       }))
+      .filter((s) => showArchived ? s.isArchived : !s.isArchived)
       .filter((s) => !q || s.school.toLowerCase().includes(q))
       .sort((a, b) => a.school.localeCompare(b.school));
-  }, [bySchool, letterSchoolSearch]);
+  }, [bySchool, letterSchoolSearch, archivedSchools, showArchived]);
 
   const letterSelectedRows = useMemo(
     () => (letterSelectedSchool ? bySchool.get(letterSelectedSchool) ?? [] : []),
@@ -1593,17 +1657,61 @@ function AdminBursariesPage() {
 
         {/* ── SCHOOL CONFIRMATION LETTERS TAB ─────────────────────────────────── */}
         {tab === "letters" && (
+          <>
+          {/* Archive confirm modal */}
+          <Dialog open={!!archiveConfirmSchool} onOpenChange={(o) => { if (!o) setArchiveConfirmSchool(null); }}>
+            <DialogContent className="max-w-md">
+              <DialogHeader>
+                <DialogTitle className="flex items-center gap-2">
+                  <Archive className="h-5 w-5 text-amber-500" /> Archive Confirmation Letter?
+                </DialogTitle>
+                <DialogDescription>
+                  <strong>{archiveConfirmSchool}</strong> will be hidden from the active letters list.
+                  No data is deleted — you can restore it at any time from the <em>Archived</em> view.
+                </DialogDescription>
+              </DialogHeader>
+              <DialogFooter className="gap-2">
+                <Button variant="outline" onClick={() => setArchiveConfirmSchool(null)}>Cancel</Button>
+                <Button
+                  variant="destructive"
+                  disabled={archiveBusy === archiveConfirmSchool}
+                  onClick={() => archiveConfirmSchool && archiveSchool(archiveConfirmSchool)}
+                  className="gap-2"
+                >
+                  <Archive className="h-4 w-4" />
+                  {archiveBusy === archiveConfirmSchool ? "Archiving…" : "Archive Letter"}
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+
           <div className="grid lg:grid-cols-[360px_1fr] gap-5">
 
             {/* Left: school search & select */}
             <div className="bg-card border border-border rounded-2xl p-5 space-y-4 h-fit">
               <div>
-                <h2 className="font-display font-bold text-lg flex items-center gap-2">
-                  <Mail className="h-5 w-5 text-gold" />
-                  Confirmation Letters
-                </h2>
-                <p className="text-sm text-muted-foreground mt-0.5">
-                  Search a school, then generate its official confirmation-of-beneficiaries letter.
+                <div className="flex items-start justify-between gap-2">
+                  <h2 className="font-display font-bold text-lg flex items-center gap-2">
+                    <Mail className="h-5 w-5 text-gold" />
+                    Confirmation Letters
+                  </h2>
+                  {/* Archive toggle */}
+                  <button
+                    onClick={() => { setShowArchived((v) => !v); setLetterSelectedSchool(null); }}
+                    className={`flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1.5 rounded-lg border transition-all shrink-0 ${
+                      showArchived
+                        ? "border-amber-400 bg-amber-50 text-amber-700 dark:bg-amber-950/30 dark:text-amber-400"
+                        : "border-border text-muted-foreground hover:border-primary/40 hover:text-foreground"
+                    }`}
+                  >
+                    {showArchived ? <ArchiveRestore className="h-3.5 w-3.5" /> : <Archive className="h-3.5 w-3.5" />}
+                    {showArchived ? "Active" : `Archived${archivedSchools.size > 0 ? ` (${archivedSchools.size})` : ""}`}
+                  </button>
+                </div>
+                <p className="text-sm text-muted-foreground mt-1">
+                  {showArchived
+                    ? "Archived letters are hidden from the active list. Restore any to make it downloadable again."
+                    : "Search a school, then generate its official confirmation-of-beneficiaries letter."}
                 </p>
               </div>
 
@@ -1621,33 +1729,68 @@ function AdminBursariesPage() {
                 {letterSchoolList.length === 0 ? (
                   <div className="text-center text-sm text-muted-foreground py-10">
                     <School className="h-7 w-7 mx-auto mb-2 opacity-30" />
-                    {bySchool.size === 0
-                      ? "No approved applications yet."
-                      : "No school matches your search."}
+                    {showArchived
+                      ? <><ArchiveX className="h-7 w-7 mx-auto mb-2 opacity-30" /><span>No archived letters yet.</span></>
+                      : bySchool.size === 0
+                        ? "No approved applications yet."
+                        : "No school matches your search."}
                   </div>
                 ) : (
-                  letterSchoolList.map(({ school, count, total, category }) => {
+                  letterSchoolList.map(({ school, count, total, category, isArchived, archivedAt }) => {
                     const active = letterSelectedSchool === school;
                     return (
-                      <button
+                      <div
                         key={school}
-                        onClick={() => setLetterSelectedSchool(school)}
-                        className={`w-full text-left px-3.5 py-3 rounded-xl border transition-all ${
+                        className={`w-full rounded-xl border transition-all ${
                           active
                             ? "border-primary bg-primary/5 shadow-sm"
-                            : "border-border hover:border-primary/40 hover:bg-muted/30"
+                            : isArchived
+                              ? "border-amber-200 bg-amber-50/40 dark:border-amber-900/40 dark:bg-amber-950/10"
+                              : "border-border hover:border-primary/40 hover:bg-muted/30"
                         }`}
                       >
-                        <p className="font-semibold text-sm text-foreground truncate">{school}</p>
-                        <div className="flex items-center justify-between mt-1">
-                          <span className="text-xs text-muted-foreground">
-                            {category && `${category} · `}{count} student{count !== 1 ? "s" : ""}
-                          </span>
-                          <span className="text-xs font-bold text-emerald-600">
-                            KSh {total.toLocaleString()}
-                          </span>
+                        <button
+                          className="w-full text-left px-3.5 py-3"
+                          onClick={() => setLetterSelectedSchool(school)}
+                        >
+                          <p className="font-semibold text-sm text-foreground truncate">{school}</p>
+                          <div className="flex items-center justify-between mt-1 gap-2">
+                            <span className="text-xs text-muted-foreground truncate">
+                              {category && `${category} · `}{count} student{count !== 1 ? "s" : ""}
+                              {isArchived && archivedAt && (
+                                <span className="ml-1.5 text-amber-600 dark:text-amber-500">
+                                  · archived {new Date(archivedAt).toLocaleDateString()}
+                                </span>
+                              )}
+                            </span>
+                            <span className="text-xs font-bold text-emerald-600 shrink-0">
+                              KSh {total.toLocaleString()}
+                            </span>
+                          </div>
+                        </button>
+                        {/* Archive / Unarchive quick action */}
+                        <div className="px-3.5 pb-2.5 -mt-1">
+                          {isArchived ? (
+                            <button
+                              onClick={() => unarchiveSchool(school)}
+                              disabled={archiveBusy === school}
+                              className="flex items-center gap-1 text-[11px] font-semibold text-amber-700 dark:text-amber-400 hover:text-emerald-700 transition-colors disabled:opacity-50"
+                            >
+                              <ArchiveRestore className="h-3 w-3" />
+                              {archiveBusy === school ? "Restoring…" : "Restore to active"}
+                            </button>
+                          ) : (
+                            <button
+                              onClick={() => setArchiveConfirmSchool(school)}
+                              disabled={archiveBusy === school}
+                              className="flex items-center gap-1 text-[11px] font-semibold text-muted-foreground hover:text-amber-600 transition-colors disabled:opacity-50"
+                            >
+                              <Archive className="h-3 w-3" />
+                              Archive letter
+                            </button>
+                          )}
                         </div>
-                      </button>
+                      </div>
                     );
                   })
                 )}
@@ -1658,25 +1801,70 @@ function AdminBursariesPage() {
             <div className="bg-card border border-border rounded-2xl p-6">
               {!letterSelectedSchool ? (
                 <div className="h-full min-h-[400px] flex flex-col items-center justify-center text-center text-muted-foreground">
-                  <FileText className="h-12 w-12 mb-3 opacity-20" />
-                  <p className="font-semibold">Select a school to get started</p>
-                  <p className="text-sm mt-1 max-w-xs">
-                    Pick a school from the list to preview its beneficiaries and generate the official confirmation letter.
-                  </p>
+                  {showArchived ? (
+                    <>
+                      <ArchiveRestore className="h-12 w-12 mb-3 opacity-20" />
+                      <p className="font-semibold">Select an archived school</p>
+                      <p className="text-sm mt-1 max-w-xs">
+                        Click a school on the left to preview it, then restore it to make it downloadable again.
+                      </p>
+                    </>
+                  ) : (
+                    <>
+                      <FileText className="h-12 w-12 mb-3 opacity-20" />
+                      <p className="font-semibold">Select a school to get started</p>
+                      <p className="text-sm mt-1 max-w-xs">
+                        Pick a school from the list to preview its beneficiaries and generate the official confirmation letter.
+                      </p>
+                    </>
+                  )}
                 </div>
               ) : (
                 <div className="space-y-5">
                   <div className="flex items-start justify-between gap-3">
                     <div>
-                      <h3 className="font-display font-bold text-xl text-foreground">{letterSelectedSchool}</h3>
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <h3 className="font-display font-bold text-xl text-foreground">{letterSelectedSchool}</h3>
+                        {archivedSchools.has(letterSelectedSchool) && (
+                          <span className="flex items-center gap-1 text-xs font-semibold bg-amber-100 text-amber-700 dark:bg-amber-950/40 dark:text-amber-400 px-2 py-0.5 rounded-full border border-amber-200 dark:border-amber-800">
+                            <Archive className="h-3 w-3" /> Archived
+                          </span>
+                        )}
+                      </div>
                       <p className="text-sm text-muted-foreground mt-0.5">
                         {letterSelectedRows.length} approved student{letterSelectedRows.length !== 1 ? "s" : ""} · Total KSh {letterSelectedTotal.toLocaleString()}
                       </p>
                     </div>
-                    <Button variant="hero" onClick={downloadConfirmationLetter} className="gap-2 shrink-0">
-                      <Download className="h-4 w-4" /> Download Letter
-                    </Button>
+                    <div className="flex items-center gap-2 shrink-0">
+                      {archivedSchools.has(letterSelectedSchool) ? (
+                        <Button
+                          variant="outline"
+                          onClick={() => unarchiveSchool(letterSelectedSchool)}
+                          disabled={archiveBusy === letterSelectedSchool}
+                          className="gap-2 border-amber-300 text-amber-700 hover:bg-amber-50"
+                        >
+                          <ArchiveRestore className="h-4 w-4" />
+                          {archiveBusy === letterSelectedSchool ? "Restoring…" : "Restore"}
+                        </Button>
+                      ) : (
+                        <Button variant="outline" onClick={() => setArchiveConfirmSchool(letterSelectedSchool)} className="gap-2 text-muted-foreground hover:text-amber-600 hover:border-amber-300">
+                          <Archive className="h-4 w-4" /> Archive
+                        </Button>
+                      )}
+                      <Button variant="hero" onClick={downloadConfirmationLetter} disabled={archivedSchools.has(letterSelectedSchool)} className="gap-2">
+                        <Download className="h-4 w-4" /> Download Letter
+                      </Button>
+                    </div>
                   </div>
+                  {archivedSchools.has(letterSelectedSchool) && (
+                    <div className="flex items-start gap-3 bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800 rounded-xl px-4 py-3">
+                      <Archive className="h-4 w-4 text-amber-600 mt-0.5 shrink-0" />
+                      <div className="text-sm text-amber-800 dark:text-amber-300">
+                        <p className="font-semibold">This letter is archived</p>
+                        <p className="text-xs mt-0.5">Downloading is disabled while archived. Click <strong>Restore</strong> to make it active again.</p>
+                      </div>
+                    </div>
+                  )}
 
                   {/* Letter details form */}
                   <div className="grid sm:grid-cols-2 gap-4 bg-muted/20 border border-border rounded-xl p-4">
@@ -1786,6 +1974,7 @@ function AdminBursariesPage() {
               )}
             </div>
           </div>
+          </>
         )}
       </div>
 
