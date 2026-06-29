@@ -385,8 +385,8 @@ export function generateConfirmationLetter(
   const contentW = W - 2 * M;
 
   const term = opts.termLabel || `${new Date().getFullYear()} T2`;
-  const officerName = opts.officerName || "Benard Omondi";
-  const officerPhone = opts.officerPhone || "0725104771";
+  const officerName = opts.officerName || "Nancy Otieno";
+  const officerPhone = opts.officerPhone || "0728827978";
   const total = rows.reduce((s, r) => s + (r.amount_requested ?? 0), 0);
 
   let y = 16;

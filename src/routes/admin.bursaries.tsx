@@ -140,8 +140,8 @@ function AdminBursariesPage() {
   const [letterSelectedSchool, setLetterSelectedSchool] = useState<string | null>(null);
   const [letterChequeNumber, setLetterChequeNumber] = useState("");
   const [letterDate, setLetterDate] = useState("");
-  const [letterOfficerName, setLetterOfficerName] = useState("Benard Omondi");
-  const [letterOfficerPhone, setLetterOfficerPhone] = useState("0725104771");
+  const [letterOfficerName, setLetterOfficerName] = useState("Nancy Otieno");
+  const [letterOfficerPhone, setLetterOfficerPhone] = useState("0728827978");
   const [letterTerm, setLetterTerm] = useState(`${new Date().getFullYear()} T2`);
 
   // Archive state for confirmation letters
