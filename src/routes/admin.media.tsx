@@ -97,6 +97,42 @@ function AdminMediaPage() {
     }
   };
 
+  const toggleSelect = (id: string) => {
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  const clearSelection = () => setSelected(new Set());
+
+  const selectAll = () => setSelected(new Set(items.map((i) => i.id)));
+
+  const handleBulkDelete = async () => {
+    if (selected.size === 0) return;
+    if (!confirm(`Delete ${selected.size} selected item(s)? This cannot be undone.`)) return;
+    setBulkDeleting(true);
+    const targets = items.filter((i) => selected.has(i.id));
+    let ok = 0;
+    let failed = 0;
+    for (const item of targets) {
+      try {
+        await deleteMedia(item);
+        ok++;
+      } catch (e) {
+        failed++;
+        console.error("delete failed", item.storage_path, e);
+      }
+    }
+    setBulkDeleting(false);
+    setItems((prev) => prev.filter((i) => !selected.has(i.id)));
+    clearSelection();
+    toast.success(`Deleted ${ok}${failed ? ` · ${failed} failed` : ""}`);
+  };
+
+
   const images = items.filter((i) => i.media_type === "image").length;
   const videos = items.filter((i) => i.media_type === "video").length;
 
