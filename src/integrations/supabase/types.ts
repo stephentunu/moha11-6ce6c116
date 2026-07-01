@@ -14,6 +14,62 @@ export type Database = {
   }
   public: {
     Tables: {
+      app_sessions: {
+        Row: {
+          created_at: string
+          expires_at: string
+          token: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          expires_at: string
+          token: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          expires_at?: string
+          token?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "app_sessions_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "app_users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      app_users: {
+        Row: {
+          created_at: string
+          full_name: string
+          id: string
+          name_key: string
+          password_hash: string
+          password_salt: string
+        }
+        Insert: {
+          created_at?: string
+          full_name: string
+          id?: string
+          name_key: string
+          password_hash: string
+          password_salt: string
+        }
+        Update: {
+          created_at?: string
+          full_name?: string
+          id?: string
+          name_key?: string
+          password_hash?: string
+          password_salt?: string
+        }
+        Relationships: []
+      }
       bulk_message_recipients: {
         Row: {
           bulk_message_id: string
@@ -102,6 +158,7 @@ export type Database = {
         Row: {
           admin_notes: string | null
           amount_requested: number | null
+          canonical_school_name: string | null
           created_at: string
           current_grade: string
           dob: string | null
@@ -125,6 +182,7 @@ export type Database = {
           mother_national_id: string | null
           mother_occupation: string | null
           mother_phone: string | null
+          outstanding_balance: number | null
           parent_disability: boolean | null
           parent_disability_detail: string | null
           parent_national_id: string | null
@@ -148,6 +206,7 @@ export type Database = {
           sms_last_message: string | null
           sms_last_sent_at: string | null
           status: string
+          student_annual_fee: number | null
           student_disability: boolean | null
           student_disability_detail: string | null
           student_name: string
@@ -161,6 +220,7 @@ export type Database = {
         Insert: {
           admin_notes?: string | null
           amount_requested?: number | null
+          canonical_school_name?: string | null
           created_at?: string
           current_grade: string
           dob?: string | null
@@ -184,6 +244,7 @@ export type Database = {
           mother_national_id?: string | null
           mother_occupation?: string | null
           mother_phone?: string | null
+          outstanding_balance?: number | null
           parent_disability?: boolean | null
           parent_disability_detail?: string | null
           parent_national_id?: string | null
@@ -207,6 +268,7 @@ export type Database = {
           sms_last_message?: string | null
           sms_last_sent_at?: string | null
           status?: string
+          student_annual_fee?: number | null
           student_disability?: boolean | null
           student_disability_detail?: string | null
           student_name: string
@@ -220,6 +282,7 @@ export type Database = {
         Update: {
           admin_notes?: string | null
           amount_requested?: number | null
+          canonical_school_name?: string | null
           created_at?: string
           current_grade?: string
           dob?: string | null
@@ -243,6 +306,7 @@ export type Database = {
           mother_national_id?: string | null
           mother_occupation?: string | null
           mother_phone?: string | null
+          outstanding_balance?: number | null
           parent_disability?: boolean | null
           parent_disability_detail?: string | null
           parent_national_id?: string | null
@@ -266,6 +330,7 @@ export type Database = {
           sms_last_message?: string | null
           sms_last_sent_at?: string | null
           status?: string
+          student_annual_fee?: number | null
           student_disability?: boolean | null
           student_disability_detail?: string | null
           student_name?: string
@@ -347,6 +412,24 @@ export type Database = {
         }
         Relationships: []
       }
+      letter_archives: {
+        Row: {
+          archived_at: string
+          id: string
+          school_name: string
+        }
+        Insert: {
+          archived_at?: string
+          id?: string
+          school_name: string
+        }
+        Update: {
+          archived_at?: string
+          id?: string
+          school_name?: string
+        }
+        Relationships: []
+      }
       service_ratings: {
         Row: {
           created_at: string
@@ -368,6 +451,21 @@ export type Database = {
           rating?: string
           service?: string
           ward?: string | null
+        }
+        Relationships: []
+      }
+      site_settings: {
+        Row: {
+          id: string
+          value: string
+        }
+        Insert: {
+          id: string
+          value?: string
+        }
+        Update: {
+          id?: string
+          value?: string
         }
         Relationships: []
       }
