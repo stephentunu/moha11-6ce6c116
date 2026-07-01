@@ -14,6 +14,7 @@ const links = [
   { to: "/news", label: "Top Stories" },
   { to: "/polling", label: "Polling" },
   { to: "/advertise", label: "Advertise With Us" },
+  { to: "/gallery", label: "Gallery" },
   { to: "/ask", label: "Ask Me" },
 ] as const;
 

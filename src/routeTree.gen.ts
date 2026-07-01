@@ -16,6 +16,7 @@ import { Route as PrioritiesRouteImport } from './routes/priorities'
 import { Route as PollingRouteImport } from './routes/polling'
 import { Route as OpinionRouteImport } from './routes/opinion'
 import { Route as NewsRouteImport } from './routes/news'
+import { Route as GalleryRouteImport } from './routes/gallery'
 import { Route as FoundationsRouteImport } from './routes/foundations'
 import { Route as DonateRouteImport } from './routes/donate'
 import { Route as AskRouteImport } from './routes/ask'
@@ -26,6 +27,7 @@ import { Route as ApiChatRouteImport } from './routes/api.chat'
 import { Route as AdminSupportersRouteImport } from './routes/admin.supporters'
 import { Route as AdminSmsRouteImport } from './routes/admin.sms'
 import { Route as AdminPollsRouteImport } from './routes/admin.polls'
+import { Route as AdminMediaRouteImport } from './routes/admin.media'
 import { Route as AdminLoginRouteImport } from './routes/admin.login'
 import { Route as AdminInboxRouteImport } from './routes/admin.inbox'
 import { Route as AdminContentRouteImport } from './routes/admin.content'
@@ -66,6 +68,11 @@ const OpinionRoute = OpinionRouteImport.update({
 const NewsRoute = NewsRouteImport.update({
   id: '/news',
   path: '/news',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const GalleryRoute = GalleryRouteImport.update({
+  id: '/gallery',
+  path: '/gallery',
   getParentRoute: () => rootRouteImport,
 } as any)
 const FoundationsRoute = FoundationsRouteImport.update({
@@ -118,6 +125,11 @@ const AdminPollsRoute = AdminPollsRouteImport.update({
   path: '/admin/polls',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AdminMediaRoute = AdminMediaRouteImport.update({
+  id: '/admin/media',
+  path: '/admin/media',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AdminLoginRoute = AdminLoginRouteImport.update({
   id: '/admin/login',
   path: '/admin/login',
@@ -155,6 +167,7 @@ export interface FileRoutesByFullPath {
   '/ask': typeof AskRoute
   '/donate': typeof DonateRoute
   '/foundations': typeof FoundationsRoute
+  '/gallery': typeof GalleryRoute
   '/news': typeof NewsRoute
   '/opinion': typeof OpinionRoute
   '/polling': typeof PollingRoute
@@ -168,6 +181,7 @@ export interface FileRoutesByFullPath {
   '/admin/content': typeof AdminContentRoute
   '/admin/inbox': typeof AdminInboxRoute
   '/admin/login': typeof AdminLoginRoute
+  '/admin/media': typeof AdminMediaRoute
   '/admin/polls': typeof AdminPollsRoute
   '/admin/sms': typeof AdminSmsRoute
   '/admin/supporters': typeof AdminSupportersRoute
@@ -180,6 +194,7 @@ export interface FileRoutesByTo {
   '/ask': typeof AskRoute
   '/donate': typeof DonateRoute
   '/foundations': typeof FoundationsRoute
+  '/gallery': typeof GalleryRoute
   '/news': typeof NewsRoute
   '/opinion': typeof OpinionRoute
   '/polling': typeof PollingRoute
@@ -193,6 +208,7 @@ export interface FileRoutesByTo {
   '/admin/content': typeof AdminContentRoute
   '/admin/inbox': typeof AdminInboxRoute
   '/admin/login': typeof AdminLoginRoute
+  '/admin/media': typeof AdminMediaRoute
   '/admin/polls': typeof AdminPollsRoute
   '/admin/sms': typeof AdminSmsRoute
   '/admin/supporters': typeof AdminSupportersRoute
@@ -206,6 +222,7 @@ export interface FileRoutesById {
   '/ask': typeof AskRoute
   '/donate': typeof DonateRoute
   '/foundations': typeof FoundationsRoute
+  '/gallery': typeof GalleryRoute
   '/news': typeof NewsRoute
   '/opinion': typeof OpinionRoute
   '/polling': typeof PollingRoute
@@ -219,6 +236,7 @@ export interface FileRoutesById {
   '/admin/content': typeof AdminContentRoute
   '/admin/inbox': typeof AdminInboxRoute
   '/admin/login': typeof AdminLoginRoute
+  '/admin/media': typeof AdminMediaRoute
   '/admin/polls': typeof AdminPollsRoute
   '/admin/sms': typeof AdminSmsRoute
   '/admin/supporters': typeof AdminSupportersRoute
@@ -233,6 +251,7 @@ export interface FileRouteTypes {
     | '/ask'
     | '/donate'
     | '/foundations'
+    | '/gallery'
     | '/news'
     | '/opinion'
     | '/polling'
@@ -246,6 +265,7 @@ export interface FileRouteTypes {
     | '/admin/content'
     | '/admin/inbox'
     | '/admin/login'
+    | '/admin/media'
     | '/admin/polls'
     | '/admin/sms'
     | '/admin/supporters'
@@ -258,6 +278,7 @@ export interface FileRouteTypes {
     | '/ask'
     | '/donate'
     | '/foundations'
+    | '/gallery'
     | '/news'
     | '/opinion'
     | '/polling'
@@ -271,6 +292,7 @@ export interface FileRouteTypes {
     | '/admin/content'
     | '/admin/inbox'
     | '/admin/login'
+    | '/admin/media'
     | '/admin/polls'
     | '/admin/sms'
     | '/admin/supporters'
@@ -283,6 +305,7 @@ export interface FileRouteTypes {
     | '/ask'
     | '/donate'
     | '/foundations'
+    | '/gallery'
     | '/news'
     | '/opinion'
     | '/polling'
@@ -296,6 +319,7 @@ export interface FileRouteTypes {
     | '/admin/content'
     | '/admin/inbox'
     | '/admin/login'
+    | '/admin/media'
     | '/admin/polls'
     | '/admin/sms'
     | '/admin/supporters'
@@ -309,6 +333,7 @@ export interface RootRouteChildren {
   AskRoute: typeof AskRoute
   DonateRoute: typeof DonateRoute
   FoundationsRoute: typeof FoundationsRoute
+  GalleryRoute: typeof GalleryRoute
   NewsRoute: typeof NewsRoute
   OpinionRoute: typeof OpinionRoute
   PollingRoute: typeof PollingRoute
@@ -322,6 +347,7 @@ export interface RootRouteChildren {
   AdminContentRoute: typeof AdminContentRoute
   AdminInboxRoute: typeof AdminInboxRoute
   AdminLoginRoute: typeof AdminLoginRoute
+  AdminMediaRoute: typeof AdminMediaRoute
   AdminPollsRoute: typeof AdminPollsRoute
   AdminSmsRoute: typeof AdminSmsRoute
   AdminSupportersRoute: typeof AdminSupportersRoute
@@ -378,6 +404,13 @@ declare module '@tanstack/react-router' {
       path: '/news'
       fullPath: '/news'
       preLoaderRoute: typeof NewsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/gallery': {
+      id: '/gallery'
+      path: '/gallery'
+      fullPath: '/gallery'
+      preLoaderRoute: typeof GalleryRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/foundations': {
@@ -450,6 +483,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminPollsRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/admin/media': {
+      id: '/admin/media'
+      path: '/admin/media'
+      fullPath: '/admin/media'
+      preLoaderRoute: typeof AdminMediaRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/admin/login': {
       id: '/admin/login'
       path: '/admin/login'
@@ -501,6 +541,7 @@ const rootRouteChildren: RootRouteChildren = {
   AskRoute: AskRoute,
   DonateRoute: DonateRoute,
   FoundationsRoute: FoundationsRoute,
+  GalleryRoute: GalleryRoute,
   NewsRoute: NewsRoute,
   OpinionRoute: OpinionRoute,
   PollingRoute: PollingRoute,
@@ -514,6 +555,7 @@ const rootRouteChildren: RootRouteChildren = {
   AdminContentRoute: AdminContentRoute,
   AdminInboxRoute: AdminInboxRoute,
   AdminLoginRoute: AdminLoginRoute,
+  AdminMediaRoute: AdminMediaRoute,
   AdminPollsRoute: AdminPollsRoute,
   AdminSmsRoute: AdminSmsRoute,
   AdminSupportersRoute: AdminSupportersRoute,
@@ -523,12 +565,3 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { createStart } from '@tanstack/react-start'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-  }
-}
