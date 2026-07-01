@@ -218,7 +218,35 @@ function AdminMediaPage() {
 
         {/* Gallery */}
         <div className="bg-card border border-border rounded-2xl p-6 shadow-sm">
-          <h2 className="font-display text-lg font-bold mb-4">Uploaded media</h2>
+          <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
+            <h2 className="font-display text-lg font-bold">Uploaded media</h2>
+            {items.length > 0 && (
+              <div className="flex flex-wrap items-center gap-2">
+                {selected.size > 0 ? (
+                  <>
+                    <span className="text-sm text-muted-foreground">
+                      {selected.size} selected
+                    </span>
+                    <Button size="sm" variant="outline" onClick={clearSelection} disabled={bulkDeleting}>
+                      <X className="h-4 w-4" /> Clear
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="destructive"
+                      onClick={handleBulkDelete}
+                      disabled={bulkDeleting}
+                    >
+                      <Trash2 className="h-4 w-4" /> Delete selected
+                    </Button>
+                  </>
+                ) : (
+                  <Button size="sm" variant="outline" onClick={selectAll}>
+                    Select all
+                  </Button>
+                )}
+              </div>
+            )}
+          </div>
           {loading ? (
             <p className="text-muted-foreground">Loading…</p>
           ) : items.length === 0 ? (
@@ -227,10 +255,13 @@ function AdminMediaPage() {
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
               {items.map((item) => {
                 const url = publicUrl(item.storage_path);
+                const isSelected = selected.has(item.id);
                 return (
                   <div
                     key={item.id}
-                    className="group relative aspect-square rounded-lg overflow-hidden bg-muted border border-border"
+                    className={`group relative aspect-square rounded-lg overflow-hidden bg-muted border-2 transition ${
+                      isSelected ? "border-primary ring-2 ring-primary/40" : "border-border"
+                    }`}
                   >
                     {item.media_type === "image" ? (
                       <img src={url} alt={item.title ?? ""} loading="lazy" className="h-full w-full object-cover" />
@@ -242,14 +273,27 @@ function AdminMediaPage() {
                         </div>
                       </>
                     )}
+                    {/* Select checkbox — always visible */}
+                    <button
+                      onClick={() => toggleSelect(item.id)}
+                      className={`absolute top-1.5 left-1.5 h-7 w-7 rounded-md flex items-center justify-center text-xs font-bold border-2 transition ${
+                        isSelected
+                          ? "bg-primary text-primary-foreground border-primary"
+                          : "bg-white/90 text-transparent border-white hover:text-foreground"
+                      }`}
+                      aria-label={isSelected ? "Deselect" : "Select"}
+                    >
+                      ✓
+                    </button>
+                    {/* Delete — always visible on mobile, hover on desktop */}
                     <button
                       onClick={() => handleDelete(item)}
-                      className="absolute top-1.5 right-1.5 h-8 w-8 rounded-full bg-black/60 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition hover:bg-destructive"
+                      className="absolute top-1.5 right-1.5 h-8 w-8 rounded-full bg-black/70 text-white flex items-center justify-center transition hover:bg-destructive md:opacity-0 md:group-hover:opacity-100"
                       aria-label="Delete"
                     >
                       <Trash2 className="h-4 w-4" />
                     </button>
-                    <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/80 to-transparent p-2">
+                    <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/80 to-transparent p-2 pointer-events-none">
                       <p className="text-white text-[11px] font-semibold line-clamp-1">
                         {item.title ?? item.storage_path.split("/").pop()}
                       </p>
@@ -260,6 +304,7 @@ function AdminMediaPage() {
             </div>
           )}
         </div>
+
       </div>
     </AdminLayout>
   );
