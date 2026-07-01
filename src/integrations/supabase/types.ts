@@ -412,6 +412,39 @@ export type Database = {
         }
         Relationships: []
       }
+      campaign_media: {
+        Row: {
+          caption: string | null
+          created_at: string
+          id: string
+          media_type: string
+          mime_type: string | null
+          size_bytes: number | null
+          storage_path: string
+          title: string | null
+        }
+        Insert: {
+          caption?: string | null
+          created_at?: string
+          id?: string
+          media_type: string
+          mime_type?: string | null
+          size_bytes?: number | null
+          storage_path: string
+          title?: string | null
+        }
+        Update: {
+          caption?: string | null
+          created_at?: string
+          id?: string
+          media_type?: string
+          mime_type?: string | null
+          size_bytes?: number | null
+          storage_path?: string
+          title?: string | null
+        }
+        Relationships: []
+      }
       letter_archives: {
         Row: {
           archived_at: string
