@@ -13,6 +13,8 @@ import {
   MessageSquare,
   Calendar,
   GraduationCap,
+  Images,
+
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -24,6 +26,7 @@ const NAV: { to: string; label: string; icon: typeof LayoutDashboard; exact?: bo
   { to: "/admin/bursaries", label: "Bursary Applications", icon: GraduationCap },
   { to: "/admin/content", label: "Content Manager", icon: FileText },
   { to: "/admin/activities", label: "Daily Activities", icon: Calendar },
+  { to: "/admin/media", label: "Campaign Media", icon: Images },
   { to: "/admin/polls", label: "Poll Analytics", icon: BarChart3 },
   { to: "/admin/supporters", label: "Supporters", icon: Users },
   { to: "/admin/sms", label: "Bulk SMS", icon: MessageSquare },
