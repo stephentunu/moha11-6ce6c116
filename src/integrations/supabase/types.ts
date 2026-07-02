@@ -422,6 +422,7 @@ export type Database = {
           size_bytes: number | null
           storage_path: string
           title: string | null
+          topic: string | null
         }
         Insert: {
           caption?: string | null
@@ -432,6 +433,7 @@ export type Database = {
           size_bytes?: number | null
           storage_path: string
           title?: string | null
+          topic?: string | null
         }
         Update: {
           caption?: string | null
@@ -442,6 +444,7 @@ export type Database = {
           size_bytes?: number | null
           storage_path?: string
           title?: string | null
+          topic?: string | null
         }
         Relationships: []
       }
