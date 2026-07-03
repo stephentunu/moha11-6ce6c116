@@ -1664,11 +1664,19 @@ function AdminBursariesPage() {
                     </Button>
                     <Button
                       variant="outline"
+                      className="border-gold bg-gold text-gold-foreground hover:bg-gold/90 gap-2"
+                      onClick={downloadApprovedBroadsheetExcel}
+                    >
+                      <FileSpreadsheet className="h-4 w-4" /> Approved Broadsheet Excel
+                    </Button>
+                    <Button
+                      variant="outline"
                       className="border-emerald-300 bg-emerald-600 text-white hover:bg-emerald-500 gap-2"
                       onClick={downloadBroadsheetExcel}
                     >
                       <FileSpreadsheet className="h-4 w-4" /> Cheque Summary Excel
                     </Button>
+
                   </div>
                 </div>
               </div>
