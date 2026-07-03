@@ -1194,4 +1194,3 @@ export function generateApprovedBroadsheetExcel(
   const safeTitle = title.replace(/[^a-z0-9]/gi, "-").slice(0, 40);
   XLSX.writeFile(wb, `Moha-Approved-Broadsheet-${safeTitle}-${Date.now()}.xlsx`);
 }
-}
