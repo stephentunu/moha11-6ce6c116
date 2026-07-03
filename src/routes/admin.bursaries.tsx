@@ -1448,6 +1448,15 @@ function AdminBursariesPage() {
                   </Button>
                   <Button
                     variant="outline"
+                    onClick={downloadApprovedBroadsheetExcel}
+                    disabled={approvedRows.length === 0}
+                    className="gap-2 border-gold text-gold-foreground bg-gold/10 hover:bg-gold/20"
+                  >
+                    <FileSpreadsheet className="h-4 w-4" />
+                    Approved Broadsheet Excel
+                  </Button>
+                  <Button
+                    variant="outline"
                     onClick={downloadBroadsheetExcel}
                     disabled={approvedRows.length === 0}
                     className="gap-2 border-emerald-400 text-emerald-700 hover:bg-emerald-50"
