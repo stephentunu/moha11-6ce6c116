@@ -8,7 +8,7 @@ import {
   MapPin, Pencil, ArrowLeft, XCircle, Clock3, UserPlus,
   Archive, ArchiveRestore, ArchiveX,
 } from "lucide-react";
-import { generateBursaryPdf, generateBroadsheetPdf, generateBroadsheetExcel, generateConfirmationLetter, type BroadsheetRow, type BursaryPdfData, type ConfirmationLetterRow } from "@/lib/bursary-pdf";
+import { generateBursaryPdf, generateBroadsheetPdf, generateBroadsheetExcel, generateApprovedBroadsheetExcel, generateConfirmationLetter, type BroadsheetRow, type BursaryPdfData, type ConfirmationLetterRow } from "@/lib/bursary-pdf";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
