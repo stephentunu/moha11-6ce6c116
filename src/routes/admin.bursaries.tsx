@@ -710,12 +710,8 @@ function AdminBursariesPage() {
     toast.success("Broadsheet PDF generated!");
   };
 
-  const downloadBroadsheetExcel = () => {
-    if (approvedRows.length === 0) {
-      toast.error("No approved applications to include in the cheque summary.");
-      return;
-    }
-    const bsRows: BroadsheetRow[] = approvedRows.map((r) => ({
+  const buildBsRows = (): BroadsheetRow[] =>
+    approvedRows.map((r) => ({
       reference: r.reference,
       student_name: r.student_name,
       registration_number: r.registration_number,
@@ -729,9 +725,25 @@ function AdminBursariesPage() {
       school_category: r.school_category,
       school_bank_account: r.school_bank_account,
       school_county: r.school_county,
+      school_sub_county: r.school_sub_county,
     }));
-    generateBroadsheetExcel(bsRows, `Moha Bursary Cheque Summary — ${new Date().toLocaleDateString("en-KE")}`);
+
+  const downloadBroadsheetExcel = () => {
+    if (approvedRows.length === 0) {
+      toast.error("No approved applications to include in the cheque summary.");
+      return;
+    }
+    generateBroadsheetExcel(buildBsRows(), `Moha Bursary Cheque Summary — ${new Date().toLocaleDateString("en-KE")}`);
     toast.success("Cheque summary Excel generated!");
+  };
+
+  const downloadApprovedBroadsheetExcel = () => {
+    if (approvedRows.length === 0) {
+      toast.error("No approved applications to include in the broadsheet.");
+      return;
+    }
+    generateApprovedBroadsheetExcel(buildBsRows(), `MOHA EDUCATION KITTY — APPROVED BURSARY BROADSHEET`);
+    toast.success("Approved broadsheet Excel generated!");
   };
 
   const downloadConfirmationLetter = () => {
