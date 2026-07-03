@@ -621,6 +621,7 @@ export type BroadsheetRow = {
   school_bank_account?: string | null;
   /** County the school is in â€” used for County â†’ School grouping in the broadsheet */
   school_county?: string | null;
+  school_sub_county?: string | null;
 };
 
 export function generateBroadsheetPdf(rows: BroadsheetRow[], title = "Approved Bursary Awards") {
