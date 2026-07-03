@@ -8,7 +8,7 @@ import {
   MapPin, Pencil, ArrowLeft, XCircle, Clock3, UserPlus,
   Archive, ArchiveRestore, ArchiveX,
 } from "lucide-react";
-import { generateBursaryPdf, generateBroadsheetPdf, generateBroadsheetExcel, generateConfirmationLetter, type BroadsheetRow, type BursaryPdfData, type ConfirmationLetterRow } from "@/lib/bursary-pdf";
+import { generateBursaryPdf, generateBroadsheetPdf, generateBroadsheetExcel, generateApprovedBroadsheetExcel, generateConfirmationLetter, type BroadsheetRow, type BursaryPdfData, type ConfirmationLetterRow } from "@/lib/bursary-pdf";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -710,12 +710,8 @@ function AdminBursariesPage() {
     toast.success("Broadsheet PDF generated!");
   };
 
-  const downloadBroadsheetExcel = () => {
-    if (approvedRows.length === 0) {
-      toast.error("No approved applications to include in the cheque summary.");
-      return;
-    }
-    const bsRows: BroadsheetRow[] = approvedRows.map((r) => ({
+  const buildBsRows = (): BroadsheetRow[] =>
+    approvedRows.map((r) => ({
       reference: r.reference,
       student_name: r.student_name,
       registration_number: r.registration_number,
@@ -729,9 +725,25 @@ function AdminBursariesPage() {
       school_category: r.school_category,
       school_bank_account: r.school_bank_account,
       school_county: r.school_county,
+      school_sub_county: r.school_sub_county,
     }));
-    generateBroadsheetExcel(bsRows, `Moha Bursary Cheque Summary — ${new Date().toLocaleDateString("en-KE")}`);
+
+  const downloadBroadsheetExcel = () => {
+    if (approvedRows.length === 0) {
+      toast.error("No approved applications to include in the cheque summary.");
+      return;
+    }
+    generateBroadsheetExcel(buildBsRows(), `Moha Bursary Cheque Summary — ${new Date().toLocaleDateString("en-KE")}`);
     toast.success("Cheque summary Excel generated!");
+  };
+
+  const downloadApprovedBroadsheetExcel = () => {
+    if (approvedRows.length === 0) {
+      toast.error("No approved applications to include in the broadsheet.");
+      return;
+    }
+    generateApprovedBroadsheetExcel(buildBsRows(), `MOHA EDUCATION KITTY — APPROVED BURSARY BROADSHEET`);
+    toast.success("Approved broadsheet Excel generated!");
   };
 
   const downloadConfirmationLetter = () => {
@@ -1421,7 +1433,7 @@ function AdminBursariesPage() {
                     Approved Bursary Broadsheet
                   </h2>
                   <p className="text-sm text-muted-foreground mt-0.5">
-                    All approved applications grouped by county and school. Download as a PDF (full detail) or Excel (cheque summary — county totals only).
+                    All approved applications grouped by county and school. Download as PDF (full detail), Approved Broadsheet Excel (per-student list with ward summaries), or Cheque Summary Excel (county totals only).
                   </p>
                 </div>
                 <div className="flex flex-col sm:flex-row gap-2 shrink-0">
@@ -1433,6 +1445,15 @@ function AdminBursariesPage() {
                   >
                     <Download className="h-4 w-4" />
                     Download PDF
+                  </Button>
+                  <Button
+                    variant="outline"
+                    onClick={downloadApprovedBroadsheetExcel}
+                    disabled={approvedRows.length === 0}
+                    className="gap-2 border-gold text-gold-foreground bg-gold/10 hover:bg-gold/20"
+                  >
+                    <FileSpreadsheet className="h-4 w-4" />
+                    Approved Broadsheet Excel
                   </Button>
                   <Button
                     variant="outline"

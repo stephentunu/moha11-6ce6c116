@@ -621,6 +621,7 @@ export type BroadsheetRow = {
   school_bank_account?: string | null;
   /** County the school is in â€” used for County â†’ School grouping in the broadsheet */
   school_county?: string | null;
+  school_sub_county?: string | null;
 };
 
 export function generateBroadsheetPdf(rows: BroadsheetRow[], title = "Approved Bursary Awards") {
@@ -1047,4 +1048,149 @@ export function generateBroadsheetExcel(
 
   const safeTitle = title.replace(/[^a-z0-9]/gi, "-").slice(0, 40);
   XLSX.writeFile(wb, `Moha-Cheque-Summary-${safeTitle}-${Date.now()}.xlsx`);
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+//  DETAILED APPROVED BROADSHEET (Excel) — matches the MOHA report template.
+//
+//  Layout (mirrors the uploaded SAMPLE_OF_MOHA_REPORT_TEMPLATE):
+//
+//    ┌───────────────────────────────────────────────────────────────────────┐
+//    │                          TITLE (merged A1:H4)                          │  I1:I4 = header space
+//    ├────┬────────────┬───────┬─────────────┬───────────┬──────────┬────────┤
+//    │ NO │ STUDENT'S… │ GRADE │ SCHOOL NAME │ SCHOOL … │ PARENT…  │ …AMOUNT│
+//    ├────┼────────────┼───────┼─────────────┼───────────┼──────────┼────────┤
+//    │  1 │ …          │ …     │ …           │ …         │ …        │  …     │
+//    │  … │ …          │ …     │ …           │ …         │ …        │  …     │
+//    └────┴────────────┴───────┴─────────────┴───────────┴──────────┴────────┘
+//    (blank)
+//    WARD SUMMARIES
+//      WARD  │ NO. OF SCHOOLS │ NO. OF STUDENTS │ TOTAL AMOUNT
+//      …     │ …              │ …               │ …
+//      GRAND TOTAL            │ …               │ …
+// ═══════════════════════════════════════════════════════════════════════════
+
+export function generateApprovedBroadsheetExcel(
+  rows: BroadsheetRow[],
+  title = "MOHA EDUCATION KITTY — APPROVED BURSARY BROADSHEET",
+) {
+  type AoaRow = (string | number)[];
+  const data: AoaRow[] = [];
+  const merges: { s: { r: number; c: number }; e: { r: number; c: number } }[] = [];
+
+  // ── Title block: rows 0-3, merged A:H (cols 0..7). Col I (8) left blank on
+  //    those rows to match the template exactly.
+  const generated = new Date().toLocaleDateString("en-KE", {
+    day: "numeric", month: "long", year: "numeric",
+  });
+  const titleLines = [
+    title,
+    "",
+    `Generated: ${generated}   ·   ${rows.length} approved student${rows.length !== 1 ? "s" : ""}`,
+    "",
+  ];
+  for (let i = 0; i < 4; i++) {
+    data.push([titleLines[i] ?? "", "", "", "", "", "", "", "", ""]);
+  }
+  merges.push({ s: { r: 0, c: 0 }, e: { r: 3, c: 7 } });
+
+  // ── Column headers (row 4) ─────────────────────────────────────────────────
+  data.push([
+    "NO",
+    "STUDENT'S NAME",
+    "GRADE",
+    "SCHOOL NAME",
+    "SCHOOL LOCATION",
+    "PARENTS/GUARDIAN NAME",
+    "PARENTS/GUARDIAN PHONE",
+    "WARD",
+    "AMOUNT",
+  ]);
+
+  // ── Student rows, sorted by ward then school then name ────────────────────
+  const sorted = [...rows].sort((a, b) => {
+    const w = (a.ward || "").localeCompare(b.ward || "");
+    if (w !== 0) return w;
+    const s = a.school_name.localeCompare(b.school_name);
+    if (s !== 0) return s;
+    return a.student_name.localeCompare(b.student_name);
+  });
+
+  sorted.forEach((r, i) => {
+    const location = [r.school_sub_county, r.school_county].filter(Boolean).join(", ") || "—";
+    data.push([
+      i + 1,
+      r.student_name,
+      r.current_grade,
+      r.school_name,
+      location,
+      r.guardian_name,
+      r.guardian_phone,
+      r.ward || "—",
+      r.amount_requested ?? 0,
+    ]);
+  });
+
+  // ── Ward summaries ─────────────────────────────────────────────────────────
+  type WardStat = { schools: Set<string>; students: number; total: number };
+  const wardMap = new Map<string, WardStat>();
+  for (const r of sorted) {
+    const key = (r.ward || "Unspecified").trim();
+    if (!wardMap.has(key)) wardMap.set(key, { schools: new Set(), students: 0, total: 0 });
+    const w = wardMap.get(key)!;
+    w.schools.add(r.school_name.trim().toUpperCase());
+    w.students += 1;
+    w.total += r.amount_requested ?? 0;
+  }
+
+  data.push(["", "", "", "", "", "", "", "", ""]);
+  const summaryTitleRow = data.length;
+  data.push(["WARD SUMMARIES", "", "", "", "", "", "", "", ""]);
+  merges.push({ s: { r: summaryTitleRow, c: 0 }, e: { r: summaryTitleRow, c: 8 } });
+
+  data.push(["WARD", "NO. OF SCHOOLS", "NO. OF STUDENTS", "TOTAL AMOUNT (KSh)", "", "", "", "", ""]);
+  const summaryHeaderRow = data.length - 1;
+  merges.push({ s: { r: summaryHeaderRow, c: 3 }, e: { r: summaryHeaderRow, c: 8 } });
+
+  const sortedWards = Array.from(wardMap.entries()).sort(([a], [b]) => a.localeCompare(b));
+  for (const [ward, stat] of sortedWards) {
+    const rowIdx = data.length;
+    data.push([ward, stat.schools.size, stat.students, stat.total, "", "", "", "", ""]);
+    merges.push({ s: { r: rowIdx, c: 3 }, e: { r: rowIdx, c: 8 } });
+  }
+
+  const grandStudents = sorted.length;
+  const grandTotal = sorted.reduce((s, r) => s + (r.amount_requested ?? 0), 0);
+  const grandSchools = new Set(sorted.map((r) => r.school_name.trim().toUpperCase())).size;
+
+  const grandRow = data.length;
+  data.push([
+    "GRAND TOTAL",
+    grandSchools,
+    grandStudents,
+    grandTotal,
+    "", "", "", "", "",
+  ]);
+  merges.push({ s: { r: grandRow, c: 3 }, e: { r: grandRow, c: 8 } });
+
+  // ── Build worksheet ────────────────────────────────────────────────────────
+  const ws = XLSX.utils.aoa_to_sheet(data);
+  ws["!cols"] = [
+    { wch: 5 },   // NO
+    { wch: 28 },  // STUDENT'S NAME
+    { wch: 10 },  // GRADE
+    { wch: 32 },  // SCHOOL NAME
+    { wch: 24 },  // SCHOOL LOCATION
+    { wch: 26 },  // PARENTS/GUARDIAN NAME
+    { wch: 20 },  // PARENTS/GUARDIAN PHONE
+    { wch: 16 },  // WARD
+    { wch: 14 },  // AMOUNT
+  ];
+  ws["!merges"] = merges;
+
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, "APPROVED BROADSHEET");
+
+  const safeTitle = title.replace(/[^a-z0-9]/gi, "-").slice(0, 40);
+  XLSX.writeFile(wb, `Moha-Approved-Broadsheet-${safeTitle}-${Date.now()}.xlsx`);
 }
