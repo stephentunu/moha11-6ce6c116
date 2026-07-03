@@ -1433,7 +1433,7 @@ function AdminBursariesPage() {
                     Approved Bursary Broadsheet
                   </h2>
                   <p className="text-sm text-muted-foreground mt-0.5">
-                    All approved applications grouped by county and school. Download as a PDF (full detail) or Excel (cheque summary — county totals only).
+                    All approved applications grouped by county and school. Download as PDF (full detail), Approved Broadsheet Excel (per-student list with ward summaries), or Cheque Summary Excel (county totals only).
                   </p>
                 </div>
                 <div className="flex flex-col sm:flex-row gap-2 shrink-0">
