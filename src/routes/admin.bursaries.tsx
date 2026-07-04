@@ -768,6 +768,14 @@ function AdminBursariesPage() {
     toast.success(`Confirmation letter generated for ${letterSelectedSchool}`);
   };
 
+  const downloadBlankConfirmationLetter = () => {
+    generateConfirmationLetter([], {
+      schoolName: "",
+      termLabel: letterTerm,
+    });
+    toast.success("Blank confirmation letter downloaded");
+  };
+
   const toggleSchool = (school: string) => {
     setBsExpanded((prev) => {
       const next = new Set(prev);
