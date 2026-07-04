@@ -768,6 +768,14 @@ function AdminBursariesPage() {
     toast.success(`Confirmation letter generated for ${letterSelectedSchool}`);
   };
 
+  const downloadBlankConfirmationLetter = () => {
+    generateConfirmationLetter([], {
+      schoolName: "",
+      termLabel: letterTerm,
+    });
+    toast.success("Blank confirmation letter downloaded");
+  };
+
   const toggleSchool = (school: string) => {
     setBsExpanded((prev) => {
       const next = new Set(prev);
@@ -1742,6 +1750,14 @@ function AdminBursariesPage() {
                     ? "Archived letters are hidden from the active list. Restore any to make it downloadable again."
                     : "Search a school, then generate its official confirmation-of-beneficiaries letter."}
                 </p>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={downloadBlankConfirmationLetter}
+                  className="mt-3 w-full gap-2"
+                >
+                  <Download className="h-4 w-4" /> Download Blank Form
+                </Button>
               </div>
 
               <div className="relative">
