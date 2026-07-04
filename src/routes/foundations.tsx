@@ -93,6 +93,7 @@ import ecd1 from "@/assets/moha/gallery/ecd1.jpeg";
 import ecd2 from "@/assets/moha/gallery/ecd2.jpeg";
 import children from "@/assets/moha/gallery/children.jpeg";
 import { seoMeta, seoLinks } from "@/lib/seo";
+import sportsTalentHero from "@/assets/sports-talent-hero.png.asset.json";
 
 export const Route = createFileRoute("/foundations")({
   head: () => ({
