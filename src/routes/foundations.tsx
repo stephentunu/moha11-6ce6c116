@@ -216,7 +216,7 @@ const foundations: Foundation[] = [
     pill: "Mathare Plays",
     desc: "From dusty pitches to medal podiums — Moha sponsors tournaments, kits, prizes, and cheers loudest when Mathare's talented kids take the stage.",
     impact: "3+ tournaments backed",
-    img: soccer,
+    img: sportsTalentHero.url,
     points: [
       "Back to school tournaments",
       "Ladies tournaments",
