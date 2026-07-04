@@ -1750,6 +1750,14 @@ function AdminBursariesPage() {
                     ? "Archived letters are hidden from the active list. Restore any to make it downloadable again."
                     : "Search a school, then generate its official confirmation-of-beneficiaries letter."}
                 </p>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={downloadBlankConfirmationLetter}
+                  className="mt-3 w-full gap-2"
+                >
+                  <Download className="h-4 w-4" /> Download Blank Form
+                </Button>
               </div>
 
               <div className="relative">
