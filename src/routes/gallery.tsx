@@ -138,9 +138,6 @@ function GalleryPage() {
                       {item.topic}
                     </span>
                   )}
-                  {item.title && (
-                    <p className="text-white text-xs font-semibold line-clamp-2">{item.title}</p>
-                  )}
                 </div>
               </button>
             ))}
@@ -175,14 +172,13 @@ function GalleryPage() {
                 className="w-full max-h-[85vh] rounded-lg bg-black"
               />
             )}
-            {(active.title || active.caption || active.topic) && (
+            {(active.caption || active.topic) && (
               <div className="mt-3 text-white text-center">
                 {active.topic && (
                   <span className="inline-block text-[10px] font-bold uppercase tracking-wider bg-primary/80 rounded px-2 py-0.5 mb-1">
                     {active.topic}
                   </span>
                 )}
-                {active.title && <p className="font-semibold">{active.title}</p>}
                 {active.caption && <p className="text-sm text-white/80">{active.caption}</p>}
               </div>
             )}
