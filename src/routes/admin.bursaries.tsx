@@ -1,12 +1,12 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import {
-  GraduationCap, Send, Eye, Trash2, Download, Search,
+  GraduationCap, Send, Eye, EyeOff, Trash2, Download, Search,
   FileSpreadsheet, CheckCircle2, School, ArrowUpDown,
   ChevronDown, ChevronRight, Users, Banknote,
   CheckSquare, X, Mail, FileText, Calendar,
   MapPin, Pencil, ArrowLeft, XCircle, Clock3, UserPlus,
-  Archive, ArchiveRestore, ArchiveX,
+  Archive, ArchiveRestore, ArchiveX, RotateCcw,
 } from "lucide-react";
 import { generateBursaryPdf, generateBroadsheetPdf, generateBroadsheetExcel, generateApprovedBroadsheetExcel, generateConfirmationLetter, type BroadsheetRow, type BursaryPdfData, type ConfirmationLetterRow } from "@/lib/bursary-pdf";
 import { Button } from "@/components/ui/button";
