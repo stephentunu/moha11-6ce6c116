@@ -150,6 +150,53 @@ function AdminBursariesPage() {
   const [archiveBusy, setArchiveBusy] = useState<string | null>(null);
   const [archiveConfirmSchool, setArchiveConfirmSchool] = useState<string | null>(null);
 
+  // Per-student "hide from review" — lets admins temporarily remove students
+  // from a school's review list while approving the rest, then restore them
+  // later from the Hidden Students panel. Persisted per-browser in localStorage.
+  const HIDDEN_STORAGE_KEY = "bursary_hidden_students_v1";
+  const [hiddenIds, setHiddenIds] = useState<Set<string>>(() => {
+    if (typeof window === "undefined") return new Set();
+    try {
+      const raw = window.localStorage.getItem(HIDDEN_STORAGE_KEY);
+      return new Set(raw ? (JSON.parse(raw) as string[]) : []);
+    } catch { return new Set(); }
+  });
+  const [hiddenPanelOpen, setHiddenPanelOpen] = useState(false);
+  const [hiddenSearch, setHiddenSearch] = useState("");
+
+  useEffect(() => {
+    try {
+      window.localStorage.setItem(HIDDEN_STORAGE_KEY, JSON.stringify(Array.from(hiddenIds)));
+    } catch { /* quota / private mode — ignore */ }
+  }, [hiddenIds]);
+
+  const hideStudent = (id: string, name?: string) => {
+    setHiddenIds((prev) => {
+      const next = new Set(prev);
+      next.add(id);
+      return next;
+    });
+    toast.success(`${name || "Student"} hidden from review list`, {
+      description: "Restore anytime from the Hidden Students panel.",
+    });
+  };
+
+  const unhideStudent = (id: string, name?: string) => {
+    setHiddenIds((prev) => {
+      const next = new Set(prev);
+      next.delete(id);
+      return next;
+    });
+    toast.success(`${name || "Student"} restored to the review list`);
+  };
+
+  const clearAllHidden = () => {
+    if (hiddenIds.size === 0) return;
+    setHiddenIds(new Set());
+    toast.success("All hidden students restored");
+  };
+
+
   // Review by Location tab — County → Sub-county → School → Students drill-down
   const [reviewCounty, setReviewCounty] = useState<string | null>(null);
   const [reviewSubCounty, setReviewSubCounty] = useState<string | null>(null);
