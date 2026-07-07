@@ -1321,7 +1321,7 @@ function AdminBursariesPage() {
                   <ArrowLeft className="h-3.5 w-3.5" /> Back to {reviewCounty}
                 </Button>
                 <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                  {reviewSchools.map(({ school, count, pending, category }) => (
+                  {reviewSchools.map(({ school, count, pending, category, hidden }) => (
                     <button
                       key={school}
                       onClick={() => setReviewSchool(school)}
@@ -1334,13 +1334,18 @@ function AdminBursariesPage() {
                         </div>
                         <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0" />
                       </div>
-                      <div className="flex items-center gap-3 mt-2 ml-6">
+                      <div className="flex items-center flex-wrap gap-x-3 gap-y-1 mt-2 ml-6">
                         <span className="text-xs text-muted-foreground">
                           {category && `${category} · `}{count} student{count !== 1 ? "s" : ""}
                         </span>
                         {pending > 0 && (
                           <span className="flex items-center gap-1 text-xs font-semibold text-amber-700">
                             <Clock3 className="h-3 w-3" /> {pending} pending
+                          </span>
+                        )}
+                        {hidden > 0 && (
+                          <span className="flex items-center gap-1 text-xs font-semibold text-slate-500">
+                            <EyeOff className="h-3 w-3" /> {hidden} hidden
                           </span>
                         )}
                       </div>
