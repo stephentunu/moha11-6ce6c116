@@ -437,14 +437,18 @@ function AdminBursariesPage() {
       map.get(key)!.push(r);
     }
     return Array.from(map.entries())
-      .map(([school, schoolRows]) => ({
-        school,
-        count: schoolRows.length,
-        pending: schoolRows.filter((r) => r.status === "pending").length,
-        category: schoolRows[0]?.school_category ?? null,
-      }))
+      .map(([school, schoolRows]) => {
+        const visible = schoolRows.filter((r) => !hiddenIds.has(r.id));
+        return {
+          school,
+          count: visible.length,
+          hidden: schoolRows.length - visible.length,
+          pending: visible.filter((r) => r.status === "pending").length,
+          category: schoolRows[0]?.school_category ?? null,
+        };
+      })
       .sort((a, b) => a.school.localeCompare(b.school));
-  }, [rows, reviewCounty, reviewSubCounty]);
+  }, [rows, reviewCounty, reviewSubCounty, hiddenIds]);
 
   const reviewStudents = useMemo(() => {
     if (!reviewCounty || !reviewSubCounty || !reviewSchool) return [];
@@ -453,10 +457,53 @@ function AdminBursariesPage() {
         (r) =>
           (r.school_county || "Unspecified").trim() === reviewCounty &&
           (r.school_sub_county || "Unspecified").trim() === reviewSubCounty &&
-          (effectiveSchoolName(r) || "Unspecified School") === reviewSchool,
+          (effectiveSchoolName(r) || "Unspecified School") === reviewSchool &&
+          !hiddenIds.has(r.id),
       )
       .sort((a, b) => a.student_name.localeCompare(b.student_name));
-  }, [rows, reviewCounty, reviewSubCounty, reviewSchool]);
+  }, [rows, reviewCounty, reviewSubCounty, reviewSchool, hiddenIds]);
+
+  // Count of hidden students for the school currently under review — shown
+  // inline so the admin never forgets there are hidden rows behind the list.
+  const reviewSchoolHiddenCount = useMemo(() => {
+    if (!reviewCounty || !reviewSubCounty || !reviewSchool) return 0;
+    return rows.filter(
+      (r) =>
+        hiddenIds.has(r.id) &&
+        (r.school_county || "Unspecified").trim() === reviewCounty &&
+        (r.school_sub_county || "Unspecified").trim() === reviewSubCounty &&
+        (effectiveSchoolName(r) || "Unspecified School") === reviewSchool,
+    ).length;
+  }, [rows, reviewCounty, reviewSubCounty, reviewSchool, hiddenIds]);
+
+  // All hidden students grouped by school, with search across school + student
+  // name / reference / guardian — powers the Hidden Students panel.
+  const hiddenGrouped = useMemo(() => {
+    const q = hiddenSearch.trim().toLowerCase();
+    const hidden = rows.filter((r) => hiddenIds.has(r.id));
+    const filtered = q
+      ? hidden.filter((r) =>
+          (r.student_name || "").toLowerCase().includes(q) ||
+          (r.reference || "").toLowerCase().includes(q) ||
+          (effectiveSchoolName(r) || "").toLowerCase().includes(q) ||
+          (r.school_name || "").toLowerCase().includes(q) ||
+          (r.guardian_name || "").toLowerCase().includes(q),
+        )
+      : hidden;
+    const map = new Map<string, Row[]>();
+    for (const r of filtered) {
+      const key = effectiveSchoolName(r) || "Unspecified School";
+      if (!map.has(key)) map.set(key, []);
+      map.get(key)!.push(r);
+    }
+    return Array.from(map.entries())
+      .map(([school, students]) => ({
+        school,
+        students: students.sort((a, b) => a.student_name.localeCompare(b.student_name)),
+      }))
+      .sort((a, b) => a.school.localeCompare(b.school));
+  }, [rows, hiddenIds, hiddenSearch]);
+
 
   // Variant raw spellings feeding into the currently-selected canonical school
   // name — shown to the admin so they can see exactly what they're merging.
