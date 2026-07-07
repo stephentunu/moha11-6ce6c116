@@ -1,12 +1,12 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import {
-  GraduationCap, Send, Eye, Trash2, Download, Search,
+  GraduationCap, Send, Eye, EyeOff, Trash2, Download, Search,
   FileSpreadsheet, CheckCircle2, School, ArrowUpDown,
   ChevronDown, ChevronRight, Users, Banknote,
   CheckSquare, X, Mail, FileText, Calendar,
   MapPin, Pencil, ArrowLeft, XCircle, Clock3, UserPlus,
-  Archive, ArchiveRestore, ArchiveX,
+  Archive, ArchiveRestore, ArchiveX, RotateCcw,
 } from "lucide-react";
 import { generateBursaryPdf, generateBroadsheetPdf, generateBroadsheetExcel, generateApprovedBroadsheetExcel, generateConfirmationLetter, type BroadsheetRow, type BursaryPdfData, type ConfirmationLetterRow } from "@/lib/bursary-pdf";
 import { Button } from "@/components/ui/button";
@@ -149,6 +149,53 @@ function AdminBursariesPage() {
   const [showArchived, setShowArchived] = useState(false);
   const [archiveBusy, setArchiveBusy] = useState<string | null>(null);
   const [archiveConfirmSchool, setArchiveConfirmSchool] = useState<string | null>(null);
+
+  // Per-student "hide from review" — lets admins temporarily remove students
+  // from a school's review list while approving the rest, then restore them
+  // later from the Hidden Students panel. Persisted per-browser in localStorage.
+  const HIDDEN_STORAGE_KEY = "bursary_hidden_students_v1";
+  const [hiddenIds, setHiddenIds] = useState<Set<string>>(() => {
+    if (typeof window === "undefined") return new Set();
+    try {
+      const raw = window.localStorage.getItem(HIDDEN_STORAGE_KEY);
+      return new Set(raw ? (JSON.parse(raw) as string[]) : []);
+    } catch { return new Set(); }
+  });
+  const [hiddenPanelOpen, setHiddenPanelOpen] = useState(false);
+  const [hiddenSearch, setHiddenSearch] = useState("");
+
+  useEffect(() => {
+    try {
+      window.localStorage.setItem(HIDDEN_STORAGE_KEY, JSON.stringify(Array.from(hiddenIds)));
+    } catch { /* quota / private mode — ignore */ }
+  }, [hiddenIds]);
+
+  const hideStudent = (id: string, name?: string) => {
+    setHiddenIds((prev) => {
+      const next = new Set(prev);
+      next.add(id);
+      return next;
+    });
+    toast.success(`${name || "Student"} hidden from review list`, {
+      description: "Restore anytime from the Hidden Students panel.",
+    });
+  };
+
+  const unhideStudent = (id: string, name?: string) => {
+    setHiddenIds((prev) => {
+      const next = new Set(prev);
+      next.delete(id);
+      return next;
+    });
+    toast.success(`${name || "Student"} restored to the review list`);
+  };
+
+  const clearAllHidden = () => {
+    if (hiddenIds.size === 0) return;
+    setHiddenIds(new Set());
+    toast.success("All hidden students restored");
+  };
+
 
   // Review by Location tab — County → Sub-county → School → Students drill-down
   const [reviewCounty, setReviewCounty] = useState<string | null>(null);
@@ -390,14 +437,18 @@ function AdminBursariesPage() {
       map.get(key)!.push(r);
     }
     return Array.from(map.entries())
-      .map(([school, schoolRows]) => ({
-        school,
-        count: schoolRows.length,
-        pending: schoolRows.filter((r) => r.status === "pending").length,
-        category: schoolRows[0]?.school_category ?? null,
-      }))
+      .map(([school, schoolRows]) => {
+        const visible = schoolRows.filter((r) => !hiddenIds.has(r.id));
+        return {
+          school,
+          count: visible.length,
+          hidden: schoolRows.length - visible.length,
+          pending: visible.filter((r) => r.status === "pending").length,
+          category: schoolRows[0]?.school_category ?? null,
+        };
+      })
       .sort((a, b) => a.school.localeCompare(b.school));
-  }, [rows, reviewCounty, reviewSubCounty]);
+  }, [rows, reviewCounty, reviewSubCounty, hiddenIds]);
 
   const reviewStudents = useMemo(() => {
     if (!reviewCounty || !reviewSubCounty || !reviewSchool) return [];
@@ -406,10 +457,53 @@ function AdminBursariesPage() {
         (r) =>
           (r.school_county || "Unspecified").trim() === reviewCounty &&
           (r.school_sub_county || "Unspecified").trim() === reviewSubCounty &&
-          (effectiveSchoolName(r) || "Unspecified School") === reviewSchool,
+          (effectiveSchoolName(r) || "Unspecified School") === reviewSchool &&
+          !hiddenIds.has(r.id),
       )
       .sort((a, b) => a.student_name.localeCompare(b.student_name));
-  }, [rows, reviewCounty, reviewSubCounty, reviewSchool]);
+  }, [rows, reviewCounty, reviewSubCounty, reviewSchool, hiddenIds]);
+
+  // Count of hidden students for the school currently under review — shown
+  // inline so the admin never forgets there are hidden rows behind the list.
+  const reviewSchoolHiddenCount = useMemo(() => {
+    if (!reviewCounty || !reviewSubCounty || !reviewSchool) return 0;
+    return rows.filter(
+      (r) =>
+        hiddenIds.has(r.id) &&
+        (r.school_county || "Unspecified").trim() === reviewCounty &&
+        (r.school_sub_county || "Unspecified").trim() === reviewSubCounty &&
+        (effectiveSchoolName(r) || "Unspecified School") === reviewSchool,
+    ).length;
+  }, [rows, reviewCounty, reviewSubCounty, reviewSchool, hiddenIds]);
+
+  // All hidden students grouped by school, with search across school + student
+  // name / reference / guardian — powers the Hidden Students panel.
+  const hiddenGrouped = useMemo(() => {
+    const q = hiddenSearch.trim().toLowerCase();
+    const hidden = rows.filter((r) => hiddenIds.has(r.id));
+    const filtered = q
+      ? hidden.filter((r) =>
+          (r.student_name || "").toLowerCase().includes(q) ||
+          (r.reference || "").toLowerCase().includes(q) ||
+          (effectiveSchoolName(r) || "").toLowerCase().includes(q) ||
+          (r.school_name || "").toLowerCase().includes(q) ||
+          (r.guardian_name || "").toLowerCase().includes(q),
+        )
+      : hidden;
+    const map = new Map<string, Row[]>();
+    for (const r of filtered) {
+      const key = effectiveSchoolName(r) || "Unspecified School";
+      if (!map.has(key)) map.set(key, []);
+      map.get(key)!.push(r);
+    }
+    return Array.from(map.entries())
+      .map(([school, students]) => ({
+        school,
+        students: students.sort((a, b) => a.student_name.localeCompare(b.student_name)),
+      }))
+      .sort((a, b) => a.school.localeCompare(b.school));
+  }, [rows, hiddenIds, hiddenSearch]);
+
 
   // Variant raw spellings feeding into the currently-selected canonical school
   // name — shown to the admin so they can see exactly what they're merging.
@@ -1115,14 +1209,35 @@ function AdminBursariesPage() {
         {tab === "review" && (
           <div className="space-y-5">
             <div className="bg-card border border-border rounded-2xl p-5">
-              <h2 className="font-display font-bold text-lg flex items-center gap-2">
-                <MapPin className="h-5 w-5 text-gold" />
-                Review by Location
-              </h2>
-              <p className="text-sm text-muted-foreground mt-0.5">
-                Drill down from County → Sub-county → School to review every applicant from that school together,
-                and merge duplicate school name spellings into one consistent entry.
-              </p>
+              <div className="flex flex-wrap items-start justify-between gap-3">
+                <div>
+                  <h2 className="font-display font-bold text-lg flex items-center gap-2">
+                    <MapPin className="h-5 w-5 text-gold" />
+                    Review by Location
+                  </h2>
+                  <p className="text-sm text-muted-foreground mt-0.5">
+                    Drill down from County → Sub-county → School to review every applicant from that school together,
+                    and merge duplicate school name spellings into one consistent entry.
+                  </p>
+                </div>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setHiddenPanelOpen(true)}
+                  className="gap-1.5 shrink-0"
+                  title="View students you've temporarily hidden from review lists"
+                >
+                  <EyeOff className="h-3.5 w-3.5" />
+                  Hidden Students
+                  {hiddenIds.size > 0 && (
+                    <Badge className="ml-1 bg-slate-200 text-slate-800 hover:bg-slate-200 px-1.5 py-0 h-5">
+                      {hiddenIds.size}
+                    </Badge>
+                  )}
+                </Button>
+              </div>
+
+
 
               {/* Breadcrumb */}
               <div className="flex flex-wrap items-center gap-1.5 mt-4 text-sm">
@@ -1227,7 +1342,7 @@ function AdminBursariesPage() {
                   <ArrowLeft className="h-3.5 w-3.5" /> Back to {reviewCounty}
                 </Button>
                 <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                  {reviewSchools.map(({ school, count, pending, category }) => (
+                  {reviewSchools.map(({ school, count, pending, category, hidden }) => (
                     <button
                       key={school}
                       onClick={() => setReviewSchool(school)}
@@ -1240,13 +1355,18 @@ function AdminBursariesPage() {
                         </div>
                         <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0" />
                       </div>
-                      <div className="flex items-center gap-3 mt-2 ml-6">
+                      <div className="flex items-center flex-wrap gap-x-3 gap-y-1 mt-2 ml-6">
                         <span className="text-xs text-muted-foreground">
                           {category && `${category} · `}{count} student{count !== 1 ? "s" : ""}
                         </span>
                         {pending > 0 && (
                           <span className="flex items-center gap-1 text-xs font-semibold text-amber-700">
                             <Clock3 className="h-3 w-3" /> {pending} pending
+                          </span>
+                        )}
+                        {hidden > 0 && (
+                          <span className="flex items-center gap-1 text-xs font-semibold text-slate-500">
+                            <EyeOff className="h-3 w-3" /> {hidden} hidden
                           </span>
                         )}
                       </div>
@@ -1289,12 +1409,25 @@ function AdminBursariesPage() {
                 )}
 
                 <div className="bg-card border border-border rounded-2xl overflow-hidden">
-                  <div className="px-5 py-4 border-b border-border">
-                    <p className="font-display font-bold text-base text-foreground">{reviewSchool}</p>
-                    <p className="text-xs text-muted-foreground mt-0.5">
-                      {reviewStudents.length} application{reviewStudents.length !== 1 ? "s" : ""} from this school
-                    </p>
+                  <div className="px-5 py-4 border-b border-border flex flex-wrap items-start justify-between gap-2">
+                    <div>
+                      <p className="font-display font-bold text-base text-foreground">{reviewSchool}</p>
+                      <p className="text-xs text-muted-foreground mt-0.5">
+                        {reviewStudents.length} application{reviewStudents.length !== 1 ? "s" : ""} shown from this school
+                      </p>
+                    </div>
+                    {reviewSchoolHiddenCount > 0 && (
+                      <button
+                        onClick={() => setHiddenPanelOpen(true)}
+                        className="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-600 hover:text-primary bg-slate-100 hover:bg-primary/10 rounded-full px-3 py-1.5 transition-colors"
+                        title="View / restore hidden students"
+                      >
+                        <EyeOff className="h-3.5 w-3.5" />
+                        {reviewSchoolHiddenCount} hidden from this school
+                      </button>
+                    )}
                   </div>
+
                   <div className="overflow-x-auto">
                     <table className="w-full text-sm">
                       <thead className="bg-muted/30 text-[11px] uppercase tracking-wider text-muted-foreground">
@@ -1409,6 +1542,15 @@ function AdminBursariesPage() {
                                   disabled={r.status === "rejected"}
                                 >
                                   <XCircle className="h-3.5 w-3.5" /> Reject
+                                </Button>
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  className="gap-1 text-slate-600 hover:text-slate-900 hover:bg-slate-100"
+                                  onClick={() => hideStudent(r.id, r.student_name)}
+                                  title="Hide this student from the review list so you can focus on the rest. Restore later from the Hidden Students panel."
+                                >
+                                  <EyeOff className="h-3.5 w-3.5" /> Hide
                                 </Button>
                               </div>
                             </td>
@@ -2378,6 +2520,103 @@ function AdminBursariesPage() {
             >
               {renameSchoolBusy ? "Saving…" : "Apply to All"}
             </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Hidden Students Panel — restore students you temporarily hid from the review list */}
+      <Dialog open={hiddenPanelOpen} onOpenChange={setHiddenPanelOpen}>
+        <DialogContent className="max-w-2xl max-h-[85vh] flex flex-col">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <EyeOff className="h-5 w-5 text-slate-500" />
+              Hidden Students
+              {hiddenIds.size > 0 && (
+                <Badge className="bg-slate-200 text-slate-800 hover:bg-slate-200">{hiddenIds.size}</Badge>
+              )}
+            </DialogTitle>
+            <DialogDescription>
+              Students you've temporarily hidden from the review list, grouped by school. Search by school, student
+              name, reference or guardian, then click any student to restore them to the active list.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
+            <Input
+              value={hiddenSearch}
+              onChange={(e) => setHiddenSearch(e.target.value)}
+              placeholder="Search hidden students by school or name…"
+              className="pl-9"
+              autoFocus
+            />
+          </div>
+
+          <div className="flex-1 overflow-y-auto -mx-6 px-6 py-1">
+            {hiddenIds.size === 0 ? (
+              <div className="text-center py-12 text-sm text-muted-foreground">
+                <EyeOff className="h-8 w-8 mx-auto mb-3 opacity-40" />
+                <p className="font-medium text-foreground">No hidden students</p>
+                <p className="mt-1">
+                  Use the <span className="inline-flex items-center gap-1 font-semibold"><EyeOff className="h-3 w-3" />Hide</span> button
+                  on any student row to temporarily remove them from the review list while you approve the rest.
+                </p>
+              </div>
+            ) : hiddenGrouped.length === 0 ? (
+              <div className="text-center py-10 text-sm text-muted-foreground">
+                No hidden students match "<span className="font-semibold">{hiddenSearch}</span>".
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {hiddenGrouped.map(({ school, students }) => (
+                  <div key={school} className="border border-border rounded-xl overflow-hidden">
+                    <div className="px-4 py-2.5 bg-muted/40 flex items-center gap-2">
+                      <School className="h-4 w-4 text-primary shrink-0" />
+                      <p className="font-display font-bold text-sm text-foreground truncate flex-1">{school}</p>
+                      <span className="text-xs text-muted-foreground shrink-0">
+                        {students.length} hidden
+                      </span>
+                    </div>
+                    <ul className="divide-y divide-border">
+                      {students.map((r) => (
+                        <li key={r.id}>
+                          <button
+                            onClick={() => unhideStudent(r.id, r.student_name)}
+                            className="w-full flex items-center gap-3 px-4 py-2.5 text-left hover:bg-emerald-50 transition-colors group"
+                            title="Click to restore this student to the review list"
+                          >
+                            <div className="flex-1 min-w-0">
+                              <p className="font-semibold text-sm text-foreground truncate">{r.student_name}</p>
+                              <p className="text-[11px] text-muted-foreground truncate">
+                                <span className="font-mono text-primary">{r.reference}</span>
+                                {" · "}{r.current_grade}
+                                {r.guardian_name && ` · ${r.guardian_name}`}
+                              </p>
+                            </div>
+                            <Badge className={STATUS_COLORS[r.status] ?? ""}>{r.status}</Badge>
+                            <span className="inline-flex items-center gap-1 text-xs font-semibold text-emerald-700 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
+                              <RotateCcw className="h-3.5 w-3.5" /> Restore
+                            </span>
+                          </button>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          <DialogFooter className="sm:justify-between gap-2">
+            <Button
+              variant="ghost"
+              className="text-slate-600 hover:text-rose-700 hover:bg-rose-50 gap-1.5"
+              onClick={clearAllHidden}
+              disabled={hiddenIds.size === 0}
+            >
+              <RotateCcw className="h-4 w-4" /> Restore all
+            </Button>
+            <Button variant="outline" onClick={() => setHiddenPanelOpen(false)}>Close</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
