@@ -2523,6 +2523,103 @@ function AdminBursariesPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Hidden Students Panel — restore students you temporarily hid from the review list */}
+      <Dialog open={hiddenPanelOpen} onOpenChange={setHiddenPanelOpen}>
+        <DialogContent className="max-w-2xl max-h-[85vh] flex flex-col">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <EyeOff className="h-5 w-5 text-slate-500" />
+              Hidden Students
+              {hiddenIds.size > 0 && (
+                <Badge className="bg-slate-200 text-slate-800 hover:bg-slate-200">{hiddenIds.size}</Badge>
+              )}
+            </DialogTitle>
+            <DialogDescription>
+              Students you've temporarily hidden from the review list, grouped by school. Search by school, student
+              name, reference or guardian, then click any student to restore them to the active list.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
+            <Input
+              value={hiddenSearch}
+              onChange={(e) => setHiddenSearch(e.target.value)}
+              placeholder="Search hidden students by school or name…"
+              className="pl-9"
+              autoFocus
+            />
+          </div>
+
+          <div className="flex-1 overflow-y-auto -mx-6 px-6 py-1">
+            {hiddenIds.size === 0 ? (
+              <div className="text-center py-12 text-sm text-muted-foreground">
+                <EyeOff className="h-8 w-8 mx-auto mb-3 opacity-40" />
+                <p className="font-medium text-foreground">No hidden students</p>
+                <p className="mt-1">
+                  Use the <span className="inline-flex items-center gap-1 font-semibold"><EyeOff className="h-3 w-3" />Hide</span> button
+                  on any student row to temporarily remove them from the review list while you approve the rest.
+                </p>
+              </div>
+            ) : hiddenGrouped.length === 0 ? (
+              <div className="text-center py-10 text-sm text-muted-foreground">
+                No hidden students match "<span className="font-semibold">{hiddenSearch}</span>".
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {hiddenGrouped.map(({ school, students }) => (
+                  <div key={school} className="border border-border rounded-xl overflow-hidden">
+                    <div className="px-4 py-2.5 bg-muted/40 flex items-center gap-2">
+                      <School className="h-4 w-4 text-primary shrink-0" />
+                      <p className="font-display font-bold text-sm text-foreground truncate flex-1">{school}</p>
+                      <span className="text-xs text-muted-foreground shrink-0">
+                        {students.length} hidden
+                      </span>
+                    </div>
+                    <ul className="divide-y divide-border">
+                      {students.map((r) => (
+                        <li key={r.id}>
+                          <button
+                            onClick={() => unhideStudent(r.id, r.student_name)}
+                            className="w-full flex items-center gap-3 px-4 py-2.5 text-left hover:bg-emerald-50 transition-colors group"
+                            title="Click to restore this student to the review list"
+                          >
+                            <div className="flex-1 min-w-0">
+                              <p className="font-semibold text-sm text-foreground truncate">{r.student_name}</p>
+                              <p className="text-[11px] text-muted-foreground truncate">
+                                <span className="font-mono text-primary">{r.reference}</span>
+                                {" · "}{r.current_grade}
+                                {r.guardian_name && ` · ${r.guardian_name}`}
+                              </p>
+                            </div>
+                            <Badge className={STATUS_COLORS[r.status] ?? ""}>{r.status}</Badge>
+                            <span className="inline-flex items-center gap-1 text-xs font-semibold text-emerald-700 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
+                              <RotateCcw className="h-3.5 w-3.5" /> Restore
+                            </span>
+                          </button>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          <DialogFooter className="sm:justify-between gap-2">
+            <Button
+              variant="ghost"
+              className="text-slate-600 hover:text-rose-700 hover:bg-rose-50 gap-1.5"
+              onClick={clearAllHidden}
+              disabled={hiddenIds.size === 0}
+            >
+              <RotateCcw className="h-4 w-4" /> Restore all
+            </Button>
+            <Button variant="outline" onClick={() => setHiddenPanelOpen(false)}>Close</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </AdminLayout>
   );
 }
