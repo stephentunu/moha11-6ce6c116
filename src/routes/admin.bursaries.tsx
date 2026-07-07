@@ -1237,10 +1237,7 @@ function AdminBursariesPage() {
                 </Button>
               </div>
 
-              <p className="text-sm text-muted-foreground mt-0.5">
-                Drill down from County → Sub-county → School to review every applicant from that school together,
-                and merge duplicate school name spellings into one consistent entry.
-              </p>
+
 
               {/* Breadcrumb */}
               <div className="flex flex-wrap items-center gap-1.5 mt-4 text-sm">
