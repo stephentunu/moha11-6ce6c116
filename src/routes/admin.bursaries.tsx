@@ -374,9 +374,25 @@ function AdminBursariesPage() {
       .sort((a, b) => a.school.localeCompare(b.school));
   }, [bySchool, letterSchoolSearch, archivedSchools, showArchived]);
 
-  const letterSelectedRows = useMemo(
+  // All approved students for the selected school (includes hidden ones —
+  // used to compute hidden counts / restore inline).
+  const letterSelectedAllRows = useMemo(
     () => (letterSelectedSchool ? bySchool.get(letterSelectedSchool) ?? [] : []),
     [bySchool, letterSelectedSchool]
+  );
+
+  // Students that will actually appear on the downloaded confirmation letter
+  // (excludes any the admin has hidden). The download function and the
+  // preview table both read from this list, so hiding a student here removes
+  // them from the generated PDF and the running total.
+  const letterSelectedRows = useMemo(
+    () => letterSelectedAllRows.filter((r) => !hiddenIds.has(r.id)),
+    [letterSelectedAllRows, hiddenIds]
+  );
+
+  const letterSelectedHiddenCount = useMemo(
+    () => letterSelectedAllRows.filter((r) => hiddenIds.has(r.id)).length,
+    [letterSelectedAllRows, hiddenIds]
   );
 
   const letterSelectedTotal = useMemo(
