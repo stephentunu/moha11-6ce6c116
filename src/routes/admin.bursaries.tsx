@@ -1353,11 +1353,6 @@ function AdminBursariesPage() {
                             <Clock3 className="h-3 w-3" /> {pending} pending
                           </span>
                         )}
-                        {hidden > 0 && (
-                          <span className="flex items-center gap-1 text-xs font-semibold text-slate-500">
-                            <EyeOff className="h-3 w-3" /> {hidden} hidden
-                          </span>
-                        )}
                       </div>
                     </button>
                   ))}
