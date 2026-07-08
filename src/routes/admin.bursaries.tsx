@@ -2125,6 +2125,7 @@ function AdminBursariesPage() {
                             <th className="text-left px-3 py-2">Name</th>
                             <th className="text-left px-3 py-2">Form / Adm No.</th>
                             <th className="text-right px-3 py-2">Amount</th>
+                            <th className="text-right px-3 py-2 w-24">Action</th>
                           </tr>
                         </thead>
                         <tbody className="divide-y divide-border">
@@ -2138,8 +2139,28 @@ function AdminBursariesPage() {
                               <td className="px-3 py-2 text-right font-semibold">
                                 {r.amount_requested ? `KSh ${Number(r.amount_requested).toLocaleString()}` : "—"}
                               </td>
+                              <td className="px-3 py-2 text-right">
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  className="h-7 gap-1 text-slate-600 hover:text-slate-900 hover:bg-slate-100"
+                                  onClick={() => hideStudent(r.id, r.student_name)}
+                                  title="Hide this student from the confirmation letter download. Restore later from the Hidden Students panel."
+                                >
+                                  <EyeOff className="h-3.5 w-3.5" /> Hide
+                                </Button>
+                              </td>
                             </tr>
                           ))}
+                          {letterSelectedRows.length === 0 && (
+                            <tr>
+                              <td colSpan={5} className="px-3 py-6 text-center text-xs text-muted-foreground">
+                                {letterSelectedHiddenCount > 0
+                                  ? "All students for this school are currently hidden. Restore some from the Hidden Students panel to include them."
+                                  : "No approved students for this school yet."}
+                              </td>
+                            </tr>
+                          )}
                         </tbody>
                         <tfoot>
                           <tr className="bg-emerald-50">
@@ -2149,6 +2170,7 @@ function AdminBursariesPage() {
                             <td className="px-3 py-2 text-right font-bold text-emerald-700">
                               KSh {letterSelectedTotal.toLocaleString()}
                             </td>
+                            <td className="px-3 py-2" />
                           </tr>
                         </tfoot>
                       </table>
