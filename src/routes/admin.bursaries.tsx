@@ -2584,7 +2584,8 @@ function AdminBursariesPage() {
                 <p className="font-medium text-foreground">No hidden students</p>
                 <p className="mt-1">
                   Use the <span className="inline-flex items-center gap-1 font-semibold"><EyeOff className="h-3 w-3" />Hide</span> button
-                  on any student row to temporarily remove them from the review list while you approve the rest.
+                  on any beneficiary row in the Confirmation Letters tab to exclude that student from the next letter
+                  download, then restore them here later so they reappear.
                 </p>
               </div>
             ) : hiddenGrouped.length === 0 ? (
