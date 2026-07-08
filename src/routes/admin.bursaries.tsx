@@ -150,10 +150,12 @@ function AdminBursariesPage() {
   const [archiveBusy, setArchiveBusy] = useState<string | null>(null);
   const [archiveConfirmSchool, setArchiveConfirmSchool] = useState<string | null>(null);
 
-  // Per-student "hide from review" — lets admins temporarily remove students
-  // from a school's review list while approving the rest, then restore them
-  // later from the Hidden Students panel. Persisted per-browser in localStorage.
-  const HIDDEN_STORAGE_KEY = "bursary_hidden_students_v1";
+  // Per-student "hide from confirmation letter" — lets admins temporarily
+  // exclude specific students from a school's confirmation letter download,
+  // so they can produce a letter containing only the students that have
+  // NOT been sent yet, then unhide them later so they reappear. Persisted
+  // per-browser in localStorage.
+  const HIDDEN_STORAGE_KEY = "bursary_letter_hidden_students_v1";
   const [hiddenIds, setHiddenIds] = useState<Set<string>>(() => {
     if (typeof window === "undefined") return new Set();
     try {
@@ -176,8 +178,8 @@ function AdminBursariesPage() {
       next.add(id);
       return next;
     });
-    toast.success(`${name || "Student"} hidden from review list`, {
-      description: "Restore anytime from the Hidden Students panel.",
+    toast.success(`${name || "Student"} hidden from confirmation letter`, {
+      description: "The letter download will now skip this student. Restore anytime from the Hidden Students panel.",
     });
   };
 
@@ -187,7 +189,7 @@ function AdminBursariesPage() {
       next.delete(id);
       return next;
     });
-    toast.success(`${name || "Student"} restored to the review list`);
+    toast.success(`${name || "Student"} restored to the confirmation letter`);
   };
 
   const clearAllHidden = () => {
