@@ -440,17 +440,16 @@ function AdminBursariesPage() {
     }
     return Array.from(map.entries())
       .map(([school, schoolRows]) => {
-        const visible = schoolRows.filter((r) => !hiddenIds.has(r.id));
         return {
           school,
-          count: visible.length,
-          hidden: schoolRows.length - visible.length,
-          pending: visible.filter((r) => r.status === "pending").length,
+          count: schoolRows.length,
+          hidden: 0,
+          pending: schoolRows.filter((r) => r.status === "pending").length,
           category: schoolRows[0]?.school_category ?? null,
         };
       })
       .sort((a, b) => a.school.localeCompare(b.school));
-  }, [rows, reviewCounty, reviewSubCounty, hiddenIds]);
+  }, [rows, reviewCounty, reviewSubCounty]);
 
   const reviewStudents = useMemo(() => {
     if (!reviewCounty || !reviewSubCounty || !reviewSchool) return [];
@@ -459,24 +458,13 @@ function AdminBursariesPage() {
         (r) =>
           (r.school_county || "Unspecified").trim() === reviewCounty &&
           (r.school_sub_county || "Unspecified").trim() === reviewSubCounty &&
-          (effectiveSchoolName(r) || "Unspecified School") === reviewSchool &&
-          !hiddenIds.has(r.id),
+          (effectiveSchoolName(r) || "Unspecified School") === reviewSchool,
       )
       .sort((a, b) => a.student_name.localeCompare(b.student_name));
-  }, [rows, reviewCounty, reviewSubCounty, reviewSchool, hiddenIds]);
+  }, [rows, reviewCounty, reviewSubCounty, reviewSchool]);
 
-  // Count of hidden students for the school currently under review — shown
-  // inline so the admin never forgets there are hidden rows behind the list.
-  const reviewSchoolHiddenCount = useMemo(() => {
-    if (!reviewCounty || !reviewSubCounty || !reviewSchool) return 0;
-    return rows.filter(
-      (r) =>
-        hiddenIds.has(r.id) &&
-        (r.school_county || "Unspecified").trim() === reviewCounty &&
-        (r.school_sub_county || "Unspecified").trim() === reviewSubCounty &&
-        (effectiveSchoolName(r) || "Unspecified School") === reviewSchool,
-    ).length;
-  }, [rows, reviewCounty, reviewSubCounty, reviewSchool, hiddenIds]);
+  // Reserved (no longer used for review — hide/unhide moved to letters tab).
+  const reviewSchoolHiddenCount = 0;
 
   // All hidden students grouped by school, with search across school + student
   // name / reference / guardian — powers the Hidden Students panel.
