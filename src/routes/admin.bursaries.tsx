@@ -1520,15 +1520,6 @@ function AdminBursariesPage() {
                                 >
                                   <XCircle className="h-3.5 w-3.5" /> Reject
                                 </Button>
-                                <Button
-                                  size="sm"
-                                  variant="ghost"
-                                  className="gap-1 text-slate-600 hover:text-slate-900 hover:bg-slate-100"
-                                  onClick={() => hideStudent(r.id, r.student_name)}
-                                  title="Hide this student from the review list so you can focus on the rest. Restore later from the Hidden Students panel."
-                                >
-                                  <EyeOff className="h-3.5 w-3.5" /> Hide
-                                </Button>
                               </div>
                             </td>
                           </tr>
