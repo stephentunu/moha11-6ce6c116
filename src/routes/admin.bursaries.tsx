@@ -2548,7 +2548,7 @@ function AdminBursariesPage() {
         </DialogContent>
       </Dialog>
 
-      {/* Hidden Students Panel — restore students you temporarily hid from the review list */}
+      {/* Hidden Students Panel — restore students you temporarily hid from confirmation letter downloads */}
       <Dialog open={hiddenPanelOpen} onOpenChange={setHiddenPanelOpen}>
         <DialogContent className="max-w-2xl max-h-[85vh] flex flex-col">
           <DialogHeader>
