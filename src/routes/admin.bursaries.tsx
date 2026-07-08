@@ -2053,7 +2053,7 @@ function AdminBursariesPage() {
                         Manage
                       </Button>
                     </div>
-                  )
+                  )}
 
                   {/* Letter details form */}
                   <div className="grid sm:grid-cols-2 gap-4 bg-muted/20 border border-border rounded-xl p-4">
