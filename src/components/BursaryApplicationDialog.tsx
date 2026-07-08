@@ -1,4 +1,4 @@
-import { useState, useMemo, type ReactNode } from "react";
+import { useState, useMemo, useEffect, type ReactNode } from "react";
 import { useLanguage } from "@/hooks/useLanguage";
 import { z } from "zod";
 import { toast } from "sonner";
@@ -167,6 +167,54 @@ export function BursaryApplicationDialog({ trigger }: { trigger: ReactNode }) {
     () => (form.schoolCounty ? KENYA_COUNTIES[form.schoolCounty] ?? [] : []),
     [form.schoolCounty],
   );
+
+  // Suggest school names the applicant may be trying to type — pulled from
+  // previously submitted applications so everyone converges on the same
+  // spelling (e.g. "Kanga High School") instead of variants like
+  // "kanga school" / "kanga boys high school". Loaded once when the dialog
+  // first opens, then filtered client-side as the user types.
+  const [schoolSuggestions, setSchoolSuggestions] = useState<string[]>([]);
+  useEffect(() => {
+    if (!open || schoolSuggestions.length > 0) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const { data, error } = await supabase
+          .from("bursary_applications")
+          .select("school_name, canonical_school_name")
+          .limit(2000);
+        if (error || cancelled || !data) return;
+        const set = new Set<string>();
+        for (const row of data) {
+          const canonical = (row as { canonical_school_name: string | null }).canonical_school_name;
+          const raw = (row as { school_name: string | null }).school_name;
+          const name = (canonical || raw || "").trim();
+          if (name.length >= 2) set.add(name);
+        }
+        setSchoolSuggestions(Array.from(set).sort((a, b) => a.localeCompare(b)));
+      } catch {
+        /* offline / permission — silently skip suggestions */
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [open, schoolSuggestions.length]);
+
+  // Live-filtered subset shown in the datalist as the applicant types, so the
+  // browser's native suggestion dropdown never gets overwhelmed.
+  const filteredSchoolSuggestions = useMemo(() => {
+    const q = form.schoolName.trim().toLowerCase();
+    if (!q) return schoolSuggestions.slice(0, 20);
+    const starts: string[] = [];
+    const contains: string[] = [];
+    for (const s of schoolSuggestions) {
+      const lower = s.toLowerCase();
+      if (lower === q) continue;
+      if (lower.startsWith(q)) starts.push(s);
+      else if (lower.includes(q)) contains.push(s);
+      if (starts.length + contains.length >= 20) break;
+    }
+    return [...starts, ...contains].slice(0, 20);
+  }, [form.schoolName, schoolSuggestions]);
 
   const validateStep = async (): Promise<boolean> => {
     try {
@@ -521,7 +569,23 @@ export function BursaryApplicationDialog({ trigger }: { trigger: ReactNode }) {
                 <SectionLabel icon={School}>{t("School's Details")}</SectionLabel>
                 <div className="grid sm:grid-cols-2 gap-4">
                   <Field label={t("School name *")}>
-                    <Input value={form.schoolName} onChange={(e) => set("schoolName", e.target.value)} />
+                    <Input
+                      value={form.schoolName}
+                      onChange={(e) => set("schoolName", e.target.value)}
+                      list="bursary-school-suggestions"
+                      autoComplete="off"
+                      placeholder={t("Start typing e.g. Kanga High School")}
+                    />
+                    <datalist id="bursary-school-suggestions">
+                      {filteredSchoolSuggestions.map((name) => (
+                        <option key={name} value={name} />
+                      ))}
+                    </datalist>
+                    {form.schoolName.trim().length >= 2 && filteredSchoolSuggestions.length > 0 && (
+                      <p className="text-[11px] text-muted-foreground mt-1">
+                        {t("Tip: pick an existing school from the suggestions to avoid duplicate spellings.")}
+                      </p>
+                    )}
                   </Field>
                   <Field label={t("School category *")}>
                     <Select value={form.schoolCategory} onValueChange={(v) => set("schoolCategory", v)}>

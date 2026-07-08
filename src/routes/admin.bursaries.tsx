@@ -150,10 +150,12 @@ function AdminBursariesPage() {
   const [archiveBusy, setArchiveBusy] = useState<string | null>(null);
   const [archiveConfirmSchool, setArchiveConfirmSchool] = useState<string | null>(null);
 
-  // Per-student "hide from review" — lets admins temporarily remove students
-  // from a school's review list while approving the rest, then restore them
-  // later from the Hidden Students panel. Persisted per-browser in localStorage.
-  const HIDDEN_STORAGE_KEY = "bursary_hidden_students_v1";
+  // Per-student "hide from confirmation letter" — lets admins temporarily
+  // exclude specific students from a school's confirmation letter download,
+  // so they can produce a letter containing only the students that have
+  // NOT been sent yet, then unhide them later so they reappear. Persisted
+  // per-browser in localStorage.
+  const HIDDEN_STORAGE_KEY = "bursary_letter_hidden_students_v1";
   const [hiddenIds, setHiddenIds] = useState<Set<string>>(() => {
     if (typeof window === "undefined") return new Set();
     try {
@@ -176,8 +178,8 @@ function AdminBursariesPage() {
       next.add(id);
       return next;
     });
-    toast.success(`${name || "Student"} hidden from review list`, {
-      description: "Restore anytime from the Hidden Students panel.",
+    toast.success(`${name || "Student"} hidden from confirmation letter`, {
+      description: "The letter download will now skip this student. Restore anytime from the Hidden Students panel.",
     });
   };
 
@@ -187,7 +189,7 @@ function AdminBursariesPage() {
       next.delete(id);
       return next;
     });
-    toast.success(`${name || "Student"} restored to the review list`);
+    toast.success(`${name || "Student"} restored to the confirmation letter`);
   };
 
   const clearAllHidden = () => {
@@ -372,9 +374,25 @@ function AdminBursariesPage() {
       .sort((a, b) => a.school.localeCompare(b.school));
   }, [bySchool, letterSchoolSearch, archivedSchools, showArchived]);
 
-  const letterSelectedRows = useMemo(
+  // All approved students for the selected school (includes hidden ones —
+  // used to compute hidden counts / restore inline).
+  const letterSelectedAllRows = useMemo(
     () => (letterSelectedSchool ? bySchool.get(letterSelectedSchool) ?? [] : []),
     [bySchool, letterSelectedSchool]
+  );
+
+  // Students that will actually appear on the downloaded confirmation letter
+  // (excludes any the admin has hidden). The download function and the
+  // preview table both read from this list, so hiding a student here removes
+  // them from the generated PDF and the running total.
+  const letterSelectedRows = useMemo(
+    () => letterSelectedAllRows.filter((r) => !hiddenIds.has(r.id)),
+    [letterSelectedAllRows, hiddenIds]
+  );
+
+  const letterSelectedHiddenCount = useMemo(
+    () => letterSelectedAllRows.filter((r) => hiddenIds.has(r.id)).length,
+    [letterSelectedAllRows, hiddenIds]
   );
 
   const letterSelectedTotal = useMemo(
@@ -438,17 +456,16 @@ function AdminBursariesPage() {
     }
     return Array.from(map.entries())
       .map(([school, schoolRows]) => {
-        const visible = schoolRows.filter((r) => !hiddenIds.has(r.id));
         return {
           school,
-          count: visible.length,
-          hidden: schoolRows.length - visible.length,
-          pending: visible.filter((r) => r.status === "pending").length,
+          count: schoolRows.length,
+          hidden: 0,
+          pending: schoolRows.filter((r) => r.status === "pending").length,
           category: schoolRows[0]?.school_category ?? null,
         };
       })
       .sort((a, b) => a.school.localeCompare(b.school));
-  }, [rows, reviewCounty, reviewSubCounty, hiddenIds]);
+  }, [rows, reviewCounty, reviewSubCounty]);
 
   const reviewStudents = useMemo(() => {
     if (!reviewCounty || !reviewSubCounty || !reviewSchool) return [];
@@ -457,24 +474,13 @@ function AdminBursariesPage() {
         (r) =>
           (r.school_county || "Unspecified").trim() === reviewCounty &&
           (r.school_sub_county || "Unspecified").trim() === reviewSubCounty &&
-          (effectiveSchoolName(r) || "Unspecified School") === reviewSchool &&
-          !hiddenIds.has(r.id),
+          (effectiveSchoolName(r) || "Unspecified School") === reviewSchool,
       )
       .sort((a, b) => a.student_name.localeCompare(b.student_name));
-  }, [rows, reviewCounty, reviewSubCounty, reviewSchool, hiddenIds]);
+  }, [rows, reviewCounty, reviewSubCounty, reviewSchool]);
 
-  // Count of hidden students for the school currently under review — shown
-  // inline so the admin never forgets there are hidden rows behind the list.
-  const reviewSchoolHiddenCount = useMemo(() => {
-    if (!reviewCounty || !reviewSubCounty || !reviewSchool) return 0;
-    return rows.filter(
-      (r) =>
-        hiddenIds.has(r.id) &&
-        (r.school_county || "Unspecified").trim() === reviewCounty &&
-        (r.school_sub_county || "Unspecified").trim() === reviewSubCounty &&
-        (effectiveSchoolName(r) || "Unspecified School") === reviewSchool,
-    ).length;
-  }, [rows, reviewCounty, reviewSubCounty, reviewSchool, hiddenIds]);
+  // Reserved (no longer used for review — hide/unhide moved to letters tab).
+  const reviewSchoolHiddenCount = 0;
 
   // All hidden students grouped by school, with search across school + student
   // name / reference / guardian — powers the Hidden Students panel.
@@ -1209,32 +1215,15 @@ function AdminBursariesPage() {
         {tab === "review" && (
           <div className="space-y-5">
             <div className="bg-card border border-border rounded-2xl p-5">
-              <div className="flex flex-wrap items-start justify-between gap-3">
-                <div>
-                  <h2 className="font-display font-bold text-lg flex items-center gap-2">
-                    <MapPin className="h-5 w-5 text-gold" />
-                    Review by Location
-                  </h2>
-                  <p className="text-sm text-muted-foreground mt-0.5">
-                    Drill down from County → Sub-county → School to review every applicant from that school together,
-                    and merge duplicate school name spellings into one consistent entry.
-                  </p>
-                </div>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setHiddenPanelOpen(true)}
-                  className="gap-1.5 shrink-0"
-                  title="View students you've temporarily hidden from review lists"
-                >
-                  <EyeOff className="h-3.5 w-3.5" />
-                  Hidden Students
-                  {hiddenIds.size > 0 && (
-                    <Badge className="ml-1 bg-slate-200 text-slate-800 hover:bg-slate-200 px-1.5 py-0 h-5">
-                      {hiddenIds.size}
-                    </Badge>
-                  )}
-                </Button>
+              <div>
+                <h2 className="font-display font-bold text-lg flex items-center gap-2">
+                  <MapPin className="h-5 w-5 text-gold" />
+                  Review by Location
+                </h2>
+                <p className="text-sm text-muted-foreground mt-0.5">
+                  Drill down from County → Sub-county → School to review every applicant from that school together,
+                  and merge duplicate school name spellings into one consistent entry.
+                </p>
               </div>
 
 
@@ -1364,11 +1353,6 @@ function AdminBursariesPage() {
                             <Clock3 className="h-3 w-3" /> {pending} pending
                           </span>
                         )}
-                        {hidden > 0 && (
-                          <span className="flex items-center gap-1 text-xs font-semibold text-slate-500">
-                            <EyeOff className="h-3 w-3" /> {hidden} hidden
-                          </span>
-                        )}
                       </div>
                     </button>
                   ))}
@@ -1409,23 +1393,11 @@ function AdminBursariesPage() {
                 )}
 
                 <div className="bg-card border border-border rounded-2xl overflow-hidden">
-                  <div className="px-5 py-4 border-b border-border flex flex-wrap items-start justify-between gap-2">
-                    <div>
-                      <p className="font-display font-bold text-base text-foreground">{reviewSchool}</p>
-                      <p className="text-xs text-muted-foreground mt-0.5">
-                        {reviewStudents.length} application{reviewStudents.length !== 1 ? "s" : ""} shown from this school
-                      </p>
-                    </div>
-                    {reviewSchoolHiddenCount > 0 && (
-                      <button
-                        onClick={() => setHiddenPanelOpen(true)}
-                        className="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-600 hover:text-primary bg-slate-100 hover:bg-primary/10 rounded-full px-3 py-1.5 transition-colors"
-                        title="View / restore hidden students"
-                      >
-                        <EyeOff className="h-3.5 w-3.5" />
-                        {reviewSchoolHiddenCount} hidden from this school
-                      </button>
-                    )}
+                  <div className="px-5 py-4 border-b border-border">
+                    <p className="font-display font-bold text-base text-foreground">{reviewSchool}</p>
+                    <p className="text-xs text-muted-foreground mt-0.5">
+                      {reviewStudents.length} application{reviewStudents.length !== 1 ? "s" : ""} shown from this school
+                    </p>
                   </div>
 
                   <div className="overflow-x-auto">
@@ -1542,15 +1514,6 @@ function AdminBursariesPage() {
                                   disabled={r.status === "rejected"}
                                 >
                                   <XCircle className="h-3.5 w-3.5" /> Reject
-                                </Button>
-                                <Button
-                                  size="sm"
-                                  variant="ghost"
-                                  className="gap-1 text-slate-600 hover:text-slate-900 hover:bg-slate-100"
-                                  onClick={() => hideStudent(r.id, r.student_name)}
-                                  title="Hide this student from the review list so you can focus on the rest. Restore later from the Hidden Students panel."
-                                >
-                                  <EyeOff className="h-3.5 w-3.5" /> Hide
                                 </Button>
                               </div>
                             </td>
@@ -1900,6 +1863,21 @@ function AdminBursariesPage() {
                 >
                   <Download className="h-4 w-4" /> Download Blank Form
                 </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setHiddenPanelOpen(true)}
+                  className="mt-2 w-full gap-2"
+                  title="View / restore students you've hidden from confirmation letter downloads"
+                >
+                  <EyeOff className="h-4 w-4" />
+                  Hidden Students
+                  {hiddenIds.size > 0 && (
+                    <Badge className="ml-1 bg-slate-200 text-slate-800 hover:bg-slate-200 px-1.5 py-0 h-5">
+                      {hiddenIds.size}
+                    </Badge>
+                  )}
+                </Button>
               </div>
 
               <div className="relative">
@@ -2053,6 +2031,30 @@ function AdminBursariesPage() {
                     </div>
                   )}
 
+                  {letterSelectedHiddenCount > 0 && (
+                    <div className="flex items-start justify-between gap-3 bg-slate-50 dark:bg-slate-900/40 border border-slate-200 dark:border-slate-800 rounded-xl px-4 py-3">
+                      <div className="flex items-start gap-3">
+                        <EyeOff className="h-4 w-4 text-slate-500 mt-0.5 shrink-0" />
+                        <div className="text-sm text-slate-700 dark:text-slate-300">
+                          <p className="font-semibold">
+                            {letterSelectedHiddenCount} student{letterSelectedHiddenCount !== 1 ? "s" : ""} hidden from this letter
+                          </p>
+                          <p className="text-xs mt-0.5">
+                            They will NOT appear on the downloaded confirmation letter. Restore them anytime to include them again.
+                          </p>
+                        </div>
+                      </div>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => setHiddenPanelOpen(true)}
+                        className="shrink-0 text-slate-600 hover:text-primary"
+                      >
+                        Manage
+                      </Button>
+                    </div>
+                  )}
+
                   {/* Letter details form */}
                   <div className="grid sm:grid-cols-2 gap-4 bg-muted/20 border border-border rounded-xl p-4">
                     <div>
@@ -2123,6 +2125,7 @@ function AdminBursariesPage() {
                             <th className="text-left px-3 py-2">Name</th>
                             <th className="text-left px-3 py-2">Form / Adm No.</th>
                             <th className="text-right px-3 py-2">Amount</th>
+                            <th className="text-right px-3 py-2 w-24">Action</th>
                           </tr>
                         </thead>
                         <tbody className="divide-y divide-border">
@@ -2136,8 +2139,28 @@ function AdminBursariesPage() {
                               <td className="px-3 py-2 text-right font-semibold">
                                 {r.amount_requested ? `KSh ${Number(r.amount_requested).toLocaleString()}` : "—"}
                               </td>
+                              <td className="px-3 py-2 text-right">
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  className="h-7 gap-1 text-slate-600 hover:text-slate-900 hover:bg-slate-100"
+                                  onClick={() => hideStudent(r.id, r.student_name)}
+                                  title="Hide this student from the confirmation letter download. Restore later from the Hidden Students panel."
+                                >
+                                  <EyeOff className="h-3.5 w-3.5" /> Hide
+                                </Button>
+                              </td>
                             </tr>
                           ))}
+                          {letterSelectedRows.length === 0 && (
+                            <tr>
+                              <td colSpan={5} className="px-3 py-6 text-center text-xs text-muted-foreground">
+                                {letterSelectedHiddenCount > 0
+                                  ? "All students for this school are currently hidden. Restore some from the Hidden Students panel to include them."
+                                  : "No approved students for this school yet."}
+                              </td>
+                            </tr>
+                          )}
                         </tbody>
                         <tfoot>
                           <tr className="bg-emerald-50">
@@ -2147,6 +2170,7 @@ function AdminBursariesPage() {
                             <td className="px-3 py-2 text-right font-bold text-emerald-700">
                               KSh {letterSelectedTotal.toLocaleString()}
                             </td>
+                            <td className="px-3 py-2" />
                           </tr>
                         </tfoot>
                       </table>
@@ -2524,7 +2548,7 @@ function AdminBursariesPage() {
         </DialogContent>
       </Dialog>
 
-      {/* Hidden Students Panel — restore students you temporarily hid from the review list */}
+      {/* Hidden Students Panel — restore students you temporarily hid from confirmation letter downloads */}
       <Dialog open={hiddenPanelOpen} onOpenChange={setHiddenPanelOpen}>
         <DialogContent className="max-w-2xl max-h-[85vh] flex flex-col">
           <DialogHeader>
@@ -2536,8 +2560,9 @@ function AdminBursariesPage() {
               )}
             </DialogTitle>
             <DialogDescription>
-              Students you've temporarily hidden from the review list, grouped by school. Search by school, student
-              name, reference or guardian, then click any student to restore them to the active list.
+              Students you've temporarily excluded from confirmation letter downloads, grouped by school. Search by
+              school, student name, reference or guardian, then click any student to restore them so they appear on
+              the next generated letter.
             </DialogDescription>
           </DialogHeader>
 
@@ -2559,7 +2584,8 @@ function AdminBursariesPage() {
                 <p className="font-medium text-foreground">No hidden students</p>
                 <p className="mt-1">
                   Use the <span className="inline-flex items-center gap-1 font-semibold"><EyeOff className="h-3 w-3" />Hide</span> button
-                  on any student row to temporarily remove them from the review list while you approve the rest.
+                  on any beneficiary row in the Confirmation Letters tab to exclude that student from the next letter
+                  download, then restore them here later so they reappear.
                 </p>
               </div>
             ) : hiddenGrouped.length === 0 ? (
@@ -2583,7 +2609,7 @@ function AdminBursariesPage() {
                           <button
                             onClick={() => unhideStudent(r.id, r.student_name)}
                             className="w-full flex items-center gap-3 px-4 py-2.5 text-left hover:bg-emerald-50 transition-colors group"
-                            title="Click to restore this student to the review list"
+                            title="Click to restore this student to the confirmation letter"
                           >
                             <div className="flex-1 min-w-0">
                               <p className="font-semibold text-sm text-foreground truncate">{r.student_name}</p>
