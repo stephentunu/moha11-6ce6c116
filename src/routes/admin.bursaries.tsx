@@ -1215,32 +1215,15 @@ function AdminBursariesPage() {
         {tab === "review" && (
           <div className="space-y-5">
             <div className="bg-card border border-border rounded-2xl p-5">
-              <div className="flex flex-wrap items-start justify-between gap-3">
-                <div>
-                  <h2 className="font-display font-bold text-lg flex items-center gap-2">
-                    <MapPin className="h-5 w-5 text-gold" />
-                    Review by Location
-                  </h2>
-                  <p className="text-sm text-muted-foreground mt-0.5">
-                    Drill down from County → Sub-county → School to review every applicant from that school together,
-                    and merge duplicate school name spellings into one consistent entry.
-                  </p>
-                </div>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setHiddenPanelOpen(true)}
-                  className="gap-1.5 shrink-0"
-                  title="View students you've temporarily hidden from review lists"
-                >
-                  <EyeOff className="h-3.5 w-3.5" />
-                  Hidden Students
-                  {hiddenIds.size > 0 && (
-                    <Badge className="ml-1 bg-slate-200 text-slate-800 hover:bg-slate-200 px-1.5 py-0 h-5">
-                      {hiddenIds.size}
-                    </Badge>
-                  )}
-                </Button>
+              <div>
+                <h2 className="font-display font-bold text-lg flex items-center gap-2">
+                  <MapPin className="h-5 w-5 text-gold" />
+                  Review by Location
+                </h2>
+                <p className="text-sm text-muted-foreground mt-0.5">
+                  Drill down from County → Sub-county → School to review every applicant from that school together,
+                  and merge duplicate school name spellings into one consistent entry.
+                </p>
               </div>
 
 
