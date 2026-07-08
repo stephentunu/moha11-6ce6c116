@@ -569,7 +569,23 @@ export function BursaryApplicationDialog({ trigger }: { trigger: ReactNode }) {
                 <SectionLabel icon={School}>{t("School's Details")}</SectionLabel>
                 <div className="grid sm:grid-cols-2 gap-4">
                   <Field label={t("School name *")}>
-                    <Input value={form.schoolName} onChange={(e) => set("schoolName", e.target.value)} />
+                    <Input
+                      value={form.schoolName}
+                      onChange={(e) => set("schoolName", e.target.value)}
+                      list="bursary-school-suggestions"
+                      autoComplete="off"
+                      placeholder={t("Start typing e.g. Kanga High School")}
+                    />
+                    <datalist id="bursary-school-suggestions">
+                      {filteredSchoolSuggestions.map((name) => (
+                        <option key={name} value={name} />
+                      ))}
+                    </datalist>
+                    {form.schoolName.trim().length >= 2 && filteredSchoolSuggestions.length > 0 && (
+                      <p className="text-[11px] text-muted-foreground mt-1">
+                        {t("Tip: pick an existing school from the suggestions to avoid duplicate spellings.")}
+                      </p>
+                    )}
                   </Field>
                   <Field label={t("School category *")}>
                     <Select value={form.schoolCategory} onValueChange={(v) => set("schoolCategory", v)}>
