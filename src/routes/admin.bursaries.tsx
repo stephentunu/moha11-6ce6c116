@@ -2031,6 +2031,30 @@ function AdminBursariesPage() {
                     </div>
                   )}
 
+                  {letterSelectedHiddenCount > 0 && (
+                    <div className="flex items-start justify-between gap-3 bg-slate-50 dark:bg-slate-900/40 border border-slate-200 dark:border-slate-800 rounded-xl px-4 py-3">
+                      <div className="flex items-start gap-3">
+                        <EyeOff className="h-4 w-4 text-slate-500 mt-0.5 shrink-0" />
+                        <div className="text-sm text-slate-700 dark:text-slate-300">
+                          <p className="font-semibold">
+                            {letterSelectedHiddenCount} student{letterSelectedHiddenCount !== 1 ? "s" : ""} hidden from this letter
+                          </p>
+                          <p className="text-xs mt-0.5">
+                            They will NOT appear on the downloaded confirmation letter. Restore them anytime to include them again.
+                          </p>
+                        </div>
+                      </div>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => setHiddenPanelOpen(true)}
+                        className="shrink-0 text-slate-600 hover:text-primary"
+                      >
+                        Manage
+                      </Button>
+                    </div>
+                  )
+
                   {/* Letter details form */}
                   <div className="grid sm:grid-cols-2 gap-4 bg-muted/20 border border-border rounded-xl p-4">
                     <div>
