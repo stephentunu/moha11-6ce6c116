@@ -168,6 +168,54 @@ export function BursaryApplicationDialog({ trigger }: { trigger: ReactNode }) {
     [form.schoolCounty],
   );
 
+  // Suggest school names the applicant may be trying to type — pulled from
+  // previously submitted applications so everyone converges on the same
+  // spelling (e.g. "Kanga High School") instead of variants like
+  // "kanga school" / "kanga boys high school". Loaded once when the dialog
+  // first opens, then filtered client-side as the user types.
+  const [schoolSuggestions, setSchoolSuggestions] = useState<string[]>([]);
+  useEffect(() => {
+    if (!open || schoolSuggestions.length > 0) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const { data, error } = await supabase
+          .from("bursary_applications")
+          .select("school_name, canonical_school_name")
+          .limit(2000);
+        if (error || cancelled || !data) return;
+        const set = new Set<string>();
+        for (const row of data) {
+          const canonical = (row as { canonical_school_name: string | null }).canonical_school_name;
+          const raw = (row as { school_name: string | null }).school_name;
+          const name = (canonical || raw || "").trim();
+          if (name.length >= 2) set.add(name);
+        }
+        setSchoolSuggestions(Array.from(set).sort((a, b) => a.localeCompare(b)));
+      } catch {
+        /* offline / permission — silently skip suggestions */
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [open, schoolSuggestions.length]);
+
+  // Live-filtered subset shown in the datalist as the applicant types, so the
+  // browser's native suggestion dropdown never gets overwhelmed.
+  const filteredSchoolSuggestions = useMemo(() => {
+    const q = form.schoolName.trim().toLowerCase();
+    if (!q) return schoolSuggestions.slice(0, 20);
+    const starts: string[] = [];
+    const contains: string[] = [];
+    for (const s of schoolSuggestions) {
+      const lower = s.toLowerCase();
+      if (lower === q) continue;
+      if (lower.startsWith(q)) starts.push(s);
+      else if (lower.includes(q)) contains.push(s);
+      if (starts.length + contains.length >= 20) break;
+    }
+    return [...starts, ...contains].slice(0, 20);
+  }, [form.schoolName, schoolSuggestions]);
+
   const validateStep = async (): Promise<boolean> => {
     try {
       if (step === 1) StudentSchema.parse(form);
