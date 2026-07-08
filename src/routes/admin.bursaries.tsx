@@ -1398,23 +1398,11 @@ function AdminBursariesPage() {
                 )}
 
                 <div className="bg-card border border-border rounded-2xl overflow-hidden">
-                  <div className="px-5 py-4 border-b border-border flex flex-wrap items-start justify-between gap-2">
-                    <div>
-                      <p className="font-display font-bold text-base text-foreground">{reviewSchool}</p>
-                      <p className="text-xs text-muted-foreground mt-0.5">
-                        {reviewStudents.length} application{reviewStudents.length !== 1 ? "s" : ""} shown from this school
-                      </p>
-                    </div>
-                    {reviewSchoolHiddenCount > 0 && (
-                      <button
-                        onClick={() => setHiddenPanelOpen(true)}
-                        className="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-600 hover:text-primary bg-slate-100 hover:bg-primary/10 rounded-full px-3 py-1.5 transition-colors"
-                        title="View / restore hidden students"
-                      >
-                        <EyeOff className="h-3.5 w-3.5" />
-                        {reviewSchoolHiddenCount} hidden from this school
-                      </button>
-                    )}
+                  <div className="px-5 py-4 border-b border-border">
+                    <p className="font-display font-bold text-base text-foreground">{reviewSchool}</p>
+                    <p className="text-xs text-muted-foreground mt-0.5">
+                      {reviewStudents.length} application{reviewStudents.length !== 1 ? "s" : ""} shown from this school
+                    </p>
                   </div>
 
                   <div className="overflow-x-auto">
