@@ -2609,7 +2609,7 @@ function AdminBursariesPage() {
                           <button
                             onClick={() => unhideStudent(r.id, r.student_name)}
                             className="w-full flex items-center gap-3 px-4 py-2.5 text-left hover:bg-emerald-50 transition-colors group"
-                            title="Click to restore this student to the review list"
+                            title="Click to restore this student to the confirmation letter"
                           >
                             <div className="flex-1 min-w-0">
                               <p className="font-semibold text-sm text-foreground truncate">{r.student_name}</p>
