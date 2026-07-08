@@ -2560,8 +2560,9 @@ function AdminBursariesPage() {
               )}
             </DialogTitle>
             <DialogDescription>
-              Students you've temporarily hidden from the review list, grouped by school. Search by school, student
-              name, reference or guardian, then click any student to restore them to the active list.
+              Students you've temporarily excluded from confirmation letter downloads, grouped by school. Search by
+              school, student name, reference or guardian, then click any student to restore them so they appear on
+              the next generated letter.
             </DialogDescription>
           </DialogHeader>
 
