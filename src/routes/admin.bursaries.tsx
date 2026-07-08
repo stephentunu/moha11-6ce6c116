@@ -1863,6 +1863,21 @@ function AdminBursariesPage() {
                 >
                   <Download className="h-4 w-4" /> Download Blank Form
                 </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setHiddenPanelOpen(true)}
+                  className="mt-2 w-full gap-2"
+                  title="View / restore students you've hidden from confirmation letter downloads"
+                >
+                  <EyeOff className="h-4 w-4" />
+                  Hidden Students
+                  {hiddenIds.size > 0 && (
+                    <Badge className="ml-1 bg-slate-200 text-slate-800 hover:bg-slate-200 px-1.5 py-0 h-5">
+                      {hiddenIds.size}
+                    </Badge>
+                  )}
+                </Button>
               </div>
 
               <div className="relative">
