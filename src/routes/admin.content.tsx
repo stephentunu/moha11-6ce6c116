@@ -8,7 +8,10 @@ import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
 import { Toaster } from "@/components/ui/sonner";
 import { AdminLayout } from "@/components/AdminLayout";
-import { useContent, updateContent, useBursaryWindow, saveBursaryWindowStart, type SiteContent } from "@/lib/admin-store";
+import { useContent, updateContent, useBursaryWindow, saveBursaryWindowStart, type SiteContent, useBursaryTerm, saveBursaryTerm, TERM_NAMES, buildTermLabel, parseTermLabel } from "@/lib/admin-store";
+import {
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+} from "@/components/ui/select";
 
 export const Route = createFileRoute("/admin/content")({
   head: () => ({
@@ -26,10 +29,21 @@ function AdminContentPage() {
   const { windowStart, loading: windowLoading } = useBursaryWindow();
   const [draftWindowStart, setDraftWindowStart] = useState<string>("");
   const [savingWindow, setSavingWindow] = useState(false);
+  const { term: currentTerm, loading: termLoading } = useBursaryTerm();
+  const currentYear = new Date().getFullYear();
+  const [draftTermName, setDraftTermName] = useState<string>(TERM_NAMES[0]);
+  const [draftTermYear, setDraftTermYear] = useState<string>(String(currentYear));
+  const [savingTerm, setSavingTerm] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => { setDraft(content); }, [content]);
   useEffect(() => { setDraftWindowStart(windowStart); }, [windowStart]);
+  useEffect(() => {
+    if (!currentTerm) return;
+    const { termName, year } = parseTermLabel(currentTerm);
+    if (termName) setDraftTermName(termName);
+    if (year) setDraftTermYear(year);
+  }, [currentTerm]);
 
   const update = <K extends keyof SiteContent>(k: K, v: SiteContent[K]) =>
     setDraft((d) => ({ ...d, [k]: v }));
@@ -61,6 +75,35 @@ function AdminContentPage() {
     await saveBursaryWindowStart(dateStr);
     setSavingWindow(false);
     toast.success(dateStr ? `Bursary window set — opens ${dateStr}` : "Bursary window closed");
+  };
+
+  const draftTermLabel = buildTermLabel(draftTermName, draftTermYear || currentYear);
+  const isOpeningNewTerm = !!currentTerm && draftTermLabel !== currentTerm;
+
+  /**
+   * Opening a new term is what gives every term its own "folder" of
+   * applications: from this point on, every new application gets stamped
+   * with `draftTermLabel`. Nothing needs to move — applications already
+   * stamped with the previous term simply stop showing up in the admin
+   * dashboard's default (current-term) view, while remaining fully
+   * accessible from the Term filter there.
+   */
+  const saveTerm = async () => {
+    if (isOpeningNewTerm) {
+      const ok = window.confirm(
+        `Open "${draftTermLabel}"?\n\nAll applications currently in "${currentTerm}" will be archived under that term name and the admin dashboard's current application list will start empty for "${draftTermLabel}".\n\nThis does not delete any data — past terms stay accessible from the Term filter.`
+      );
+      if (!ok) return;
+    }
+    setSavingTerm(true);
+    try {
+      await saveBursaryTerm(draftTermLabel);
+      toast.success(`Now accepting applications for ${draftTermLabel}`);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Failed to save term");
+    } finally {
+      setSavingTerm(false);
+    }
   };
 
   const dirty = JSON.stringify(draft) !== JSON.stringify(content);
@@ -197,6 +240,52 @@ function AdminContentPage() {
                 all users on all devices the moment you save it.
               </span>
             </div>
+
+            {/* Term selection — determines which "folder" new applications fall into */}
+            <div className="rounded-lg border border-border bg-muted/20 px-4 py-3 space-y-3">
+              <div>
+                <p className="text-sm font-semibold">Term this window is for</p>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  Every application submitted while this window is open is tagged with the term below.
+                  Opening a new term automatically empties the admin dashboard's current application list —
+                  applications from the previous term stay saved and browsable under their own term name.
+                </p>
+              </div>
+              {!termLoading && currentTerm && (
+                <div className="rounded-lg border border-emerald-300 bg-emerald-50 px-3 py-2 text-sm font-semibold text-emerald-700">
+                  Currently open: {currentTerm}
+                </div>
+              )}
+              <div className="flex flex-wrap gap-2 items-end">
+                <div className="w-40">
+                  <Label className="text-xs font-semibold mb-1.5 block">Term</Label>
+                  <Select value={draftTermName} onValueChange={setDraftTermName}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      {TERM_NAMES.map((t) => (
+                        <SelectItem key={t} value={t}>{t}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="w-28">
+                  <Label className="text-xs font-semibold mb-1.5 block">Year</Label>
+                  <Input
+                    type="number"
+                    value={draftTermYear}
+                    onChange={(e) => setDraftTermYear(e.target.value)}
+                  />
+                </div>
+                <Button
+                  variant="hero"
+                  onClick={saveTerm}
+                  disabled={savingTerm || termLoading || draftTermLabel === currentTerm}
+                >
+                  {savingTerm ? "Saving…" : isOpeningNewTerm ? `Open ${draftTermLabel}` : "Save Term"}
+                </Button>
+              </div>
+            </div>
+
             <p className="text-sm text-muted-foreground">
               Set the start date for the bursary application window. Applications will automatically
               close <strong>10 days</strong> after the start date. Leave blank to close the window.

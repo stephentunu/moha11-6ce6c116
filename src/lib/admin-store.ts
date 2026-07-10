@@ -529,6 +529,116 @@ export function useBursaryWindow() {
   return { windowStart, loading };
 }
 
+// ===== Bursary Term (which "window" applications are currently attached to) ==
+//
+// Stored the same way as the bursary window (a row in `site_settings`, id =
+// 'bursary_term'). This is the label an admin picks (e.g. "Term 1 - 2026")
+// whenever they open a new application window. Every application submitted
+// from that point on is stamped with this exact label, which is what lets
+// the admin dashboard show "this term's" applications by default while still
+// being able to look back at any previous term's applications on demand —
+// without ever having to physically move any data.
+
+export const TERM_NAMES = ["Term 1", "Term 2", "Term 3"] as const;
+export type TermName = (typeof TERM_NAMES)[number];
+
+/** Build the canonical stored label for a term name + year, e.g. "Term 2 - 2026". */
+export function buildTermLabel(termName: string, year: number | string): string {
+  return `${termName} - ${year}`;
+}
+
+/** Split a stored term label like "Term 2 - 2026" back into its parts. Best-effort. */
+export function parseTermLabel(label: string): { termName: string; year: string } {
+  const m = /^(.*?)\s*-\s*(\d{4})$/.exec(label.trim());
+  if (m) return { termName: m[1], year: m[2] };
+  return { termName: label, year: "" };
+}
+
+/** Read the currently-open term label from Supabase. Returns "" if not set. */
+export async function fetchBursaryTerm(): Promise<string> {
+  try {
+    const { data, error } = await supabase
+      .from("site_settings" as never)
+      .select("value")
+      .eq("id", "bursary_term")
+      .single();
+    if (error || !data) return "";
+    return (data as unknown as { value: string }).value ?? "";
+  } catch {
+    return "";
+  }
+}
+
+/** Save the currently-open term label to Supabase (admin only). */
+export async function saveBursaryTerm(label: string): Promise<void> {
+  const { error } = await supabase
+    .from("site_settings" as never)
+    .upsert({ id: "bursary_term", value: label } as never, { onConflict: "id" } as never);
+  if (error) throw error;
+}
+
+/** React hook: subscribes to the currently-open term label in real-time. */
+export function useBursaryTerm() {
+  const [term, setTerm] = useState<string>("");
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    fetchBursaryTerm().then((v) => { setTerm(v); setLoading(false); });
+
+    const ch = supabase
+      .channel("bursary-term-watch")
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "site_settings" },
+        (payload) => {
+          const row = payload.new as { id: string; value: string } | null;
+          if (row?.id === "bursary_term") setTerm(row.value ?? "");
+        }
+      )
+      .subscribe();
+
+    return () => { supabase.removeChannel(ch); };
+  }, []);
+
+  return { term, loading };
+}
+
+// ===== Archived Schools =====
+//
+// A school is just a free-text name that shows up on one or more bursary
+// applications — there's no normalized `schools` table. Archiving a school
+// simply records its (upper-cased, canonical) name in `archived_schools`.
+// Archived schools are hidden from the active school pickers (Review by
+// Location, Confirmation Letters) until unarchived.
+
+/** Fetch the set of currently archived school names (already upper-cased). */
+export async function fetchArchivedSchools(): Promise<Set<string>> {
+  const { data, error } = await supabase
+    .from("archived_schools" as never)
+    .select("school_name");
+  if (error || !data) return new Set();
+  return new Set((data as unknown as { school_name: string }[]).map((r) => r.school_name));
+}
+
+/** Archive one or more schools by name (upsert — safe to call on already-archived names). */
+export async function archiveSchools(schoolNames: string[]): Promise<void> {
+  if (schoolNames.length === 0) return;
+  const { error } = await supabase
+    .from("archived_schools" as never)
+    .upsert(schoolNames.map((school_name) => ({ school_name })) as never, { onConflict: "school_name" } as never);
+  if (error) throw error;
+}
+
+/** Unarchive one or more schools by name. */
+export async function unarchiveSchools(schoolNames: string[]): Promise<void> {
+  if (schoolNames.length === 0) return;
+  const { error } = await supabase
+    .from("archived_schools" as never)
+    .delete()
+    .in("school_name", schoolNames);
+  if (error) throw error;
+}
+
 // ===== Activities =====
 export function useActivities() {
   return useStore<Activity[]>(KEYS.activities, []);

@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect, type ReactNode } from "react";
+import { useState, useMemo, type ReactNode } from "react";
 import { useLanguage } from "@/hooks/useLanguage";
 import { z } from "zod";
 import { toast } from "sonner";
@@ -19,7 +19,7 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import { supabase } from "@/integrations/supabase/client";
-import { MATHARE_WARDS, syncGuardianAsSupporter } from "@/lib/admin-store";
+import { MATHARE_WARDS, syncGuardianAsSupporter, fetchBursaryTerm } from "@/lib/admin-store";
 import { KENYA_COUNTIES, COUNTY_NAMES } from "@/lib/kenya-counties";
 import { generateBursaryPdf } from "@/lib/bursary-pdf";
 
@@ -168,54 +168,6 @@ export function BursaryApplicationDialog({ trigger }: { trigger: ReactNode }) {
     [form.schoolCounty],
   );
 
-  // Suggest school names the applicant may be trying to type — pulled from
-  // previously submitted applications so everyone converges on the same
-  // spelling (e.g. "Kanga High School") instead of variants like
-  // "kanga school" / "kanga boys high school". Loaded once when the dialog
-  // first opens, then filtered client-side as the user types.
-  const [schoolSuggestions, setSchoolSuggestions] = useState<string[]>([]);
-  useEffect(() => {
-    if (!open || schoolSuggestions.length > 0) return;
-    let cancelled = false;
-    (async () => {
-      try {
-        const { data, error } = await supabase
-          .from("bursary_applications")
-          .select("school_name, canonical_school_name")
-          .limit(2000);
-        if (error || cancelled || !data) return;
-        const set = new Set<string>();
-        for (const row of data) {
-          const canonical = (row as { canonical_school_name: string | null }).canonical_school_name;
-          const raw = (row as { school_name: string | null }).school_name;
-          const name = (canonical || raw || "").trim();
-          if (name.length >= 2) set.add(name);
-        }
-        setSchoolSuggestions(Array.from(set).sort((a, b) => a.localeCompare(b)));
-      } catch {
-        /* offline / permission — silently skip suggestions */
-      }
-    })();
-    return () => { cancelled = true; };
-  }, [open, schoolSuggestions.length]);
-
-  // Live-filtered subset shown in the datalist as the applicant types, so the
-  // browser's native suggestion dropdown never gets overwhelmed.
-  const filteredSchoolSuggestions = useMemo(() => {
-    const q = form.schoolName.trim().toLowerCase();
-    if (!q) return schoolSuggestions.slice(0, 20);
-    const starts: string[] = [];
-    const contains: string[] = [];
-    for (const s of schoolSuggestions) {
-      const lower = s.toLowerCase();
-      if (lower === q) continue;
-      if (lower.startsWith(q)) starts.push(s);
-      else if (lower.includes(q)) contains.push(s);
-      if (starts.length + contains.length >= 20) break;
-    }
-    return [...starts, ...contains].slice(0, 20);
-  }, [form.schoolName, schoolSuggestions]);
-
   const validateStep = async (): Promise<boolean> => {
     try {
       if (step === 1) StudentSchema.parse(form);
@@ -246,6 +198,7 @@ export function BursaryApplicationDialog({ trigger }: { trigger: ReactNode }) {
       const payload = {
         student_name: form.studentName,
         registration_number: form.admissionNumber || null,
+        id_or_birth_cert_number: form.birthCertNumber || null,
         dob: form.dob || null,
         current_grade: form.currentGrade,
         gender: form.gender || null,
@@ -287,9 +240,17 @@ export function BursaryApplicationDialog({ trigger }: { trigger: ReactNode }) {
         previous_bursary_amount: form.receivedBursaryBefore && form.previousBursaryAmount ? Number(form.previousBursaryAmount) : null,
         reason: form.reason || null,
       };
+
+      // Attach the currently-open term (e.g. "Term 1 - 2026") so this
+      // application is grouped with the rest of this term's applications in
+      // the admin dashboard. Falls back to the column's DB default if no
+      // window/term has been configured yet.
+      const currentTerm = await fetchBursaryTerm();
+      const payloadWithTerm = currentTerm ? { ...payload, term: currentTerm } : payload;
+
       let { data, error } = await supabase
         .from("bursary_applications" as never)
-        .insert(payload as never)
+        .insert(payloadWithTerm as never)
         .select("reference")
         .single();
 
@@ -298,7 +259,7 @@ export function BursaryApplicationDialog({ trigger }: { trigger: ReactNode }) {
       // migration was run), retry once without the newer optional fields
       // rather than losing the whole application.
       if (error && /column .* does not exist/i.test(error.message)) {
-        const { student_annual_fee, outstanding_balance, ...fallbackPayload } = payload;
+        const { student_annual_fee, outstanding_balance, ...fallbackPayload } = payloadWithTerm as typeof payload & { term?: string };
         const retry = await supabase
           .from("bursary_applications" as never)
           .insert(fallbackPayload as never)
@@ -569,23 +530,7 @@ export function BursaryApplicationDialog({ trigger }: { trigger: ReactNode }) {
                 <SectionLabel icon={School}>{t("School's Details")}</SectionLabel>
                 <div className="grid sm:grid-cols-2 gap-4">
                   <Field label={t("School name *")}>
-                    <Input
-                      value={form.schoolName}
-                      onChange={(e) => set("schoolName", e.target.value)}
-                      list="bursary-school-suggestions"
-                      autoComplete="off"
-                      placeholder={t("Start typing e.g. Kanga High School")}
-                    />
-                    <datalist id="bursary-school-suggestions">
-                      {filteredSchoolSuggestions.map((name) => (
-                        <option key={name} value={name} />
-                      ))}
-                    </datalist>
-                    {form.schoolName.trim().length >= 2 && filteredSchoolSuggestions.length > 0 && (
-                      <p className="text-[11px] text-muted-foreground mt-1">
-                        {t("Tip: pick an existing school from the suggestions to avoid duplicate spellings.")}
-                      </p>
-                    )}
+                    <Input value={form.schoolName} onChange={(e) => set("schoolName", e.target.value)} />
                   </Field>
                   <Field label={t("School category *")}>
                     <Select value={form.schoolCategory} onValueChange={(v) => set("schoolCategory", v)}>

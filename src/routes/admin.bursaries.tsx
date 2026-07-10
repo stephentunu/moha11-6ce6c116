@@ -1,14 +1,14 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import {
-  GraduationCap, Send, Eye, EyeOff, Trash2, Download, Search,
+  GraduationCap, Send, Eye, Trash2, Download, Search,
   FileSpreadsheet, CheckCircle2, School, ArrowUpDown,
   ChevronDown, ChevronRight, Users, Banknote,
   CheckSquare, X, Mail, FileText, Calendar,
   MapPin, Pencil, ArrowLeft, XCircle, Clock3, UserPlus,
-  Archive, ArchiveRestore, ArchiveX, RotateCcw,
+  Archive, ArchiveRestore, History, CalendarClock,
 } from "lucide-react";
-import { generateBursaryPdf, generateBroadsheetPdf, generateBroadsheetExcel, generateApprovedBroadsheetExcel, generateConfirmationLetter, type BroadsheetRow, type BursaryPdfData, type ConfirmationLetterRow } from "@/lib/bursary-pdf";
+import { generateBursaryPdf, generateBroadsheetPdf, generateConfirmationLetter, type BroadsheetRow, type BursaryPdfData, type ConfirmationLetterRow } from "@/lib/bursary-pdf";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -28,7 +28,7 @@ import { AdminLayout } from "@/components/AdminLayout";
 import { supabase } from "@/integrations/supabase/client";
 import { sendBursarySms } from "@/lib/bursary.functions";
 import { cn } from "@/lib/utils";
-import { MATHARE_WARDS } from "@/lib/admin-store";
+import { MATHARE_WARDS, useBursaryTerm, fetchArchivedSchools, archiveSchools, unarchiveSchools } from "@/lib/admin-store";
 import { COUNTY_NAMES, KENYA_COUNTIES } from "@/lib/kenya-counties";
 import { BursaryApplicationDialog } from "@/components/BursaryApplicationDialog";
 
@@ -45,8 +45,10 @@ export const Route = createFileRoute("/admin/bursaries")({
 type Row = {
   id: string;
   reference: string;
+  term: string;
   student_name: string;
   registration_number: string | null;
+  id_or_birth_cert_number: string | null;
   dob: string | null;
   gender: string | null;
   phone: string | null;
@@ -114,7 +116,7 @@ function effectiveSchoolName(r: Row): string {
   return (r.canonical_school_name?.trim() || r.school_name || "").trim().toUpperCase();
 }
 
-type Tab = "applications" | "review" | "broadsheet" | "letters";
+type Tab = "applications" | "review" | "broadsheet" | "letters" | "schools";
 type SortField = "student_name" | "school_name" | "ward" | "amount_requested" | "current_grade";
 
 function AdminBursariesPage() {
@@ -135,69 +137,35 @@ function AdminBursariesPage() {
   const [checkedIds, setCheckedIds] = useState<Set<string>>(new Set());
   const [bulkBusy, setBulkBusy] = useState(false);
 
+  // Term window — which term's applications are currently being viewed.
+  // "current" tracks whatever term is open right now (per site_settings);
+  // any other value pins the view to that specific past term.
+  const { term: currentTerm } = useBursaryTerm();
+  const [termView, setTermView] = useState<string>("current");
+  const effectiveTerm = termView === "current" ? currentTerm : termView;
+
+  // Archived schools — hidden from the active school pickers (Review by
+  // Location, Confirmation Letters) until unarchived. Loaded once and kept
+  // in sync locally when the admin archives/unarchives from the Schools tab.
+  const [archivedSchools, setArchivedSchools] = useState<Set<string>>(new Set());
+  const [showArchivedInPickers, setShowArchivedInPickers] = useState(false);
+
+  // Schools tab — manage the school directory: archive/unarchive a single
+  // school or all schools at once.
+  const [schoolsSearch, setSchoolsSearch] = useState("");
+  const [checkedSchools, setCheckedSchools] = useState<Set<string>>(new Set());
+  const [schoolsShowArchivedOnly, setSchoolsShowArchivedOnly] = useState<"active" | "archived" | "all">("active");
+  const [schoolsBusy, setSchoolsBusy] = useState(false);
+
   // School Confirmation Letter tab
   const [letterSchoolSearch, setLetterSchoolSearch] = useState("");
   const [letterSelectedSchool, setLetterSelectedSchool] = useState<string | null>(null);
   const [letterChequeNumber, setLetterChequeNumber] = useState("");
   const [letterDate, setLetterDate] = useState("");
-  const [letterOfficerName, setLetterOfficerName] = useState("Nancy Otieno");
-  const [letterOfficerPhone, setLetterOfficerPhone] = useState("0728827978");
+  const [letterOfficerName, setLetterOfficerName] = useState("Benard Omondi");
+  const [letterOfficerPhone, setLetterOfficerPhone] = useState("0725104771");
   const [letterTerm, setLetterTerm] = useState(`${new Date().getFullYear()} T2`);
-
-  // Archive state for confirmation letters
-  const [archivedSchools, setArchivedSchools] = useState<Map<string, { archived_at: string; id: string }>>(new Map());
-  const [showArchived, setShowArchived] = useState(false);
-  const [archiveBusy, setArchiveBusy] = useState<string | null>(null);
-  const [archiveConfirmSchool, setArchiveConfirmSchool] = useState<string | null>(null);
-
-  // Per-student "hide from confirmation letter" — lets admins temporarily
-  // exclude specific students from a school's confirmation letter download,
-  // so they can produce a letter containing only the students that have
-  // NOT been sent yet, then unhide them later so they reappear. Persisted
-  // per-browser in localStorage.
-  const HIDDEN_STORAGE_KEY = "bursary_letter_hidden_students_v1";
-  const [hiddenIds, setHiddenIds] = useState<Set<string>>(() => {
-    if (typeof window === "undefined") return new Set();
-    try {
-      const raw = window.localStorage.getItem(HIDDEN_STORAGE_KEY);
-      return new Set(raw ? (JSON.parse(raw) as string[]) : []);
-    } catch { return new Set(); }
-  });
-  const [hiddenPanelOpen, setHiddenPanelOpen] = useState(false);
-  const [hiddenSearch, setHiddenSearch] = useState("");
-
-  useEffect(() => {
-    try {
-      window.localStorage.setItem(HIDDEN_STORAGE_KEY, JSON.stringify(Array.from(hiddenIds)));
-    } catch { /* quota / private mode — ignore */ }
-  }, [hiddenIds]);
-
-  const hideStudent = (id: string, name?: string) => {
-    setHiddenIds((prev) => {
-      const next = new Set(prev);
-      next.add(id);
-      return next;
-    });
-    toast.success(`${name || "Student"} hidden from confirmation letter`, {
-      description: "The letter download will now skip this student. Restore anytime from the Hidden Students panel.",
-    });
-  };
-
-  const unhideStudent = (id: string, name?: string) => {
-    setHiddenIds((prev) => {
-      const next = new Set(prev);
-      next.delete(id);
-      return next;
-    });
-    toast.success(`${name || "Student"} restored to the confirmation letter`);
-  };
-
-  const clearAllHidden = () => {
-    if (hiddenIds.size === 0) return;
-    setHiddenIds(new Set());
-    toast.success("All hidden students restored");
-  };
-
+  const [letterTermTouched, setLetterTermTouched] = useState(false);
 
   // Review by Location tab — County → Sub-county → School → Students drill-down
   const [reviewCounty, setReviewCounty] = useState<string | null>(null);
@@ -229,6 +197,10 @@ function AdminBursariesPage() {
   });
   const [editBusy, setEditBusy] = useState(false);
 
+  useEffect(() => {
+    if (currentTerm && !letterTermTouched) setLetterTerm(currentTerm);
+  }, [currentTerm, letterTermTouched]);
+
   const load = async () => {
     const { data, error } = await supabase
       .from("bursary_applications" as never)
@@ -238,73 +210,43 @@ function AdminBursariesPage() {
     else setRows((data as unknown as Row[]) || []);
   };
 
-  const loadArchives = async () => {
-    const { data, error } = await supabase
-      .from("letter_archives" as never)
-      .select("*");
-    if (!error && data) {
-      const map = new Map<string, { archived_at: string; id: string }>();
-      for (const row of data as Array<{ id: string; school_name: string; archived_at: string }>) {
-        map.set(row.school_name, { archived_at: row.archived_at, id: row.id });
-      }
-      setArchivedSchools(map);
-    }
+  const loadArchivedSchools = async () => {
+    setArchivedSchools(await fetchArchivedSchools());
   };
 
   useEffect(() => {
     load();
-    loadArchives();
+    loadArchivedSchools();
     const ch = supabase
       .channel("bursary-changes")
       .on("postgres_changes", { event: "*", schema: "public", table: "bursary_applications" }, () => load())
       .subscribe();
-    const archiveCh = supabase
-      .channel("archive-changes")
-      .on("postgres_changes", { event: "*", schema: "public", table: "letter_archives" }, () => loadArchives())
+    const archCh = supabase
+      .channel("archived-schools-changes")
+      .on("postgres_changes", { event: "*", schema: "public", table: "archived_schools" }, () => loadArchivedSchools())
       .subscribe();
-    return () => {
-      supabase.removeChannel(ch);
-      supabase.removeChannel(archiveCh);
-    };
+    return () => { supabase.removeChannel(ch); supabase.removeChannel(archCh); };
   }, []);
 
-  const archiveSchool = async (school: string) => {
-    setArchiveBusy(school);
-    const { error } = await supabase
-      .from("letter_archives" as never)
-      .insert({ school_name: school } as never);
-    if (error) {
-      toast.error("Failed to archive: " + error.message);
-    } else {
-      toast.success(`"${school}" archived — it will no longer appear in the letters list.`);
-      if (letterSelectedSchool === school) setLetterSelectedSchool(null);
-      await loadArchives();
-    }
-    setArchiveBusy(null);
-    setArchiveConfirmSchool(null);
-  };
+  // ── Term-scoped rows — everything below (except Application History, which
+  // intentionally looks across ALL terms) is derived from this instead of
+  // the raw `rows`, so switching the Term filter re-scopes the whole page. ──
+  const activeRows = useMemo(() => {
+    if (!effectiveTerm) return rows; // no term configured yet — show everything
+    return rows.filter((r) => (r.term || "") === effectiveTerm);
+  }, [rows, effectiveTerm]);
 
-  const unarchiveSchool = async (school: string) => {
-    setArchiveBusy(school);
-    const entry = archivedSchools.get(school);
-    if (!entry) { setArchiveBusy(null); return; }
-    const { error } = await supabase
-      .from("letter_archives" as never)
-      .delete()
-      .eq("id", entry.id as never);
-    if (error) {
-      toast.error("Failed to unarchive: " + error.message);
-    } else {
-      toast.success(`"${school}" restored — it's back in the active letters list.`);
-      await loadArchives();
-    }
-    setArchiveBusy(null);
-  };
+  const distinctTerms = useMemo(() => {
+    const terms = new Set<string>();
+    for (const r of rows) if (r.term) terms.add(r.term);
+    if (currentTerm) terms.add(currentTerm);
+    return Array.from(terms).sort().reverse();
+  }, [rows, currentTerm]);
 
   // ── Filtered list (Applications tab) ────────────────────────────────────────
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
-    return rows.filter((r) => {
+    return activeRows.filter((r) => {
       if (filter !== "all" && r.status !== filter) return false;
       if (!q) return true;
       return (
@@ -318,11 +260,9 @@ function AdminBursariesPage() {
         (r.school_sub_county || "").toLowerCase().includes(q)
       );
     });
-  }, [rows, filter, search]);
-
-  // ── Approved rows sorted for broadsheet ─────────────────────────────────────
+  }, [activeRows, filter, search]);
   const approvedRows = useMemo(() => {
-    const approved = rows.filter((r) => r.status === "approved");
+    const approved = activeRows.filter((r) => r.status === "approved");
     return [...approved].sort((a, b) => {
       let va: string | number = a[bsSort] ?? "";
       let vb: string | number = b[bsSort] ?? "";
@@ -334,7 +274,7 @@ function AdminBursariesPage() {
       const cmp = (va as string).localeCompare(vb as string);
       return bsOrder === "asc" ? cmp : -cmp;
     });
-  }, [rows, bsSort, bsOrder]);
+  }, [activeRows, bsSort, bsOrder]);
 
   // Group approved by school (already sorted by school then name within each group)
   const bySchool = useMemo(() => {
@@ -357,7 +297,7 @@ function AdminBursariesPage() {
 
   // Schools available for confirmation letters (only schools with at least
   // one APPROVED applicant — this is what gets confirmed and sent for cheque
-  // distribution). Archived schools are hidden unless showArchived is true.
+  // distribution).
   const letterSchoolList = useMemo(() => {
     const q = letterSchoolSearch.trim().toLowerCase();
     return Array.from(bySchool.entries())
@@ -366,33 +306,16 @@ function AdminBursariesPage() {
         count: schoolRows.length,
         total: schoolRows.reduce((s, r) => s + (r.amount_requested ?? 0), 0),
         category: schoolRows[0]?.school_category ?? null,
-        isArchived: archivedSchools.has(school),
-        archivedAt: archivedSchools.get(school)?.archived_at ?? null,
+        archived: archivedSchools.has(school),
       }))
-      .filter((s) => showArchived ? s.isArchived : !s.isArchived)
+      .filter((s) => showArchivedInPickers || !s.archived)
       .filter((s) => !q || s.school.toLowerCase().includes(q))
       .sort((a, b) => a.school.localeCompare(b.school));
-  }, [bySchool, letterSchoolSearch, archivedSchools, showArchived]);
+  }, [bySchool, letterSchoolSearch, archivedSchools, showArchivedInPickers]);
 
-  // All approved students for the selected school (includes hidden ones —
-  // used to compute hidden counts / restore inline).
-  const letterSelectedAllRows = useMemo(
+  const letterSelectedRows = useMemo(
     () => (letterSelectedSchool ? bySchool.get(letterSelectedSchool) ?? [] : []),
     [bySchool, letterSelectedSchool]
-  );
-
-  // Students that will actually appear on the downloaded confirmation letter
-  // (excludes any the admin has hidden). The download function and the
-  // preview table both read from this list, so hiding a student here removes
-  // them from the generated PDF and the running total.
-  const letterSelectedRows = useMemo(
-    () => letterSelectedAllRows.filter((r) => !hiddenIds.has(r.id)),
-    [letterSelectedAllRows, hiddenIds]
-  );
-
-  const letterSelectedHiddenCount = useMemo(
-    () => letterSelectedAllRows.filter((r) => hiddenIds.has(r.id)).length,
-    [letterSelectedAllRows, hiddenIds]
   );
 
   const letterSelectedTotal = useMemo(
@@ -409,7 +332,7 @@ function AdminBursariesPage() {
 
   const reviewCounties = useMemo(() => {
     const map = new Map<string, Row[]>();
-    for (const r of rows) {
+    for (const r of activeRows) {
       const key = (r.school_county || "Unspecified").trim();
       if (!map.has(key)) map.set(key, []);
       map.get(key)!.push(r);
@@ -421,11 +344,11 @@ function AdminBursariesPage() {
         pending: countyRows.filter((r) => r.status === "pending").length,
       }))
       .sort((a, b) => a.county.localeCompare(b.county));
-  }, [rows]);
+  }, [activeRows]);
 
   const reviewSubCounties = useMemo(() => {
     if (!reviewCounty) return [];
-    const inCounty = rows.filter((r) => (r.school_county || "Unspecified").trim() === reviewCounty);
+    const inCounty = activeRows.filter((r) => (r.school_county || "Unspecified").trim() === reviewCounty);
     const map = new Map<string, Row[]>();
     for (const r of inCounty) {
       const key = (r.school_sub_county || "Unspecified").trim();
@@ -439,11 +362,11 @@ function AdminBursariesPage() {
         pending: subRows.filter((r) => r.status === "pending").length,
       }))
       .sort((a, b) => a.subCounty.localeCompare(b.subCounty));
-  }, [rows, reviewCounty]);
+  }, [activeRows, reviewCounty]);
 
   const reviewSchools = useMemo(() => {
     if (!reviewCounty || !reviewSubCounty) return [];
-    const inLocation = rows.filter(
+    const inLocation = activeRows.filter(
       (r) =>
         (r.school_county || "Unspecified").trim() === reviewCounty &&
         (r.school_sub_county || "Unspecified").trim() === reviewSubCounty,
@@ -455,21 +378,20 @@ function AdminBursariesPage() {
       map.get(key)!.push(r);
     }
     return Array.from(map.entries())
-      .map(([school, schoolRows]) => {
-        return {
-          school,
-          count: schoolRows.length,
-          hidden: 0,
-          pending: schoolRows.filter((r) => r.status === "pending").length,
-          category: schoolRows[0]?.school_category ?? null,
-        };
-      })
+      .map(([school, schoolRows]) => ({
+        school,
+        count: schoolRows.length,
+        pending: schoolRows.filter((r) => r.status === "pending").length,
+        category: schoolRows[0]?.school_category ?? null,
+        archived: archivedSchools.has(school),
+      }))
+      .filter((s) => showArchivedInPickers || !s.archived)
       .sort((a, b) => a.school.localeCompare(b.school));
-  }, [rows, reviewCounty, reviewSubCounty]);
+  }, [activeRows, reviewCounty, reviewSubCounty, archivedSchools, showArchivedInPickers]);
 
   const reviewStudents = useMemo(() => {
     if (!reviewCounty || !reviewSubCounty || !reviewSchool) return [];
-    return rows
+    return activeRows
       .filter(
         (r) =>
           (r.school_county || "Unspecified").trim() === reviewCounty &&
@@ -477,39 +399,7 @@ function AdminBursariesPage() {
           (effectiveSchoolName(r) || "Unspecified School") === reviewSchool,
       )
       .sort((a, b) => a.student_name.localeCompare(b.student_name));
-  }, [rows, reviewCounty, reviewSubCounty, reviewSchool]);
-
-  // Reserved (no longer used for review — hide/unhide moved to letters tab).
-  const reviewSchoolHiddenCount = 0;
-
-  // All hidden students grouped by school, with search across school + student
-  // name / reference / guardian — powers the Hidden Students panel.
-  const hiddenGrouped = useMemo(() => {
-    const q = hiddenSearch.trim().toLowerCase();
-    const hidden = rows.filter((r) => hiddenIds.has(r.id));
-    const filtered = q
-      ? hidden.filter((r) =>
-          (r.student_name || "").toLowerCase().includes(q) ||
-          (r.reference || "").toLowerCase().includes(q) ||
-          (effectiveSchoolName(r) || "").toLowerCase().includes(q) ||
-          (r.school_name || "").toLowerCase().includes(q) ||
-          (r.guardian_name || "").toLowerCase().includes(q),
-        )
-      : hidden;
-    const map = new Map<string, Row[]>();
-    for (const r of filtered) {
-      const key = effectiveSchoolName(r) || "Unspecified School";
-      if (!map.has(key)) map.set(key, []);
-      map.get(key)!.push(r);
-    }
-    return Array.from(map.entries())
-      .map(([school, students]) => ({
-        school,
-        students: students.sort((a, b) => a.student_name.localeCompare(b.student_name)),
-      }))
-      .sort((a, b) => a.school.localeCompare(b.school));
-  }, [rows, hiddenIds, hiddenSearch]);
-
+  }, [activeRows, reviewCounty, reviewSubCounty, reviewSchool]);
 
   // Variant raw spellings feeding into the currently-selected canonical school
   // name — shown to the admin so they can see exactly what they're merging.
@@ -519,35 +409,130 @@ function AdminBursariesPage() {
   }, [reviewStudents]);
 
   const counts = useMemo(() => {
-    const c = { all: rows.length, pending: 0, reviewing: 0, approved: 0, rejected: 0 };
-    for (const r of rows) (c as Record<string, number>)[r.status] = ((c as Record<string, number>)[r.status] ?? 0) + 1;
+    const c = { all: activeRows.length, pending: 0, reviewing: 0, approved: 0, rejected: 0 };
+    for (const r of activeRows) (c as Record<string, number>)[r.status] = ((c as Record<string, number>)[r.status] ?? 0) + 1;
     return c;
-  }, [rows]);
+  }, [activeRows]);
 
   const allSchoolNames = useMemo(() => {
     const names = new Set<string>();
-    for (const r of rows) {
+    for (const r of activeRows) {
       const name = effectiveSchoolName(r);
       if (name) names.add(name);
     }
     return Array.from(names).sort();
-  }, [rows]);
+  }, [activeRows]);
 
   const allSubCounties = useMemo(() => {
     const names = new Set<string>();
-    for (const r of rows) {
+    for (const r of activeRows) {
       if (r.school_sub_county) names.add(r.school_sub_county.trim().toUpperCase());
     }
     return Array.from(names).sort();
-  }, [rows]);
+  }, [activeRows]);
 
   const allCounties = useMemo(() => {
     const names = new Set<string>();
-    for (const r of rows) {
+    for (const r of activeRows) {
       if (r.school_county) names.add(r.school_county.trim().toUpperCase());
     }
     return Array.from(names).sort();
-  }, [rows]);
+  }, [activeRows]);
+
+  // ── Schools directory (Schools tab) — built from ALL terms, not just the
+  // currently-viewed term, so an admin can archive/unarchive a school
+  // regardless of which term is currently selected. ──────────────────────────
+  const schoolsDirectory = useMemo(() => {
+    const map = new Map<string, Row[]>();
+    for (const r of rows) {
+      const key = effectiveSchoolName(r);
+      if (!key) continue;
+      if (!map.has(key)) map.set(key, []);
+      map.get(key)!.push(r);
+    }
+    const q = schoolsSearch.trim().toLowerCase();
+    return Array.from(map.entries())
+      .map(([school, schoolRows]) => ({
+        school,
+        count: schoolRows.length,
+        pending: schoolRows.filter((r) => r.status === "pending").length,
+        county: schoolRows[0]?.school_county ?? null,
+        subCounty: schoolRows[0]?.school_sub_county ?? null,
+        category: schoolRows[0]?.school_category ?? null,
+        archived: archivedSchools.has(school),
+      }))
+      .filter((s) => !q || s.school.toLowerCase().includes(q))
+      .filter((s) => {
+        if (schoolsShowArchivedOnly === "active") return !s.archived;
+        if (schoolsShowArchivedOnly === "archived") return s.archived;
+        return true;
+      })
+      .sort((a, b) => a.school.localeCompare(b.school));
+  }, [rows, schoolsSearch, archivedSchools, schoolsShowArchivedOnly]);
+
+  const schoolsFilteredNames = schoolsDirectory.map((s) => s.school);
+  const allSchoolsChecked = schoolsFilteredNames.length > 0 && schoolsFilteredNames.every((n) => checkedSchools.has(n));
+
+  const toggleOneSchool = (name: string) =>
+    setCheckedSchools((prev) => { const next = new Set(prev); next.has(name) ? next.delete(name) : next.add(name); return next; });
+
+  const toggleAllSchools = () => {
+    if (allSchoolsChecked) {
+      setCheckedSchools((prev) => { const next = new Set(prev); schoolsFilteredNames.forEach((n) => next.delete(n)); return next; });
+    } else {
+      setCheckedSchools((prev) => { const next = new Set(prev); schoolsFilteredNames.forEach((n) => next.add(n)); return next; });
+    }
+  };
+
+  const clearCheckedSchools = () => setCheckedSchools(new Set());
+
+  /**
+   * Archive or unarchive either a single school (pass just its name) or the
+   * whole current selection at once — this is the "select a single school or
+   * all schools at once" bulk archive/unarchive action.
+   */
+  const runSchoolArchiveAction = async (names: string[], action: "archive" | "unarchive") => {
+    if (names.length === 0) return;
+    setSchoolsBusy(true);
+    try {
+      if (action === "archive") {
+        await archiveSchools(names);
+        toast.success(`${names.length} school${names.length !== 1 ? "s" : ""} archived`);
+      } else {
+        await unarchiveSchools(names);
+        toast.success(`${names.length} school${names.length !== 1 ? "s" : ""} unarchived`);
+      }
+      await loadArchivedSchools();
+      clearCheckedSchools();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Action failed");
+    } finally {
+      setSchoolsBusy(false);
+    }
+  };
+
+  // ── Application History — cross-term lookup for the selected student, so
+  // admins reviewing a new application can immediately see whether this
+  // student has applied before and what happened (approved/pending/
+  // rejected), regardless of which term that earlier application was in.
+  // Matches on ID/birth-cert number or registration/admission number first
+  // (most reliable), falling back to student name + guardian phone. ─────────
+  const applicationHistory = useMemo(() => {
+    if (!selected) return [];
+    const idKey = (selected.id_or_birth_cert_number || "").trim().toLowerCase();
+    const regKey = (selected.registration_number || "").trim().toLowerCase();
+    const nameKey = selected.student_name.trim().toLowerCase();
+    const phoneKey = (selected.guardian_phone || "").trim();
+    return rows
+      .filter((r) => r.id !== selected.id)
+      .filter((r) => {
+        if (idKey && (r.id_or_birth_cert_number || "").trim().toLowerCase() === idKey) return true;
+        if (regKey && (r.registration_number || "").trim().toLowerCase() === regKey) return true;
+        if (nameKey && phoneKey && r.student_name.trim().toLowerCase() === nameKey && (r.guardian_phone || "").trim() === phoneKey) return true;
+        return false;
+      })
+      .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+  }, [selected, rows]);
 
   // ── Bulk selection helpers ───────────────────────────────────────────────
   const filteredIds = filtered.map((r) => r.id);
@@ -810,42 +795,6 @@ function AdminBursariesPage() {
     toast.success("Broadsheet PDF generated!");
   };
 
-  const buildBsRows = (): BroadsheetRow[] =>
-    approvedRows.map((r) => ({
-      reference: r.reference,
-      student_name: r.student_name,
-      registration_number: r.registration_number,
-      current_grade: r.current_grade,
-      gender: r.gender,
-      guardian_name: r.guardian_name,
-      guardian_phone: r.guardian_phone,
-      ward: r.ward,
-      amount_requested: r.amount_requested,
-      school_name: effectiveSchoolName(r),
-      school_category: r.school_category,
-      school_bank_account: r.school_bank_account,
-      school_county: r.school_county,
-      school_sub_county: r.school_sub_county,
-    }));
-
-  const downloadBroadsheetExcel = () => {
-    if (approvedRows.length === 0) {
-      toast.error("No approved applications to include in the cheque summary.");
-      return;
-    }
-    generateBroadsheetExcel(buildBsRows(), `Moha Bursary Cheque Summary — ${new Date().toLocaleDateString("en-KE")}`);
-    toast.success("Cheque summary Excel generated!");
-  };
-
-  const downloadApprovedBroadsheetExcel = () => {
-    if (approvedRows.length === 0) {
-      toast.error("No approved applications to include in the broadsheet.");
-      return;
-    }
-    generateApprovedBroadsheetExcel(buildBsRows(), `MOHA EDUCATION KITTY — APPROVED BURSARY BROADSHEET`);
-    toast.success("Approved broadsheet Excel generated!");
-  };
-
   const downloadConfirmationLetter = () => {
     if (!letterSelectedSchool || letterSelectedRows.length === 0) {
       toast.error("Select a school with approved applicants first.");
@@ -866,14 +815,6 @@ function AdminBursariesPage() {
       officerPhone: letterOfficerPhone.trim() || undefined,
     });
     toast.success(`Confirmation letter generated for ${letterSelectedSchool}`);
-  };
-
-  const downloadBlankConfirmationLetter = () => {
-    generateConfirmationLetter([], {
-      schoolName: "",
-      termLabel: letterTerm,
-    });
-    toast.success("Blank confirmation letter downloaded");
   };
 
   const toggleSchool = (school: string) => {
@@ -969,6 +910,18 @@ function AdminBursariesPage() {
               <Mail className="h-4 w-4" /> School Confirmation Letters
             </span>
           </button>
+          <button
+            onClick={() => setTab("schools")}
+            className={`px-5 py-2 rounded-lg text-sm font-semibold transition-all ${
+              tab === "schools"
+                ? "bg-card shadow text-foreground"
+                : "text-muted-foreground hover:text-foreground"
+            }`}
+          >
+            <span className="flex items-center gap-2">
+              <Archive className="h-4 w-4" /> Schools
+            </span>
+          </button>
         </div>
 
           {/* Late application button — always available regardless of window status */}
@@ -982,6 +935,30 @@ function AdminBursariesPage() {
           />
         </div>
 
+        {/* Term filter — applies to Applications, Review, Broadsheet & Letters tabs */}
+        {tab !== "schools" && (
+          <div className="flex flex-wrap items-center gap-2 -mt-2">
+            <CalendarClock className="h-4 w-4 text-muted-foreground shrink-0" />
+            <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Term:</span>
+            <Select value={termView} onValueChange={setTermView}>
+              <SelectTrigger className="h-8 w-56 text-sm">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="current">
+                  Current{currentTerm ? ` — ${currentTerm}` : ""}
+                </SelectItem>
+                {distinctTerms.filter((t) => t !== currentTerm).map((t) => (
+                  <SelectItem key={t} value={t}>{t}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            {termView !== "current" && (
+              <Badge className="bg-amber-500/15 text-amber-700">Viewing a past term's applications</Badge>
+            )}
+          </div>
+        )}
+
         {/* ── APPLICATIONS TAB ──────────────────────────────────────────────── */}
         {tab === "applications" && (
           <>
@@ -989,7 +966,7 @@ function AdminBursariesPage() {
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
                 list="school-suggestions"
-                placeholder="Search by student name, school, ward, guardian or reference…"
+                placeholder="Search by student name, school, ward (e.g. Kiamaiko), guardian or reference…"
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 className="pl-9 h-11"
@@ -1215,18 +1192,14 @@ function AdminBursariesPage() {
         {tab === "review" && (
           <div className="space-y-5">
             <div className="bg-card border border-border rounded-2xl p-5">
-              <div>
-                <h2 className="font-display font-bold text-lg flex items-center gap-2">
-                  <MapPin className="h-5 w-5 text-gold" />
-                  Review by Location
-                </h2>
-                <p className="text-sm text-muted-foreground mt-0.5">
-                  Drill down from County → Sub-county → School to review every applicant from that school together,
-                  and merge duplicate school name spellings into one consistent entry.
-                </p>
-              </div>
-
-
+              <h2 className="font-display font-bold text-lg flex items-center gap-2">
+                <MapPin className="h-5 w-5 text-gold" />
+                Review by Location
+              </h2>
+              <p className="text-sm text-muted-foreground mt-0.5">
+                Drill down from County → Sub-county → School to review every applicant from that school together,
+                and merge duplicate school name spellings into one consistent entry.
+              </p>
 
               {/* Breadcrumb */}
               <div className="flex flex-wrap items-center gap-1.5 mt-4 text-sm">
@@ -1331,7 +1304,7 @@ function AdminBursariesPage() {
                   <ArrowLeft className="h-3.5 w-3.5" /> Back to {reviewCounty}
                 </Button>
                 <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                  {reviewSchools.map(({ school, count, pending, category, hidden }) => (
+                  {reviewSchools.map(({ school, count, pending, category }) => (
                     <button
                       key={school}
                       onClick={() => setReviewSchool(school)}
@@ -1344,7 +1317,7 @@ function AdminBursariesPage() {
                         </div>
                         <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0" />
                       </div>
-                      <div className="flex items-center flex-wrap gap-x-3 gap-y-1 mt-2 ml-6">
+                      <div className="flex items-center gap-3 mt-2 ml-6">
                         <span className="text-xs text-muted-foreground">
                           {category && `${category} · `}{count} student{count !== 1 ? "s" : ""}
                         </span>
@@ -1396,10 +1369,9 @@ function AdminBursariesPage() {
                   <div className="px-5 py-4 border-b border-border">
                     <p className="font-display font-bold text-base text-foreground">{reviewSchool}</p>
                     <p className="text-xs text-muted-foreground mt-0.5">
-                      {reviewStudents.length} application{reviewStudents.length !== 1 ? "s" : ""} shown from this school
+                      {reviewStudents.length} application{reviewStudents.length !== 1 ? "s" : ""} from this school
                     </p>
                   </div>
-
                   <div className="overflow-x-auto">
                     <table className="w-full text-sm">
                       <thead className="bg-muted/30 text-[11px] uppercase tracking-wider text-muted-foreground">
@@ -1546,38 +1518,18 @@ function AdminBursariesPage() {
                     Approved Bursary Broadsheet
                   </h2>
                   <p className="text-sm text-muted-foreground mt-0.5">
-                    All approved applications grouped by county and school. Download as PDF (full detail), Approved Broadsheet Excel (per-student list with ward summaries), or Cheque Summary Excel (county totals only).
+                    All approved applications sorted and grouped by school. Download as a PDF to send to schools.
                   </p>
                 </div>
-                <div className="flex flex-col sm:flex-row gap-2 shrink-0">
-                  <Button
-                    variant="hero"
-                    onClick={downloadBroadsheet}
-                    disabled={approvedRows.length === 0}
-                    className="gap-2"
-                  >
-                    <Download className="h-4 w-4" />
-                    Download PDF
-                  </Button>
-                  <Button
-                    variant="outline"
-                    onClick={downloadApprovedBroadsheetExcel}
-                    disabled={approvedRows.length === 0}
-                    className="gap-2 border-gold text-gold-foreground bg-gold/10 hover:bg-gold/20"
-                  >
-                    <FileSpreadsheet className="h-4 w-4" />
-                    Approved Broadsheet Excel
-                  </Button>
-                  <Button
-                    variant="outline"
-                    onClick={downloadBroadsheetExcel}
-                    disabled={approvedRows.length === 0}
-                    className="gap-2 border-emerald-400 text-emerald-700 hover:bg-emerald-50"
-                  >
-                    <FileSpreadsheet className="h-4 w-4" />
-                    Cheque Summary Excel
-                  </Button>
-                </div>
+                <Button
+                  variant="hero"
+                  onClick={downloadBroadsheet}
+                  disabled={approvedRows.length === 0}
+                  className="gap-2 shrink-0"
+                >
+                  <Download className="h-4 w-4" />
+                  Download Broadsheet PDF
+                </Button>
               </div>
 
               {/* Summary stats */}
@@ -1767,30 +1719,13 @@ function AdminBursariesPage() {
                       {approvedRows.length} students across {bySchool.size} school{bySchool.size !== 1 ? "s" : ""}
                     </p>
                   </div>
-                  <div className="flex flex-col sm:flex-row gap-2">
-                    <Button
-                      variant="outline"
-                      className="border-white/40 text-white hover:bg-white/10 gap-2"
-                      onClick={downloadBroadsheet}
-                    >
-                      <Download className="h-4 w-4" /> Download PDF
-                    </Button>
-                    <Button
-                      variant="outline"
-                      className="border-gold bg-gold text-gold-foreground hover:bg-gold/90 gap-2"
-                      onClick={downloadApprovedBroadsheetExcel}
-                    >
-                      <FileSpreadsheet className="h-4 w-4" /> Approved Broadsheet Excel
-                    </Button>
-                    <Button
-                      variant="outline"
-                      className="border-emerald-300 bg-emerald-600 text-white hover:bg-emerald-500 gap-2"
-                      onClick={downloadBroadsheetExcel}
-                    >
-                      <FileSpreadsheet className="h-4 w-4" /> Cheque Summary Excel
-                    </Button>
-
-                  </div>
+                  <Button
+                    variant="outline"
+                    className="border-white/40 text-white hover:bg-white/10 gap-2"
+                    onClick={downloadBroadsheet}
+                  >
+                    <Download className="h-4 w-4" /> Download Full Broadsheet PDF
+                  </Button>
                 </div>
               </div>
             )}
@@ -1799,85 +1734,18 @@ function AdminBursariesPage() {
 
         {/* ── SCHOOL CONFIRMATION LETTERS TAB ─────────────────────────────────── */}
         {tab === "letters" && (
-          <>
-          {/* Archive confirm modal */}
-          <Dialog open={!!archiveConfirmSchool} onOpenChange={(o) => { if (!o) setArchiveConfirmSchool(null); }}>
-            <DialogContent className="max-w-md">
-              <DialogHeader>
-                <DialogTitle className="flex items-center gap-2">
-                  <Archive className="h-5 w-5 text-amber-500" /> Archive Confirmation Letter?
-                </DialogTitle>
-                <DialogDescription>
-                  <strong>{archiveConfirmSchool}</strong> will be hidden from the active letters list.
-                  No data is deleted — you can restore it at any time from the <em>Archived</em> view.
-                </DialogDescription>
-              </DialogHeader>
-              <DialogFooter className="gap-2">
-                <Button variant="outline" onClick={() => setArchiveConfirmSchool(null)}>Cancel</Button>
-                <Button
-                  variant="destructive"
-                  disabled={archiveBusy === archiveConfirmSchool}
-                  onClick={() => archiveConfirmSchool && archiveSchool(archiveConfirmSchool)}
-                  className="gap-2"
-                >
-                  <Archive className="h-4 w-4" />
-                  {archiveBusy === archiveConfirmSchool ? "Archiving…" : "Archive Letter"}
-                </Button>
-              </DialogFooter>
-            </DialogContent>
-          </Dialog>
-
           <div className="grid lg:grid-cols-[360px_1fr] gap-5">
 
             {/* Left: school search & select */}
             <div className="bg-card border border-border rounded-2xl p-5 space-y-4 h-fit">
               <div>
-                <div className="flex items-start justify-between gap-2">
-                  <h2 className="font-display font-bold text-lg flex items-center gap-2">
-                    <Mail className="h-5 w-5 text-gold" />
-                    Confirmation Letters
-                  </h2>
-                  {/* Archive toggle */}
-                  <button
-                    onClick={() => { setShowArchived((v) => !v); setLetterSelectedSchool(null); }}
-                    className={`flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1.5 rounded-lg border transition-all shrink-0 ${
-                      showArchived
-                        ? "border-amber-400 bg-amber-50 text-amber-700 dark:bg-amber-950/30 dark:text-amber-400"
-                        : "border-border text-muted-foreground hover:border-primary/40 hover:text-foreground"
-                    }`}
-                  >
-                    {showArchived ? <ArchiveRestore className="h-3.5 w-3.5" /> : <Archive className="h-3.5 w-3.5" />}
-                    {showArchived ? "Active" : `Archived${archivedSchools.size > 0 ? ` (${archivedSchools.size})` : ""}`}
-                  </button>
-                </div>
-                <p className="text-sm text-muted-foreground mt-1">
-                  {showArchived
-                    ? "Archived letters are hidden from the active list. Restore any to make it downloadable again."
-                    : "Search a school, then generate its official confirmation-of-beneficiaries letter."}
+                <h2 className="font-display font-bold text-lg flex items-center gap-2">
+                  <Mail className="h-5 w-5 text-gold" />
+                  Confirmation Letters
+                </h2>
+                <p className="text-sm text-muted-foreground mt-0.5">
+                  Search a school, then generate its official confirmation-of-beneficiaries letter.
                 </p>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={downloadBlankConfirmationLetter}
-                  className="mt-3 w-full gap-2"
-                >
-                  <Download className="h-4 w-4" /> Download Blank Form
-                </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setHiddenPanelOpen(true)}
-                  className="mt-2 w-full gap-2"
-                  title="View / restore students you've hidden from confirmation letter downloads"
-                >
-                  <EyeOff className="h-4 w-4" />
-                  Hidden Students
-                  {hiddenIds.size > 0 && (
-                    <Badge className="ml-1 bg-slate-200 text-slate-800 hover:bg-slate-200 px-1.5 py-0 h-5">
-                      {hiddenIds.size}
-                    </Badge>
-                  )}
-                </Button>
               </div>
 
               <div className="relative">
@@ -1894,68 +1762,33 @@ function AdminBursariesPage() {
                 {letterSchoolList.length === 0 ? (
                   <div className="text-center text-sm text-muted-foreground py-10">
                     <School className="h-7 w-7 mx-auto mb-2 opacity-30" />
-                    {showArchived
-                      ? <><ArchiveX className="h-7 w-7 mx-auto mb-2 opacity-30" /><span>No archived letters yet.</span></>
-                      : bySchool.size === 0
-                        ? "No approved applications yet."
-                        : "No school matches your search."}
+                    {bySchool.size === 0
+                      ? "No approved applications yet."
+                      : "No school matches your search."}
                   </div>
                 ) : (
-                  letterSchoolList.map(({ school, count, total, category, isArchived, archivedAt }) => {
+                  letterSchoolList.map(({ school, count, total, category }) => {
                     const active = letterSelectedSchool === school;
                     return (
-                      <div
+                      <button
                         key={school}
-                        className={`w-full rounded-xl border transition-all ${
+                        onClick={() => setLetterSelectedSchool(school)}
+                        className={`w-full text-left px-3.5 py-3 rounded-xl border transition-all ${
                           active
                             ? "border-primary bg-primary/5 shadow-sm"
-                            : isArchived
-                              ? "border-amber-200 bg-amber-50/40 dark:border-amber-900/40 dark:bg-amber-950/10"
-                              : "border-border hover:border-primary/40 hover:bg-muted/30"
+                            : "border-border hover:border-primary/40 hover:bg-muted/30"
                         }`}
                       >
-                        <button
-                          className="w-full text-left px-3.5 py-3"
-                          onClick={() => setLetterSelectedSchool(school)}
-                        >
-                          <p className="font-semibold text-sm text-foreground truncate">{school}</p>
-                          <div className="flex items-center justify-between mt-1 gap-2">
-                            <span className="text-xs text-muted-foreground truncate">
-                              {category && `${category} · `}{count} student{count !== 1 ? "s" : ""}
-                              {isArchived && archivedAt && (
-                                <span className="ml-1.5 text-amber-600 dark:text-amber-500">
-                                  · archived {new Date(archivedAt).toLocaleDateString()}
-                                </span>
-                              )}
-                            </span>
-                            <span className="text-xs font-bold text-emerald-600 shrink-0">
-                              KSh {total.toLocaleString()}
-                            </span>
-                          </div>
-                        </button>
-                        {/* Archive / Unarchive quick action */}
-                        <div className="px-3.5 pb-2.5 -mt-1">
-                          {isArchived ? (
-                            <button
-                              onClick={() => unarchiveSchool(school)}
-                              disabled={archiveBusy === school}
-                              className="flex items-center gap-1 text-[11px] font-semibold text-amber-700 dark:text-amber-400 hover:text-emerald-700 transition-colors disabled:opacity-50"
-                            >
-                              <ArchiveRestore className="h-3 w-3" />
-                              {archiveBusy === school ? "Restoring…" : "Restore to active"}
-                            </button>
-                          ) : (
-                            <button
-                              onClick={() => setArchiveConfirmSchool(school)}
-                              disabled={archiveBusy === school}
-                              className="flex items-center gap-1 text-[11px] font-semibold text-muted-foreground hover:text-amber-600 transition-colors disabled:opacity-50"
-                            >
-                              <Archive className="h-3 w-3" />
-                              Archive letter
-                            </button>
-                          )}
+                        <p className="font-semibold text-sm text-foreground truncate">{school}</p>
+                        <div className="flex items-center justify-between mt-1">
+                          <span className="text-xs text-muted-foreground">
+                            {category && `${category} · `}{count} student{count !== 1 ? "s" : ""}
+                          </span>
+                          <span className="text-xs font-bold text-emerald-600">
+                            KSh {total.toLocaleString()}
+                          </span>
                         </div>
-                      </div>
+                      </button>
                     );
                   })
                 )}
@@ -1966,94 +1799,25 @@ function AdminBursariesPage() {
             <div className="bg-card border border-border rounded-2xl p-6">
               {!letterSelectedSchool ? (
                 <div className="h-full min-h-[400px] flex flex-col items-center justify-center text-center text-muted-foreground">
-                  {showArchived ? (
-                    <>
-                      <ArchiveRestore className="h-12 w-12 mb-3 opacity-20" />
-                      <p className="font-semibold">Select an archived school</p>
-                      <p className="text-sm mt-1 max-w-xs">
-                        Click a school on the left to preview it, then restore it to make it downloadable again.
-                      </p>
-                    </>
-                  ) : (
-                    <>
-                      <FileText className="h-12 w-12 mb-3 opacity-20" />
-                      <p className="font-semibold">Select a school to get started</p>
-                      <p className="text-sm mt-1 max-w-xs">
-                        Pick a school from the list to preview its beneficiaries and generate the official confirmation letter.
-                      </p>
-                    </>
-                  )}
+                  <FileText className="h-12 w-12 mb-3 opacity-20" />
+                  <p className="font-semibold">Select a school to get started</p>
+                  <p className="text-sm mt-1 max-w-xs">
+                    Pick a school from the list to preview its beneficiaries and generate the official confirmation letter.
+                  </p>
                 </div>
               ) : (
                 <div className="space-y-5">
                   <div className="flex items-start justify-between gap-3">
                     <div>
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <h3 className="font-display font-bold text-xl text-foreground">{letterSelectedSchool}</h3>
-                        {archivedSchools.has(letterSelectedSchool) && (
-                          <span className="flex items-center gap-1 text-xs font-semibold bg-amber-100 text-amber-700 dark:bg-amber-950/40 dark:text-amber-400 px-2 py-0.5 rounded-full border border-amber-200 dark:border-amber-800">
-                            <Archive className="h-3 w-3" /> Archived
-                          </span>
-                        )}
-                      </div>
+                      <h3 className="font-display font-bold text-xl text-foreground">{letterSelectedSchool}</h3>
                       <p className="text-sm text-muted-foreground mt-0.5">
                         {letterSelectedRows.length} approved student{letterSelectedRows.length !== 1 ? "s" : ""} · Total KSh {letterSelectedTotal.toLocaleString()}
                       </p>
                     </div>
-                    <div className="flex items-center gap-2 shrink-0">
-                      {archivedSchools.has(letterSelectedSchool) ? (
-                        <Button
-                          variant="outline"
-                          onClick={() => unarchiveSchool(letterSelectedSchool)}
-                          disabled={archiveBusy === letterSelectedSchool}
-                          className="gap-2 border-amber-300 text-amber-700 hover:bg-amber-50"
-                        >
-                          <ArchiveRestore className="h-4 w-4" />
-                          {archiveBusy === letterSelectedSchool ? "Restoring…" : "Restore"}
-                        </Button>
-                      ) : (
-                        <Button variant="outline" onClick={() => setArchiveConfirmSchool(letterSelectedSchool)} className="gap-2 text-muted-foreground hover:text-amber-600 hover:border-amber-300">
-                          <Archive className="h-4 w-4" /> Archive
-                        </Button>
-                      )}
-                      <Button variant="hero" onClick={downloadConfirmationLetter} disabled={archivedSchools.has(letterSelectedSchool)} className="gap-2">
-                        <Download className="h-4 w-4" /> Download Letter
-                      </Button>
-                    </div>
+                    <Button variant="hero" onClick={downloadConfirmationLetter} className="gap-2 shrink-0">
+                      <Download className="h-4 w-4" /> Download Letter
+                    </Button>
                   </div>
-                  {archivedSchools.has(letterSelectedSchool) && (
-                    <div className="flex items-start gap-3 bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800 rounded-xl px-4 py-3">
-                      <Archive className="h-4 w-4 text-amber-600 mt-0.5 shrink-0" />
-                      <div className="text-sm text-amber-800 dark:text-amber-300">
-                        <p className="font-semibold">This letter is archived</p>
-                        <p className="text-xs mt-0.5">Downloading is disabled while archived. Click <strong>Restore</strong> to make it active again.</p>
-                      </div>
-                    </div>
-                  )}
-
-                  {letterSelectedHiddenCount > 0 && (
-                    <div className="flex items-start justify-between gap-3 bg-slate-50 dark:bg-slate-900/40 border border-slate-200 dark:border-slate-800 rounded-xl px-4 py-3">
-                      <div className="flex items-start gap-3">
-                        <EyeOff className="h-4 w-4 text-slate-500 mt-0.5 shrink-0" />
-                        <div className="text-sm text-slate-700 dark:text-slate-300">
-                          <p className="font-semibold">
-                            {letterSelectedHiddenCount} student{letterSelectedHiddenCount !== 1 ? "s" : ""} hidden from this letter
-                          </p>
-                          <p className="text-xs mt-0.5">
-                            They will NOT appear on the downloaded confirmation letter. Restore them anytime to include them again.
-                          </p>
-                        </div>
-                      </div>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => setHiddenPanelOpen(true)}
-                        className="shrink-0 text-slate-600 hover:text-primary"
-                      >
-                        Manage
-                      </Button>
-                    </div>
-                  )}
 
                   {/* Letter details form */}
                   <div className="grid sm:grid-cols-2 gap-4 bg-muted/20 border border-border rounded-xl p-4">
@@ -2061,7 +1825,7 @@ function AdminBursariesPage() {
                       <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Term / Year</label>
                       <Input
                         value={letterTerm}
-                        onChange={(e) => setLetterTerm(e.target.value)}
+                        onChange={(e) => { setLetterTerm(e.target.value); setLetterTermTouched(true); }}
                         placeholder="e.g. 2026 T2"
                         className="mt-1.5 h-9"
                       />
@@ -2125,7 +1889,6 @@ function AdminBursariesPage() {
                             <th className="text-left px-3 py-2">Name</th>
                             <th className="text-left px-3 py-2">Form / Adm No.</th>
                             <th className="text-right px-3 py-2">Amount</th>
-                            <th className="text-right px-3 py-2 w-24">Action</th>
                           </tr>
                         </thead>
                         <tbody className="divide-y divide-border">
@@ -2139,28 +1902,8 @@ function AdminBursariesPage() {
                               <td className="px-3 py-2 text-right font-semibold">
                                 {r.amount_requested ? `KSh ${Number(r.amount_requested).toLocaleString()}` : "—"}
                               </td>
-                              <td className="px-3 py-2 text-right">
-                                <Button
-                                  size="sm"
-                                  variant="ghost"
-                                  className="h-7 gap-1 text-slate-600 hover:text-slate-900 hover:bg-slate-100"
-                                  onClick={() => hideStudent(r.id, r.student_name)}
-                                  title="Hide this student from the confirmation letter download. Restore later from the Hidden Students panel."
-                                >
-                                  <EyeOff className="h-3.5 w-3.5" /> Hide
-                                </Button>
-                              </td>
                             </tr>
                           ))}
-                          {letterSelectedRows.length === 0 && (
-                            <tr>
-                              <td colSpan={5} className="px-3 py-6 text-center text-xs text-muted-foreground">
-                                {letterSelectedHiddenCount > 0
-                                  ? "All students for this school are currently hidden. Restore some from the Hidden Students panel to include them."
-                                  : "No approved students for this school yet."}
-                              </td>
-                            </tr>
-                          )}
                         </tbody>
                         <tfoot>
                           <tr className="bg-emerald-50">
@@ -2170,7 +1913,6 @@ function AdminBursariesPage() {
                             <td className="px-3 py-2 text-right font-bold text-emerald-700">
                               KSh {letterSelectedTotal.toLocaleString()}
                             </td>
-                            <td className="px-3 py-2" />
                           </tr>
                         </tfoot>
                       </table>
@@ -2185,7 +1927,178 @@ function AdminBursariesPage() {
               )}
             </div>
           </div>
-          </>
+        )}
+
+        {/* ── SCHOOLS TAB — archive / unarchive the school directory ──────────── */}
+        {tab === "schools" && (
+          <div className="space-y-5">
+            <div className="bg-card border border-border rounded-2xl p-5">
+              <h2 className="font-display font-bold text-lg flex items-center gap-2">
+                <Archive className="h-5 w-5 text-gold" />
+                Schools
+              </h2>
+              <p className="text-sm text-muted-foreground mt-0.5">
+                Archive schools you no longer need to see in Review by Location or Confirmation Letters —
+                archiving doesn't delete anything, it just tucks the school out of the way until you unarchive it.
+                Select a single school, or use "Select all" to archive/unarchive every school currently listed at once.
+              </p>
+            </div>
+
+            <div className="flex flex-wrap items-center gap-3">
+              <div className="relative flex-1 min-w-[220px]">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input
+                  placeholder="Search school name…"
+                  value={schoolsSearch}
+                  onChange={(e) => setSchoolsSearch(e.target.value)}
+                  className="pl-9 h-10"
+                />
+              </div>
+              <div className="flex gap-1 bg-muted/50 border border-border rounded-lg p-1">
+                {(["active", "archived", "all"] as const).map((k) => (
+                  <button
+                    key={k}
+                    onClick={() => setSchoolsShowArchivedOnly(k)}
+                    className={`px-3 py-1.5 rounded-md text-xs font-semibold capitalize transition-all ${
+                      schoolsShowArchivedOnly === k ? "bg-card shadow text-foreground" : "text-muted-foreground hover:text-foreground"
+                    }`}
+                  >
+                    {k === "active" ? "Active" : k === "archived" ? "Archived" : "All"}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Bulk action bar */}
+            {checkedSchools.size > 0 && (
+              <div className="flex flex-wrap items-center gap-3 px-4 py-3 bg-primary/5 border border-primary/20 rounded-xl">
+                <div className="flex items-center gap-2 flex-1 min-w-0">
+                  <CheckSquare className="h-4 w-4 text-primary shrink-0" />
+                  <span className="text-sm font-semibold text-primary">
+                    {checkedSchools.size} school{checkedSchools.size !== 1 ? "s" : ""} selected
+                  </span>
+                  <button onClick={clearCheckedSchools} className="ml-1 text-muted-foreground hover:text-foreground">
+                    <X className="h-3.5 w-3.5" />
+                  </button>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    disabled={schoolsBusy}
+                    onClick={() => runSchoolArchiveAction([...checkedSchools], "archive")}
+                    className="gap-1.5 border-amber-300 text-amber-700 hover:bg-amber-50"
+                  >
+                    <Archive className="h-3.5 w-3.5" /> Archive selected
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    disabled={schoolsBusy}
+                    onClick={() => runSchoolArchiveAction([...checkedSchools], "unarchive")}
+                    className="gap-1.5 border-emerald-300 text-emerald-700 hover:bg-emerald-50"
+                  >
+                    <ArchiveRestore className="h-3.5 w-3.5" /> Unarchive selected
+                  </Button>
+                </div>
+              </div>
+            )}
+
+            <div className="bg-card border border-border rounded-2xl overflow-hidden">
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead className="bg-muted/50 text-xs uppercase tracking-wider text-muted-foreground">
+                    <tr>
+                      <th className="w-10 px-4 py-3">
+                        <Checkbox
+                          checked={allSchoolsChecked}
+                          onCheckedChange={toggleAllSchools}
+                          aria-label="Select all schools"
+                        />
+                      </th>
+                      <th className="text-left px-4 py-3">School</th>
+                      <th className="text-left px-4 py-3">Location</th>
+                      <th className="text-right px-4 py-3">Applications</th>
+                      <th className="text-left px-4 py-3">Status</th>
+                      <th className="text-right px-4 py-3">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-border">
+                    {schoolsDirectory.length === 0 ? (
+                      <tr><td colSpan={6} className="text-center py-12 text-muted-foreground">
+                        <School className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                        No schools match this view.
+                      </td></tr>
+                    ) : (
+                      schoolsDirectory.map((s) => {
+                        const isChecked = checkedSchools.has(s.school);
+                        return (
+                          <tr key={s.school} className={isChecked ? "bg-primary/5" : "hover:bg-muted/30"}>
+                            <td className="px-4 py-3">
+                              <Checkbox
+                                checked={isChecked}
+                                onCheckedChange={() => toggleOneSchool(s.school)}
+                                aria-label={`Select ${s.school}`}
+                              />
+                            </td>
+                            <td className="px-4 py-3">
+                              <p className="font-semibold flex items-center gap-1.5">
+                                <School className="h-3.5 w-3.5 text-primary shrink-0" /> {s.school}
+                              </p>
+                              {s.category && <p className="text-xs text-muted-foreground">{s.category}</p>}
+                            </td>
+                            <td className="px-4 py-3 text-muted-foreground text-xs">
+                              {[s.subCounty, s.county].filter(Boolean).join(", ") || "—"}
+                            </td>
+                            <td className="px-4 py-3 text-right">
+                              {s.count} {s.pending > 0 && (
+                                <span className="text-amber-700 font-semibold">· {s.pending} pending</span>
+                              )}
+                            </td>
+                            <td className="px-4 py-3">
+                              {s.archived ? (
+                                <Badge className="bg-amber-500/15 text-amber-700">Archived</Badge>
+                              ) : (
+                                <Badge className="bg-emerald-500/15 text-emerald-700">Active</Badge>
+                              )}
+                            </td>
+                            <td className="px-4 py-3 text-right">
+                              {s.archived ? (
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  disabled={schoolsBusy}
+                                  onClick={() => runSchoolArchiveAction([s.school], "unarchive")}
+                                  className="gap-1.5 border-emerald-300 text-emerald-700 hover:bg-emerald-50"
+                                >
+                                  <ArchiveRestore className="h-3.5 w-3.5" /> Unarchive
+                                </Button>
+                              ) : (
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  disabled={schoolsBusy}
+                                  onClick={() => runSchoolArchiveAction([s.school], "archive")}
+                                  className="gap-1.5 border-amber-300 text-amber-700 hover:bg-amber-50"
+                                >
+                                  <Archive className="h-3.5 w-3.5" /> Archive
+                                </Button>
+                              )}
+                            </td>
+                          </tr>
+                        );
+                      })
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            <label className="flex items-center gap-2 text-xs text-muted-foreground">
+              <Checkbox checked={showArchivedInPickers} onCheckedChange={(v) => setShowArchivedInPickers(!!v)} />
+              Also show archived schools in the Review by Location and Confirmation Letters pickers
+            </label>
+          </div>
         )}
       </div>
 
@@ -2358,11 +2271,41 @@ function AdminBursariesPage() {
                       Ref <span className="font-mono font-bold text-primary">{selected.reference}</span>
                       {" · "}
                       <Badge className={STATUS_COLORS[selected.status] ?? ""}>{selected.status}</Badge>
+                      {" · "}
+                      <span className="text-xs">{selected.term}</span>
                     </DialogDescription>
                   </DialogHeader>
+
+                  {/* Application History — every other application on record for this
+                      same student, across all terms, so reviewers can see at a glance
+                      whether they've received a bursary before and how it went. */}
+                  {applicationHistory.length > 0 && (
+                    <div className="rounded-xl border border-primary/20 bg-primary/5 p-4 space-y-2">
+                      <p className="text-xs font-bold uppercase tracking-wide text-primary flex items-center gap-1.5">
+                        <History className="h-3.5 w-3.5" /> Application History ({applicationHistory.length})
+                      </p>
+                      <div className="space-y-1.5">
+                        {applicationHistory.map((h) => (
+                          <div key={h.id} className="flex items-center justify-between gap-3 bg-card border border-border rounded-lg px-3 py-2 text-sm">
+                            <div className="min-w-0">
+                              <p className="font-semibold truncate">{h.term}</p>
+                              <p className="text-xs text-muted-foreground truncate">
+                                {effectiveSchoolName(h)} · {new Date(h.created_at).toLocaleDateString("en-KE")}
+                                {h.amount_requested ? ` · KSh ${Number(h.amount_requested).toLocaleString()}` : ""}
+                              </p>
+                            </div>
+                            <Badge className={`${STATUS_COLORS[h.status] ?? ""} shrink-0`}>{h.status}</Badge>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
                   <div className="space-y-4">
                     <DetailGroup title="Student">
+                      <Detail label="Term" value={selected.term} />
                       <Detail label="Registration No." value={selected.registration_number} />
+                      <Detail label="ID / Birth Cert No." value={selected.id_or_birth_cert_number} />
                       <Detail label="DOB" value={selected.dob} />
                       <Detail label="Gender" value={selected.gender} />
                       <Detail label="Grade" value={selected.current_grade} />
@@ -2544,105 +2487,6 @@ function AdminBursariesPage() {
             >
               {renameSchoolBusy ? "Saving…" : "Apply to All"}
             </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* Hidden Students Panel — restore students you temporarily hid from confirmation letter downloads */}
-      <Dialog open={hiddenPanelOpen} onOpenChange={setHiddenPanelOpen}>
-        <DialogContent className="max-w-2xl max-h-[85vh] flex flex-col">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <EyeOff className="h-5 w-5 text-slate-500" />
-              Hidden Students
-              {hiddenIds.size > 0 && (
-                <Badge className="bg-slate-200 text-slate-800 hover:bg-slate-200">{hiddenIds.size}</Badge>
-              )}
-            </DialogTitle>
-            <DialogDescription>
-              Students you've temporarily excluded from confirmation letter downloads, grouped by school. Search by
-              school, student name, reference or guardian, then click any student to restore them so they appear on
-              the next generated letter.
-            </DialogDescription>
-          </DialogHeader>
-
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
-            <Input
-              value={hiddenSearch}
-              onChange={(e) => setHiddenSearch(e.target.value)}
-              placeholder="Search hidden students by school or name…"
-              className="pl-9"
-              autoFocus
-            />
-          </div>
-
-          <div className="flex-1 overflow-y-auto -mx-6 px-6 py-1">
-            {hiddenIds.size === 0 ? (
-              <div className="text-center py-12 text-sm text-muted-foreground">
-                <EyeOff className="h-8 w-8 mx-auto mb-3 opacity-40" />
-                <p className="font-medium text-foreground">No hidden students</p>
-                <p className="mt-1">
-                  Use the <span className="inline-flex items-center gap-1 font-semibold"><EyeOff className="h-3 w-3" />Hide</span> button
-                  on any beneficiary row in the Confirmation Letters tab to exclude that student from the next letter
-                  download, then restore them here later so they reappear.
-                </p>
-              </div>
-            ) : hiddenGrouped.length === 0 ? (
-              <div className="text-center py-10 text-sm text-muted-foreground">
-                No hidden students match "<span className="font-semibold">{hiddenSearch}</span>".
-              </div>
-            ) : (
-              <div className="space-y-4">
-                {hiddenGrouped.map(({ school, students }) => (
-                  <div key={school} className="border border-border rounded-xl overflow-hidden">
-                    <div className="px-4 py-2.5 bg-muted/40 flex items-center gap-2">
-                      <School className="h-4 w-4 text-primary shrink-0" />
-                      <p className="font-display font-bold text-sm text-foreground truncate flex-1">{school}</p>
-                      <span className="text-xs text-muted-foreground shrink-0">
-                        {students.length} hidden
-                      </span>
-                    </div>
-                    <ul className="divide-y divide-border">
-                      {students.map((r) => (
-                        <li key={r.id}>
-                          <button
-                            onClick={() => unhideStudent(r.id, r.student_name)}
-                            className="w-full flex items-center gap-3 px-4 py-2.5 text-left hover:bg-emerald-50 transition-colors group"
-                            title="Click to restore this student to the confirmation letter"
-                          >
-                            <div className="flex-1 min-w-0">
-                              <p className="font-semibold text-sm text-foreground truncate">{r.student_name}</p>
-                              <p className="text-[11px] text-muted-foreground truncate">
-                                <span className="font-mono text-primary">{r.reference}</span>
-                                {" · "}{r.current_grade}
-                                {r.guardian_name && ` · ${r.guardian_name}`}
-                              </p>
-                            </div>
-                            <Badge className={STATUS_COLORS[r.status] ?? ""}>{r.status}</Badge>
-                            <span className="inline-flex items-center gap-1 text-xs font-semibold text-emerald-700 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
-                              <RotateCcw className="h-3.5 w-3.5" /> Restore
-                            </span>
-                          </button>
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-
-          <DialogFooter className="sm:justify-between gap-2">
-            <Button
-              variant="ghost"
-              className="text-slate-600 hover:text-rose-700 hover:bg-rose-50 gap-1.5"
-              onClick={clearAllHidden}
-              disabled={hiddenIds.size === 0}
-            >
-              <RotateCcw className="h-4 w-4" /> Restore all
-            </Button>
-            <Button variant="outline" onClick={() => setHiddenPanelOpen(false)}>Close</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
