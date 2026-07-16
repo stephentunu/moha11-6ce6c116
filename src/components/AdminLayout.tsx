@@ -13,8 +13,6 @@ import {
   MessageSquare,
   Calendar,
   GraduationCap,
-  Images,
-
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -26,7 +24,6 @@ const NAV: { to: string; label: string; icon: typeof LayoutDashboard; exact?: bo
   { to: "/admin/bursaries", label: "Bursary Applications", icon: GraduationCap },
   { to: "/admin/content", label: "Content Manager", icon: FileText },
   { to: "/admin/activities", label: "Daily Activities", icon: Calendar },
-  { to: "/admin/media", label: "Campaign Media", icon: Images },
   { to: "/admin/polls", label: "Poll Analytics", icon: BarChart3 },
   { to: "/admin/supporters", label: "Supporters", icon: Users },
   { to: "/admin/sms", label: "Bulk SMS", icon: MessageSquare },
@@ -62,8 +59,8 @@ export function AdminLayout({ children, title }: { children: ReactNode; title: s
       <div className="grid lg:grid-cols-[260px_1fr] min-h-screen">
         {/* Sidebar */}
         <aside className="hidden lg:flex flex-col bg-primary text-primary-foreground border-r border-primary/40">
-          <div className="p-6 border-b border-primary-foreground/10">
-            <div className="flex items-center gap-3">
+          <div className="p-3 border-b border-primary-foreground/10">
+            <div className="flex items-center gap-2">
               <div className="h-10 w-10 rounded-lg bg-gold flex items-center justify-center">
                 <ShieldCheck className="h-5 w-5 text-gold-foreground" />
               </div>
@@ -84,7 +81,7 @@ export function AdminLayout({ children, title }: { children: ReactNode; title: s
                   key={item.to}
                   to={item.to}
                   className={cn(
-                    "flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm font-semibold transition-colors",
+                    "flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors",
                     active
                       ? "bg-gold text-gold-foreground"
                       : "text-primary-foreground/80 hover:bg-primary-foreground/10 hover:text-primary-foreground"
@@ -104,13 +101,13 @@ export function AdminLayout({ children, title }: { children: ReactNode; title: s
           <div className="p-3 border-t border-primary-foreground/10 space-y-1">
             <Link
               to="/"
-              className="w-full flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm font-semibold text-primary-foreground/80 hover:bg-primary-foreground/10 hover:text-primary-foreground transition-colors"
+              className="w-full flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-semibold text-primary-foreground/80 hover:bg-primary-foreground/10 hover:text-primary-foreground transition-colors"
             >
               <Home className="h-4 w-4" /> Back to site
             </Link>
             <button
               onClick={handleLogout}
-              className="w-full flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm font-semibold text-primary-foreground/80 hover:bg-primary-foreground/10 hover:text-primary-foreground transition-colors"
+              className="w-full flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-semibold text-primary-foreground/80 hover:bg-primary-foreground/10 hover:text-primary-foreground transition-colors"
             >
               <LogOut className="h-4 w-4" /> Sign out
             </button>
@@ -120,8 +117,8 @@ export function AdminLayout({ children, title }: { children: ReactNode; title: s
         {/* Main */}
         <div className="flex flex-col min-w-0">
           <header className="bg-card border-b border-border sticky top-0 z-30">
-            <div className="px-4 lg:px-8 h-16 flex items-center justify-between gap-4">
-              <h1 className="font-display text-lg md:text-xl font-bold truncate">{title}</h1>
+            <div className="px-3 lg:px-4 h-12 flex items-center justify-between gap-3">
+              <h1 className="font-display text-sm md:text-base font-bold truncate">{title}</h1>
               <div className="flex items-center gap-2">
                 <span className="hidden sm:inline text-xs text-muted-foreground">
                   Signed in as <span className="font-semibold text-foreground">admin2027</span>
@@ -139,7 +136,7 @@ export function AdminLayout({ children, title }: { children: ReactNode; title: s
             </div>
             {/* Mobile nav */}
             <div className="lg:hidden border-t border-border overflow-x-auto">
-              <div className="flex gap-1 px-3 py-2 min-w-max">
+              <div className="flex gap-1 px-2.5 py-1.5 min-w-max">
                 {NAV.map((item) => {
                   const active = item.exact
                     ? pathname === item.to
@@ -162,7 +159,7 @@ export function AdminLayout({ children, title }: { children: ReactNode; title: s
               </div>
             </div>
           </header>
-          <div className="flex-1 p-4 lg:p-8">{children}</div>
+          <div className="flex-1 p-3 lg:p-4">{children}</div>
         </div>
       </div>
     </div>

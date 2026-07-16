@@ -59,16 +59,16 @@ function AdminOverviewPage() {
 
   return (
     <AdminLayout title="Dashboard Overview">
-      <div className="space-y-8">
+      <div className="space-y-5">
         {/* Stats */}
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {stats.map((s) => {
             const Icon = s.icon;
             return (
               <Link
                 key={s.label}
                 to={s.to}
-                className="group bg-card border border-border rounded-2xl p-6 shadow-sm hover:shadow-elegant hover:-translate-y-0.5 transition-all"
+                className="group bg-card border border-border rounded-2xl p-3 shadow-sm hover:shadow-elegant hover:-translate-y-0.5 transition-all"
               >
                 <div className="flex items-start justify-between">
                   <div className={`h-12 w-12 rounded-xl flex items-center justify-center ${s.color}`}>
@@ -76,19 +76,19 @@ function AdminOverviewPage() {
                   </div>
                   <ArrowUpRight className="h-4 w-4 text-muted-foreground group-hover:text-primary transition-colors" />
                 </div>
-                <p className="mt-5 text-3xl font-display font-black">{s.value}</p>
-                <p className="text-sm font-semibold text-foreground mt-1">{s.label}</p>
+                <p className="mt-2 text-2xl font-display font-black">{s.value}</p>
+                <p className="text-xs font-semibold text-foreground mt-1">{s.label}</p>
                 <p className="text-xs text-muted-foreground mt-1">{s.sub}</p>
               </Link>
             );
           })}
         </div>
 
-        <div className="grid gap-6 lg:grid-cols-2">
+        <div className="grid gap-3 lg:grid-cols-2">
           {/* Recent messages */}
-          <div className="bg-card border border-border rounded-2xl p-6 shadow-sm">
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="font-display text-lg font-bold flex items-center gap-2">
+          <div className="bg-card border border-border rounded-2xl p-3 shadow-sm">
+            <div className="flex items-center justify-between mb-3">
+              <h2 className="font-display text-sm font-bold flex items-center gap-2">
                 <Activity className="h-4 w-4 text-primary" /> Recent Messages
               </h2>
               <Link to="/admin/inbox" className="text-xs font-semibold text-primary hover:underline">
@@ -96,16 +96,16 @@ function AdminOverviewPage() {
               </Link>
             </div>
             {recentMessages.length === 0 ? (
-              <p className="text-sm text-muted-foreground py-8 text-center">No messages yet.</p>
+              <p className="text-xs text-muted-foreground py-5 text-center">No messages yet.</p>
             ) : (
               <ul className="divide-y divide-border">
                 {recentMessages.map((m) => (
-                  <li key={m.id} className="py-3 flex items-start gap-3">
+                  <li key={m.id} className="py-2 flex items-start gap-2">
                     <span
                       className={`mt-1.5 h-2 w-2 rounded-full shrink-0 ${m.read ? "bg-muted-foreground/40" : "bg-gold"}`}
                     />
                     <div className="min-w-0 flex-1">
-                      <p className="text-sm font-semibold truncate">
+                      <p className="text-xs font-semibold truncate">
                         {m.name}{" "}
                         <span className="text-xs font-normal text-muted-foreground">
                           · {m.kind === "ask" ? "Ask Me" : "Opinion"}
@@ -120,9 +120,9 @@ function AdminOverviewPage() {
           </div>
 
           {/* Recent businesses */}
-          <div className="bg-card border border-border rounded-2xl p-6 shadow-sm">
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="font-display text-lg font-bold flex items-center gap-2">
+          <div className="bg-card border border-border rounded-2xl p-3 shadow-sm">
+            <div className="flex items-center justify-between mb-3">
+              <h2 className="font-display text-sm font-bold flex items-center gap-2">
                 <Store className="h-4 w-4 text-primary" /> New Listings
               </h2>
               <Link to="/admin/businesses" className="text-xs font-semibold text-primary hover:underline">
@@ -130,18 +130,18 @@ function AdminOverviewPage() {
               </Link>
             </div>
             {recentBusinesses.length === 0 ? (
-              <p className="text-sm text-muted-foreground py-8 text-center">No listings yet.</p>
+              <p className="text-xs text-muted-foreground py-5 text-center">No listings yet.</p>
             ) : (
               <ul className="divide-y divide-border">
                 {recentBusinesses.map((b) => (
-                  <li key={b.id} className="py-3 flex items-center gap-3">
+                  <li key={b.id} className="py-2 flex items-center gap-2">
                     <img
                       src={b.imageUrl}
                       alt={b.businessName}
                       className="h-10 w-10 rounded-lg object-cover bg-muted shrink-0"
                     />
                     <div className="min-w-0 flex-1">
-                      <p className="text-sm font-semibold truncate">{b.businessName}</p>
+                      <p className="text-xs font-semibold truncate">{b.businessName}</p>
                       <p className="text-xs text-muted-foreground truncate">
                         {b.category} · {b.ward}
                       </p>

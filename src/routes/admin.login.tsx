@@ -48,29 +48,29 @@ function AdminLoginPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-primary via-primary/90 to-primary/70 flex items-center justify-center px-4">
+    <div className="min-h-screen bg-gradient-to-br from-primary via-primary/90 to-primary/70 flex items-center justify-center px-3">
       <Toaster />
       <div className="w-full max-w-md">
         <Link
           to="/"
-          className="inline-flex items-center gap-2 text-white/80 hover:text-white text-sm font-semibold mb-6 transition"
+          className="inline-flex items-center gap-2 text-white/80 hover:text-white text-xs font-semibold mb-3 transition"
         >
           <ArrowLeft className="h-4 w-4" /> Back to public site
         </Link>
-        <div className="bg-card border border-border rounded-3xl p-8 shadow-2xl">
-          <div className="flex items-center gap-3 mb-6">
+        <div className="bg-card border border-border rounded-3xl p-4 shadow-2xl">
+          <div className="flex items-center gap-2 mb-3">
             <div className="h-12 w-12 rounded-xl bg-primary/10 flex items-center justify-center">
               <ShieldCheck className="h-6 w-6 text-primary" />
             </div>
             <div>
-              <h1 className="font-display text-2xl font-bold">Admin Console</h1>
+              <h1 className="font-display text-xl font-bold">Admin Console</h1>
               <p className="text-xs text-muted-foreground">
                 Restricted area. Authorized personnel only.
               </p>
             </div>
           </div>
 
-          <form onSubmit={submit} className="space-y-4">
+          <form onSubmit={submit} className="space-y-3">
             <div>
               <Label htmlFor="email" className="font-semibold">Email</Label>
               <div className="relative mt-1.5">
@@ -111,7 +111,7 @@ function AdminLoginPage() {
               )}
             </Button>
           </form>
-          <p className="mt-6 text-[11px] text-center text-muted-foreground">
+          <p className="mt-3 text-[11px] text-center text-muted-foreground">
             Session is stored locally on this device.
           </p>
         </div>

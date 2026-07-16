@@ -603,6 +603,43 @@ export function useBursaryTerm() {
   return { term, loading };
 }
 
+// ===== School Confirmation Letter tracking =====
+//
+// Once an admin downloads a school's confirmation letter for a given term,
+// that school drops off the active "School Confirmation Letters" picker for
+// that term and shows up (with a "Letter sent" badge) in the Schools tab
+// instead, where it can be archived — or simply restored back onto the
+// active letters list if it was marked by mistake.
+
+/** Fetch every (school, term) pair that already had a letter generated. Keyed as "school||term". */
+export async function fetchGeneratedLetterSchools(): Promise<Set<string>> {
+  const { data, error } = await supabase
+    .from("school_letters_generated" as never)
+    .select("school_name, term");
+  if (error || !data) return new Set();
+  return new Set(
+    (data as unknown as { school_name: string; term: string }[]).map((r) => `${r.school_name}||${r.term}`),
+  );
+}
+
+/** Record that a school's confirmation letter was just generated for a term. */
+export async function markLetterGenerated(schoolName: string, term: string): Promise<void> {
+  const { error } = await supabase
+    .from("school_letters_generated" as never)
+    .upsert({ school_name: schoolName, term } as never, { onConflict: "school_name,term" } as never);
+  if (error) throw error;
+}
+
+/** Undo markLetterGenerated — puts the school back on the active letters list for that term. */
+export async function unmarkLetterGenerated(schoolName: string, term: string): Promise<void> {
+  const { error } = await supabase
+    .from("school_letters_generated" as never)
+    .delete()
+    .eq("school_name", schoolName)
+    .eq("term", term);
+  if (error) throw error;
+}
+
 // ===== Archived Schools =====
 //
 // A school is just a free-text name that shows up on one or more bursary

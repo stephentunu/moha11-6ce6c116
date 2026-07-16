@@ -12,6 +12,9 @@ import { generateBursaryPdf, generateBroadsheetPdf, generateConfirmationLetter, 
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
+import {
+  DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator,
+} from "@/components/ui/dropdown-menu";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import {
@@ -28,7 +31,7 @@ import { AdminLayout } from "@/components/AdminLayout";
 import { supabase } from "@/integrations/supabase/client";
 import { sendBursarySms } from "@/lib/bursary.functions";
 import { cn } from "@/lib/utils";
-import { MATHARE_WARDS, useBursaryTerm, fetchArchivedSchools, archiveSchools, unarchiveSchools } from "@/lib/admin-store";
+import { MATHARE_WARDS, useBursaryTerm, fetchArchivedSchools, archiveSchools, unarchiveSchools, fetchGeneratedLetterSchools, markLetterGenerated, unmarkLetterGenerated } from "@/lib/admin-store";
 import { COUNTY_NAMES, KENYA_COUNTIES } from "@/lib/kenya-counties";
 import { BursaryApplicationDialog } from "@/components/BursaryApplicationDialog";
 
@@ -137,6 +140,14 @@ function AdminBursariesPage() {
   const [checkedIds, setCheckedIds] = useState<Set<string>>(new Set());
   const [bulkBusy, setBulkBusy] = useState(false);
 
+  // Applications tab — Ward / School quick filters, picked from a dropdown
+  // opened by clicking the "Ward" / "School / Grade" column headers. Selecting
+  // a ward or school narrows the table straight down to its students (no
+  // intermediate browsing step); both filters can be combined, and each
+  // clears independently.
+  const [appsWard, setAppsWard] = useState<string | null>(null);
+  const [appsSchool, setAppsSchool] = useState<string | null>(null);
+
   // Term window — which term's applications are currently being viewed.
   // "current" tracks whatever term is open right now (per site_settings);
   // any other value pins the view to that specific past term.
@@ -150,6 +161,18 @@ function AdminBursariesPage() {
   const [archivedSchools, setArchivedSchools] = useState<Set<string>>(new Set());
   const [showArchivedInPickers, setShowArchivedInPickers] = useState(false);
 
+  // Schools that already had their confirmation letter downloaded for a given
+  // term — keyed as "school||term". Drops them off the active Confirmation
+  // Letters picker for that term until restored (see Schools tab).
+  const [letterGeneratedSet, setLetterGeneratedSet] = useState<Set<string>>(new Set());
+  const [showSentInLetters, setShowSentInLetters] = useState(false);
+
+  // Students hidden (excluded) from the confirmation letter currently being
+  // prepared — cleared whenever a different school is selected. Lets an
+  // admin uncheck a student before downloading, then re-check (unhide) them
+  // again before the letter actually goes out.
+  const [letterHiddenIds, setLetterHiddenIds] = useState<Set<string>>(new Set());
+
   // Schools tab — manage the school directory: archive/unarchive a single
   // school or all schools at once.
   const [schoolsSearch, setSchoolsSearch] = useState("");
@@ -162,8 +185,8 @@ function AdminBursariesPage() {
   const [letterSelectedSchool, setLetterSelectedSchool] = useState<string | null>(null);
   const [letterChequeNumber, setLetterChequeNumber] = useState("");
   const [letterDate, setLetterDate] = useState("");
-  const [letterOfficerName, setLetterOfficerName] = useState("Benard Omondi");
-  const [letterOfficerPhone, setLetterOfficerPhone] = useState("0725104771");
+  const [letterOfficerName, setLetterOfficerName] = useState("Nancy Otieno");
+  const [letterOfficerPhone, setLetterOfficerPhone] = useState("0728827978");
   const [letterTerm, setLetterTerm] = useState(`${new Date().getFullYear()} T2`);
   const [letterTermTouched, setLetterTermTouched] = useState(false);
 
@@ -214,9 +237,14 @@ function AdminBursariesPage() {
     setArchivedSchools(await fetchArchivedSchools());
   };
 
+  const loadGeneratedLetters = async () => {
+    setLetterGeneratedSet(await fetchGeneratedLetterSchools());
+  };
+
   useEffect(() => {
     load();
     loadArchivedSchools();
+    loadGeneratedLetters();
     const ch = supabase
       .channel("bursary-changes")
       .on("postgres_changes", { event: "*", schema: "public", table: "bursary_applications" }, () => load())
@@ -225,8 +253,13 @@ function AdminBursariesPage() {
       .channel("archived-schools-changes")
       .on("postgres_changes", { event: "*", schema: "public", table: "archived_schools" }, () => loadArchivedSchools())
       .subscribe();
-    return () => { supabase.removeChannel(ch); supabase.removeChannel(archCh); };
+    const letterCh = supabase
+      .channel("school-letters-generated-changes")
+      .on("postgres_changes", { event: "*", schema: "public", table: "school_letters_generated" }, () => loadGeneratedLetters())
+      .subscribe();
+    return () => { supabase.removeChannel(ch); supabase.removeChannel(archCh); supabase.removeChannel(letterCh); };
   }, []);
+
 
   // ── Term-scoped rows — everything below (except Application History, which
   // intentionally looks across ALL terms) is derived from this instead of
@@ -307,21 +340,34 @@ function AdminBursariesPage() {
         total: schoolRows.reduce((s, r) => s + (r.amount_requested ?? 0), 0),
         category: schoolRows[0]?.school_category ?? null,
         archived: archivedSchools.has(school),
+        letterSent: effectiveTerm ? letterGeneratedSet.has(`${school}||${effectiveTerm}`) : false,
       }))
       .filter((s) => showArchivedInPickers || !s.archived)
+      .filter((s) => showSentInLetters || !s.letterSent)
       .filter((s) => !q || s.school.toLowerCase().includes(q))
       .sort((a, b) => a.school.localeCompare(b.school));
-  }, [bySchool, letterSchoolSearch, archivedSchools, showArchivedInPickers]);
+  }, [bySchool, letterSchoolSearch, archivedSchools, showArchivedInPickers, letterGeneratedSet, effectiveTerm, showSentInLetters]);
 
   const letterSelectedRows = useMemo(
     () => (letterSelectedSchool ? bySchool.get(letterSelectedSchool) ?? [] : []),
     [bySchool, letterSelectedSchool]
   );
 
-  const letterSelectedTotal = useMemo(
-    () => letterSelectedRows.reduce((s, r) => s + (r.amount_requested ?? 0), 0),
-    [letterSelectedRows]
+  // The subset of letterSelectedRows actually going into the letter — a
+  // student can be unchecked (hidden) from here before download, and
+  // re-checked (unhidden) again right up until the letter is generated.
+  const letterVisibleRows = useMemo(
+    () => letterSelectedRows.filter((r) => !letterHiddenIds.has(r.id)),
+    [letterSelectedRows, letterHiddenIds]
   );
+
+  const letterSelectedTotal = useMemo(
+    () => letterVisibleRows.reduce((s, r) => s + (r.amount_requested ?? 0), 0),
+    [letterVisibleRows]
+  );
+
+  const toggleLetterStudentHidden = (id: string) =>
+    setLetterHiddenIds((prev) => { const next = new Set(prev); next.has(id) ? next.delete(id) : next.add(id); return next; });
 
   // ── Review by Location: County → Sub-county → School → Students ────────────
   // Built from ALL applications (not just approved) since this is the
@@ -460,6 +506,7 @@ function AdminBursariesPage() {
         subCounty: schoolRows[0]?.school_sub_county ?? null,
         category: schoolRows[0]?.school_category ?? null,
         archived: archivedSchools.has(school),
+        letterSent: effectiveTerm ? letterGeneratedSet.has(`${school}||${effectiveTerm}`) : false,
       }))
       .filter((s) => !q || s.school.toLowerCase().includes(q))
       .filter((s) => {
@@ -468,7 +515,7 @@ function AdminBursariesPage() {
         return true;
       })
       .sort((a, b) => a.school.localeCompare(b.school));
-  }, [rows, schoolsSearch, archivedSchools, schoolsShowArchivedOnly]);
+  }, [rows, schoolsSearch, archivedSchools, schoolsShowArchivedOnly, letterGeneratedSet, effectiveTerm]);
 
   const schoolsFilteredNames = schoolsDirectory.map((s) => s.school);
   const allSchoolsChecked = schoolsFilteredNames.length > 0 && schoolsFilteredNames.every((n) => checkedSchools.has(n));
@@ -511,6 +558,22 @@ function AdminBursariesPage() {
     }
   };
 
+  /** Put a school back onto the active Confirmation Letters list for the term currently being viewed. */
+  const restoreLetterSchool = async (school: string) => {
+    const term = effectiveTerm || currentTerm;
+    if (!term) return;
+    setSchoolsBusy(true);
+    try {
+      await unmarkLetterGenerated(school, term);
+      await loadGeneratedLetters();
+      toast.success(`${school} is back on the active Confirmation Letters list for ${term}`);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Action failed");
+    } finally {
+      setSchoolsBusy(false);
+    }
+  };
+
   // ── Application History — cross-term lookup for the selected student, so
   // admins reviewing a new application can immediately see whether this
   // student has applied before and what happened (approved/pending/
@@ -534,8 +597,40 @@ function AdminBursariesPage() {
       .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
   }, [selected, rows]);
 
+  // ── Applications tab drill-down data (built from `filtered`, so the search
+  // box and status filter chips stay in effect for the dropdown options too) ─
+  const appsWardOptions = useMemo(() => {
+    const map = new Map<string, number>();
+    MATHARE_WARDS.forEach((w) => map.set(w, 0));
+    for (const r of filtered) {
+      const w = (r.ward || "").trim() || "Unspecified";
+      map.set(w, (map.get(w) || 0) + 1);
+    }
+    return Array.from(map.entries()).sort((a, b) => a[0].localeCompare(b[0]));
+  }, [filtered]);
+
+  const appsSchoolOptions = useMemo(() => {
+    const map = new Map<string, number>();
+    for (const r of filtered) {
+      const s = effectiveSchoolName(r) || "Unspecified School";
+      map.set(s, (map.get(s) || 0) + 1);
+    }
+    return Array.from(map.entries()).sort((a, b) => a[0].localeCompare(b[0]));
+  }, [filtered]);
+
+  // The rows actually rendered in the table/cards below — the flat `filtered`
+  // list, narrowed by whichever of the Ward / School dropdown filters are
+  // currently set (both can be active together).
+  const displayRows = useMemo(() => {
+    return filtered.filter((r) => {
+      if (appsWard && ((r.ward || "").trim() || "Unspecified") !== appsWard) return false;
+      if (appsSchool && (effectiveSchoolName(r) || "Unspecified School") !== appsSchool) return false;
+      return true;
+    });
+  }, [filtered, appsWard, appsSchool]);
+
   // ── Bulk selection helpers ───────────────────────────────────────────────
-  const filteredIds = filtered.map((r) => r.id);
+  const filteredIds = displayRows.map((r) => r.id);
   const allChecked = filteredIds.length > 0 && filteredIds.every((id) => checkedIds.has(id));
   const someChecked = filteredIds.some((id) => checkedIds.has(id));
 
@@ -795,12 +890,12 @@ function AdminBursariesPage() {
     toast.success("Broadsheet PDF generated!");
   };
 
-  const downloadConfirmationLetter = () => {
-    if (!letterSelectedSchool || letterSelectedRows.length === 0) {
-      toast.error("Select a school with approved applicants first.");
+  const downloadConfirmationLetter = async () => {
+    if (!letterSelectedSchool || letterVisibleRows.length === 0) {
+      toast.error("Select a school with at least one visible approved applicant first.");
       return;
     }
-    const rows: ConfirmationLetterRow[] = letterSelectedRows.map((r) => ({
+    const rows: ConfirmationLetterRow[] = letterVisibleRows.map((r) => ({
       student_name: r.student_name,
       registration_number: r.registration_number,
       current_grade: r.current_grade,
@@ -813,8 +908,26 @@ function AdminBursariesPage() {
       dateLabel: letterDate.trim() || undefined,
       officerName: letterOfficerName.trim() || undefined,
       officerPhone: letterOfficerPhone.trim() || undefined,
+      schoolCounty: letterVisibleRows[0]?.school_county ?? null,
+      schoolSubCounty: letterVisibleRows[0]?.school_sub_county ?? null,
     });
     toast.success(`Confirmation letter generated for ${letterSelectedSchool}`);
+
+    // Move this school off the active Confirmation Letters list for the
+    // term currently being viewed, and into the Schools tab, where it can
+    // be archived or restored back onto the active list.
+    const termForRecord = effectiveTerm || currentTerm;
+    if (termForRecord) {
+      try {
+        await markLetterGenerated(letterSelectedSchool, termForRecord);
+        await loadGeneratedLetters();
+        toast.info(`${letterSelectedSchool} moved to the Schools tab — you can archive it there, or restore it back to this list.`);
+      } catch (e) {
+        toast.error(e instanceof Error ? e.message : "Letter downloaded, but couldn't update the schools list.");
+      }
+    }
+    setLetterSelectedSchool(null);
+    setLetterHiddenIds(new Set());
   };
 
   const toggleSchool = (school: string) => {
@@ -847,14 +960,14 @@ function AdminBursariesPage() {
           <option key={name} value={name} />
         ))}
       </datalist>
-      <div className="space-y-6">
+      <div className="space-y-3">
 
         {/* Tab switcher */}
-        <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="flex flex-wrap items-center justify-between gap-2">
           <div className="flex gap-1 bg-muted/50 border border-border rounded-xl p-1 w-fit">
           <button
             onClick={() => setTab("applications")}
-            className={`px-5 py-2 rounded-lg text-sm font-semibold transition-all ${
+            className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
               tab === "applications"
                 ? "bg-card shadow text-foreground"
                 : "text-muted-foreground hover:text-foreground"
@@ -866,7 +979,7 @@ function AdminBursariesPage() {
           </button>
           <button
             onClick={() => setTab("review")}
-            className={`px-5 py-2 rounded-lg text-sm font-semibold transition-all ${
+            className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
               tab === "review"
                 ? "bg-card shadow text-foreground"
                 : "text-muted-foreground hover:text-foreground"
@@ -883,7 +996,7 @@ function AdminBursariesPage() {
           </button>
           <button
             onClick={() => setTab("broadsheet")}
-            className={`px-5 py-2 rounded-lg text-sm font-semibold transition-all ${
+            className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
               tab === "broadsheet"
                 ? "bg-card shadow text-foreground"
                 : "text-muted-foreground hover:text-foreground"
@@ -900,7 +1013,7 @@ function AdminBursariesPage() {
           </button>
           <button
             onClick={() => setTab("letters")}
-            className={`px-5 py-2 rounded-lg text-sm font-semibold transition-all ${
+            className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
               tab === "letters"
                 ? "bg-card shadow text-foreground"
                 : "text-muted-foreground hover:text-foreground"
@@ -912,7 +1025,7 @@ function AdminBursariesPage() {
           </button>
           <button
             onClick={() => setTab("schools")}
-            className={`px-5 py-2 rounded-lg text-sm font-semibold transition-all ${
+            className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
               tab === "schools"
                 ? "bg-card shadow text-foreground"
                 : "text-muted-foreground hover:text-foreground"
@@ -941,7 +1054,7 @@ function AdminBursariesPage() {
             <CalendarClock className="h-4 w-4 text-muted-foreground shrink-0" />
             <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Term:</span>
             <Select value={termView} onValueChange={setTermView}>
-              <SelectTrigger className="h-8 w-56 text-sm">
+              <SelectTrigger className="h-8 w-56 text-xs">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -969,33 +1082,58 @@ function AdminBursariesPage() {
                 placeholder="Search by student name, school, ward (e.g. Kiamaiko), guardian or reference…"
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                className="pl-9 h-11"
+                className="pl-9 h-9"
               />
             </div>
 
-            <div className="grid sm:grid-cols-5 gap-3">
+            <div className="grid grid-cols-5 gap-1">
               {(["all", "pending", "reviewing", "approved", "rejected"] as const).map((k) => (
                 <button
                   key={k}
                   onClick={() => setFilter(k)}
-                  className={`bg-card border-2 rounded-xl p-4 text-left transition-all ${
+                  className={`bg-card border-2 rounded-lg px-1.5 py-1 text-left transition-all ${
                     filter === k ? "border-primary shadow-elegant" : "border-border hover:border-primary/40"
                   }`}
                 >
-                  <p className="text-xs uppercase tracking-wider text-muted-foreground">{k}</p>
-                  <p className="text-2xl font-display font-bold mt-1">
+                  <p className="text-[9px] uppercase tracking-wider text-muted-foreground leading-tight truncate">{k}</p>
+                  <p className="text-sm font-display font-bold leading-tight">
                     {(counts as Record<string, number>)[k] ?? 0}
                   </p>
                 </button>
               ))}
             </div>
 
+            {/* Ward / School quick filters — pick from the dropdowns on the
+                "Ward" and "School / Grade" column headers below; the chips
+                here show what's active and let you clear each one. */}
+            {(appsWard || appsSchool) && (
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Filtered by:</span>
+                {appsWard && (
+                  <button
+                    onClick={() => setAppsWard(null)}
+                    className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-primary/10 text-primary text-xs font-semibold hover:bg-primary/20"
+                  >
+                    <MapPin className="h-3 w-3" /> Ward: {appsWard} <X className="h-3 w-3" />
+                  </button>
+                )}
+                {appsSchool && (
+                  <button
+                    onClick={() => setAppsSchool(null)}
+                    className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-primary/10 text-primary text-xs font-semibold hover:bg-primary/20"
+                  >
+                    <School className="h-3 w-3" /> School: {appsSchool} <X className="h-3 w-3" />
+                  </button>
+                )}
+              </div>
+            )}
+
             {/* Bulk action bar */}
             {checkedIds.size > 0 && (
-              <div className="flex flex-wrap items-center gap-3 px-4 py-3 bg-primary/5 border border-primary/20 rounded-xl mb-3">
+              <div className="flex flex-wrap items-center gap-2 px-2 py-1 bg-primary/5 border border-primary/20 rounded-xl mb-2">
                 <div className="flex items-center gap-2 flex-1 min-w-0">
                   <CheckSquare className="h-4 w-4 text-primary shrink-0" />
-                  <span className="text-sm font-semibold text-primary">
+                  <span className="text-xs font-semibold text-primary">
                     {checkedIds.size} application{checkedIds.size !== 1 ? "s" : ""} selected
                   </span>
                   <button onClick={clearChecked} className="ml-1 text-muted-foreground hover:text-foreground">
@@ -1029,59 +1167,103 @@ function AdminBursariesPage() {
             {/* Desktop table */}
             <div className="hidden md:block bg-card border border-border rounded-2xl overflow-hidden">
               <div className="overflow-x-auto">
-                <table className="w-full text-sm">
+                <table className="w-full text-xs">
                   <thead className="bg-muted/50 text-xs uppercase tracking-wider text-muted-foreground">
                     <tr>
-                      <th className="w-10 px-4 py-3">
+                      <th className="w-10 px-2 py-0.5">
                         <Checkbox
                           checked={allChecked}
                           onCheckedChange={toggleAll}
                           aria-label="Select all"
                         />
                       </th>
-                      <th className="text-left px-4 py-3">Ref</th>
-                      <th className="text-left px-4 py-3">Student</th>
-                      <th className="text-left px-4 py-3">School / Grade</th>
-                      <th className="text-left px-4 py-3">Ward</th>
-                      <th className="text-right px-4 py-3">Amount</th>
-                      <th className="text-left px-4 py-3">Status</th>
-                      <th className="text-right px-4 py-3">Actions</th>
+                      <th className="text-left px-2 py-0.5">Ref</th>
+                      <th className="text-left px-2 py-0.5">Student</th>
+                      <th className="text-left px-2 py-0.5">
+                        <DropdownMenu>
+                          <DropdownMenuTrigger className={`flex items-center gap-1 hover:text-foreground outline-none ${appsSchool ? "text-primary" : ""}`}>
+                            School / Grade <ChevronDown className="h-3 w-3" />
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="start" className="max-h-72 overflow-y-auto w-64">
+                            <DropdownMenuItem onClick={() => setAppsSchool(null)} className={!appsSchool ? "font-semibold text-primary" : ""}>
+                              All Schools
+                            </DropdownMenuItem>
+                            <DropdownMenuSeparator />
+                            {appsSchoolOptions.map(([school, count]) => (
+                              <DropdownMenuItem
+                                key={school}
+                                onClick={() => setAppsSchool(school)}
+                                className={`flex items-center justify-between gap-2 ${appsSchool === school ? "font-semibold text-primary" : ""}`}
+                              >
+                                <span className="truncate">{school}</span>
+                                <span className="text-xs text-muted-foreground shrink-0">{count}</span>
+                              </DropdownMenuItem>
+                            ))}
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </th>
+                      <th className="text-left px-2 py-0.5">
+                        <DropdownMenu>
+                          <DropdownMenuTrigger className={`flex items-center gap-1 hover:text-foreground outline-none ${appsWard ? "text-primary" : ""}`}>
+                            Ward <ChevronDown className="h-3 w-3" />
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="start" className="max-h-72 overflow-y-auto w-56">
+                            <DropdownMenuItem onClick={() => setAppsWard(null)} className={!appsWard ? "font-semibold text-primary" : ""}>
+                              All Wards
+                            </DropdownMenuItem>
+                            <DropdownMenuSeparator />
+                            {appsWardOptions.map(([ward, count]) => (
+                              <DropdownMenuItem
+                                key={ward}
+                                onClick={() => setAppsWard(ward)}
+                                className={`flex items-center justify-between gap-2 ${appsWard === ward ? "font-semibold text-primary" : ""}`}
+                              >
+                                <span className="truncate">{ward}</span>
+                                <span className="text-xs text-muted-foreground shrink-0">{count}</span>
+                              </DropdownMenuItem>
+                            ))}
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </th>
+                      <th className="text-right px-2 py-0.5">Amount</th>
+                      <th className="text-left px-2 py-0.5">Status</th>
+                      <th className="text-right px-2 py-0.5">Actions</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-border">
-                    {filtered.length === 0 ? (
+                    {displayRows.length === 0 ? (
                       <tr><td colSpan={8} className="text-center py-12 text-muted-foreground">
                         <GraduationCap className="h-8 w-8 mx-auto mb-2 opacity-50" />
                         No applications match your filters.
                       </td></tr>
                     ) : (
-                      filtered.map((r) => {
+                      displayRows.map((r) => {
                         const isChecked = checkedIds.has(r.id);
                         return (
                         <tr key={r.id} className={isChecked ? "bg-primary/5" : "hover:bg-muted/30"}>
-                          <td className="px-4 py-3">
+                          <td className="px-2 py-0.5">
                             <Checkbox
                               checked={isChecked}
                               onCheckedChange={() => toggleOne(r.id)}
                               aria-label={`Select ${r.student_name}`}
                             />
                           </td>
-                          <td className="px-4 py-3 font-mono text-xs font-bold text-primary">{r.reference}</td>
-                          <td className="px-4 py-3">
+                          <td className="px-2 py-0.5 font-mono text-xs font-bold text-primary">{r.reference}</td>
+                          <td className="px-2 py-0.5 leading-tight">
                             <p className="font-semibold">{r.student_name}</p>
                             <p className="text-xs text-muted-foreground">{r.guardian_name} · {r.guardian_phone}</p>
                           </td>
-                          <td className="px-4 py-3">
+                          <td className="px-2 py-0.5 leading-tight">
                             <p>{r.school_name}</p>
                             <p className="text-xs text-muted-foreground">{r.current_grade}</p>
                           </td>
-                          <td className="px-4 py-3 text-muted-foreground">{r.ward || "—"}</td>
-                          <td className="px-4 py-3 text-right font-semibold">
+                          <td className="px-2 py-0.5 text-muted-foreground">{r.ward || "—"}</td>
+                          <td className="px-2 py-0.5 text-right font-semibold">
                             {r.amount_requested ? `KSh ${Number(r.amount_requested).toLocaleString()}` : "—"}
                           </td>
-                          <td className="px-4 py-3">
+                          <td className="px-2 py-0.5">
                             <Select value={r.status} onValueChange={(v) => updateStatus(r.id, v)}>
-                              <SelectTrigger className={`h-8 w-32 text-xs font-bold uppercase ${STATUS_COLORS[r.status] ?? ""}`}>
+                              <SelectTrigger className={`h-6 w-24 text-xs font-bold uppercase ${STATUS_COLORS[r.status] ?? ""}`}>
                                 <SelectValue />
                               </SelectTrigger>
                               <SelectContent>
@@ -1092,19 +1274,19 @@ function AdminBursariesPage() {
                               </SelectContent>
                             </Select>
                           </td>
-                          <td className="px-4 py-3">
-                            <div className="flex items-center justify-end gap-1">
-                              <Button size="icon" variant="ghost" onClick={() => setSelected(r)} title="View">
-                                <Eye className="h-4 w-4" />
+                          <td className="px-2 py-0.5">
+                            <div className="flex items-center justify-end gap-0.5">
+                              <Button size="icon" variant="ghost" className="h-6 w-6" onClick={() => setSelected(r)} title="View">
+                                <Eye className="h-3 w-3" />
                               </Button>
-                              <Button size="icon" variant="ghost" onClick={() => { setSelected(r); startEditing(r); }} title="Edit">
-                                <Pencil className="h-4 w-4 text-primary" />
+                              <Button size="icon" variant="ghost" className="h-6 w-6" onClick={() => { setSelected(r); startEditing(r); }} title="Edit">
+                                <Pencil className="h-3 w-3 text-primary" />
                               </Button>
-                              <Button size="icon" variant="ghost" onClick={() => openSms(r)} title="Send SMS">
-                                <Send className="h-4 w-4" />
+                              <Button size="icon" variant="ghost" className="h-6 w-6" onClick={() => openSms(r)} title="Send SMS">
+                                <Send className="h-3 w-3" />
                               </Button>
-                              <Button size="icon" variant="ghost" onClick={() => remove(r.id)} title="Delete">
-                                <Trash2 className="h-4 w-4 text-destructive" />
+                              <Button size="icon" variant="ghost" className="h-6 w-6" onClick={() => remove(r.id)} title="Delete">
+                                <Trash2 className="h-3 w-3 text-destructive" />
                               </Button>
                             </div>
                           </td>
@@ -1118,31 +1300,32 @@ function AdminBursariesPage() {
             </div>
 
             {/* Mobile cards */}
-            <div className="md:hidden space-y-3">
-              {filtered.length === 0 ? (
-                <div className="bg-card border border-border rounded-2xl p-8 text-center text-muted-foreground">
+            <div className="md:hidden space-y-1.5">
+              {displayRows.length === 0 ? (
+                <div className="bg-card border border-border rounded-xl p-4 text-center text-muted-foreground">
                   <GraduationCap className="h-8 w-8 mx-auto mb-2 opacity-50" />
                   No applications match your filters.
                 </div>
               ) : (
-                filtered.map((r) => {
+                displayRows.map((r) => {
                   const isChecked = checkedIds.has(r.id);
                   return (
-                  <div key={r.id} className={`bg-card border rounded-2xl p-4 space-y-3 ${isChecked ? "border-primary/40 bg-primary/5" : "border-border"}`}>
-                    <div className="flex items-start gap-3">
+                  <div key={r.id} className={`bg-card border rounded-xl px-2.5 py-2 ${isChecked ? "border-primary/40 bg-primary/5" : "border-border"}`}>
+                    <div className="flex items-center gap-1.5">
                       <Checkbox
                         checked={isChecked}
                         onCheckedChange={() => toggleOne(r.id)}
-                        className="mt-1 shrink-0"
+                        className="shrink-0"
                         aria-label={`Select ${r.student_name}`}
                       />
-                      <div>
-                        <p className="font-mono text-xs font-bold text-primary">{r.reference}</p>
-                        <p className="font-semibold text-foreground">{r.student_name}</p>
-                        <p className="text-xs text-muted-foreground">{r.guardian_name} · {r.guardian_phone}</p>
+                      <div className="min-w-0 flex-1 leading-tight">
+                        <p className="font-semibold text-xs truncate">{r.student_name}</p>
+                        <p className="text-[10px] text-muted-foreground truncate">
+                          {r.school_name} · {r.ward || "—"} · KSh {r.amount_requested ? Number(r.amount_requested).toLocaleString() : "—"}
+                        </p>
                       </div>
                       <Select value={r.status} onValueChange={(v) => updateStatus(r.id, v)}>
-                        <SelectTrigger className={`h-7 text-[10px] font-bold uppercase ${STATUS_COLORS[r.status] ?? ""}`}>
+                        <SelectTrigger className={`h-6 w-20 shrink-0 text-[9px] font-bold uppercase px-1.5 ${STATUS_COLORS[r.status] ?? ""}`}>
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
@@ -1152,33 +1335,20 @@ function AdminBursariesPage() {
                           <SelectItem value="rejected">Rejected</SelectItem>
                         </SelectContent>
                       </Select>
-                    </div>
-                    <div className="grid grid-cols-2 gap-2 text-sm">
-                      <div>
-                        <p className="text-[10px] uppercase tracking-wider text-muted-foreground">School</p>
-                        <p className="font-medium">{r.school_name}</p>
-                        <p className="text-xs text-muted-foreground">{r.current_grade}</p>
+                      <div className="flex items-center gap-0.5 shrink-0">
+                        <Button size="icon" variant="ghost" className="h-6 w-6" onClick={() => setSelected(r)} title="View">
+                          <Eye className="h-3 w-3" />
+                        </Button>
+                        <Button size="icon" variant="ghost" className="h-6 w-6" onClick={() => { setSelected(r); startEditing(r); }} title="Edit">
+                          <Pencil className="h-3 w-3 text-primary" />
+                        </Button>
+                        <Button size="icon" variant="ghost" className="h-6 w-6" onClick={() => openSms(r)} title="Send SMS">
+                          <Send className="h-3 w-3" />
+                        </Button>
+                        <Button size="icon" variant="ghost" className="h-6 w-6" onClick={() => remove(r.id)} title="Delete">
+                          <Trash2 className="h-3 w-3 text-destructive" />
+                        </Button>
                       </div>
-                      <div className="text-right">
-                        <p className="text-[10px] uppercase tracking-wider text-muted-foreground">Amount</p>
-                        <p className="font-semibold">
-                          {r.amount_requested ? `KSh ${Number(r.amount_requested).toLocaleString()}` : "—"}
-                        </p>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-2 pt-2 border-t border-border">
-                      <Button size="sm" variant="outline" className="flex-1" onClick={() => setSelected(r)}>
-                        <Eye className="h-3.5 w-3.5 mr-1" /> View
-                      </Button>
-                      <Button size="sm" variant="outline" className="flex-1" onClick={() => { setSelected(r); startEditing(r); }}>
-                        <Pencil className="h-3.5 w-3.5 mr-1" /> Edit
-                      </Button>
-                      <Button size="sm" variant="outline" className="flex-1" onClick={() => openSms(r)}>
-                        <Send className="h-3.5 w-3.5 mr-1" /> SMS
-                      </Button>
-                      <Button size="icon" variant="ghost" onClick={() => remove(r.id)}>
-                        <Trash2 className="h-4 w-4 text-destructive" />
-                      </Button>
                     </div>
                   </div>
                   );
@@ -1190,19 +1360,19 @@ function AdminBursariesPage() {
 
         {/* ── REVIEW BY LOCATION TAB ───────────────────────────────────────────── */}
         {tab === "review" && (
-          <div className="space-y-5">
-            <div className="bg-card border border-border rounded-2xl p-5">
-              <h2 className="font-display font-bold text-lg flex items-center gap-2">
+          <div className="space-y-2">
+            <div className="bg-card border border-border rounded-2xl p-3">
+              <h2 className="font-display font-bold text-sm flex items-center gap-2">
                 <MapPin className="h-5 w-5 text-gold" />
                 Review by Location
               </h2>
-              <p className="text-sm text-muted-foreground mt-0.5">
+              <p className="text-xs text-muted-foreground mt-0.5">
                 Drill down from County → Sub-county → School to review every applicant from that school together,
                 and merge duplicate school name spellings into one consistent entry.
               </p>
 
               {/* Breadcrumb */}
-              <div className="flex flex-wrap items-center gap-1.5 mt-4 text-sm">
+              <div className="flex flex-wrap items-center gap-1.5 mt-3 text-xs">
                 <button
                   onClick={() => { setReviewCounty(null); setReviewSubCounty(null); setReviewSchool(null); }}
                   className={`px-2.5 py-1 rounded-lg font-semibold transition-colors ${!reviewCounty ? "bg-primary/10 text-primary" : "text-muted-foreground hover:text-foreground"}`}
@@ -1242,18 +1412,18 @@ function AdminBursariesPage() {
 
             {/* Level 1: Counties */}
             {!reviewCounty && (
-              <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
+              <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-2">
                 {reviewCounties.map(({ county, count, pending }) => (
                   <button
                     key={county}
                     onClick={() => setReviewCounty(county)}
-                    className="bg-card border border-border rounded-xl p-4 text-left hover:border-primary/40 hover:shadow-sm transition-all"
+                    className="bg-card border border-border rounded-xl p-3 text-left hover:border-primary/40 hover:shadow-sm transition-all"
                   >
                     <div className="flex items-center justify-between">
                       <p className="font-display font-bold text-foreground">{county}</p>
                       <ChevronRight className="h-4 w-4 text-muted-foreground" />
                     </div>
-                    <div className="flex items-center gap-3 mt-2">
+                    <div className="flex items-center gap-2 mt-2">
                       <span className="text-xs text-muted-foreground">{count} application{count !== 1 ? "s" : ""}</span>
                       {pending > 0 && (
                         <span className="flex items-center gap-1 text-xs font-semibold text-amber-700">
@@ -1268,22 +1438,22 @@ function AdminBursariesPage() {
 
             {/* Level 2: Sub-counties */}
             {reviewCounty && !reviewSubCounty && (
-              <div className="space-y-3">
+              <div className="space-y-2">
                 <Button variant="outline" size="sm" onClick={() => setReviewCounty(null)} className="gap-1.5">
                   <ArrowLeft className="h-3.5 w-3.5" /> Back to Counties
                 </Button>
-                <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-2">
                   {reviewSubCounties.map(({ subCounty, count, pending }) => (
                     <button
                       key={subCounty}
                       onClick={() => setReviewSubCounty(subCounty)}
-                      className="bg-card border border-border rounded-xl p-4 text-left hover:border-primary/40 hover:shadow-sm transition-all"
+                      className="bg-card border border-border rounded-xl p-3 text-left hover:border-primary/40 hover:shadow-sm transition-all"
                     >
                       <div className="flex items-center justify-between">
                         <p className="font-display font-bold text-foreground">{subCounty}</p>
                         <ChevronRight className="h-4 w-4 text-muted-foreground" />
                       </div>
-                      <div className="flex items-center gap-3 mt-2">
+                      <div className="flex items-center gap-2 mt-2">
                         <span className="text-xs text-muted-foreground">{count} application{count !== 1 ? "s" : ""}</span>
                         {pending > 0 && (
                           <span className="flex items-center gap-1 text-xs font-semibold text-amber-700">
@@ -1299,16 +1469,16 @@ function AdminBursariesPage() {
 
             {/* Level 3: Schools */}
             {reviewCounty && reviewSubCounty && !reviewSchool && (
-              <div className="space-y-3">
+              <div className="space-y-2">
                 <Button variant="outline" size="sm" onClick={() => setReviewSubCounty(null)} className="gap-1.5">
                   <ArrowLeft className="h-3.5 w-3.5" /> Back to {reviewCounty}
                 </Button>
-                <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-2">
                   {reviewSchools.map(({ school, count, pending, category }) => (
                     <button
                       key={school}
                       onClick={() => setReviewSchool(school)}
-                      className="bg-card border border-border rounded-xl p-4 text-left hover:border-primary/40 hover:shadow-sm transition-all"
+                      className="bg-card border border-border rounded-xl p-3 text-left hover:border-primary/40 hover:shadow-sm transition-all"
                     >
                       <div className="flex items-start justify-between gap-2">
                         <div className="flex items-start gap-2 min-w-0">
@@ -1317,7 +1487,7 @@ function AdminBursariesPage() {
                         </div>
                         <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0" />
                       </div>
-                      <div className="flex items-center gap-3 mt-2 ml-6">
+                      <div className="flex items-center gap-2 mt-2 ml-3">
                         <span className="text-xs text-muted-foreground">
                           {category && `${category} · `}{count} student{count !== 1 ? "s" : ""}
                         </span>
@@ -1335,8 +1505,8 @@ function AdminBursariesPage() {
 
             {/* Level 4: Students at this school */}
             {reviewCounty && reviewSubCounty && reviewSchool && (
-              <div className="space-y-3">
-                <div className="flex flex-wrap items-center justify-between gap-3">
+              <div className="space-y-2">
+                <div className="flex flex-wrap items-center justify-between gap-2">
                   <Button variant="outline" size="sm" onClick={() => setReviewSchool(null)} className="gap-1.5">
                     <ArrowLeft className="h-3.5 w-3.5" /> Back to Schools
                   </Button>
@@ -1356,7 +1526,7 @@ function AdminBursariesPage() {
                 </div>
 
                 {reviewSchoolVariants.length > 1 && (
-                  <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+                  <div className="rounded-xl border border-amber-200 bg-amber-50 px-2 py-1 text-xs text-amber-800">
                     <p className="font-semibold mb-1">⚠ Multiple spellings found for this school</p>
                     <p className="text-xs">
                       Applicants entered: {reviewSchoolVariants.map((v) => `"${v}"`).join(", ")}.
@@ -1366,42 +1536,42 @@ function AdminBursariesPage() {
                 )}
 
                 <div className="bg-card border border-border rounded-2xl overflow-hidden">
-                  <div className="px-5 py-4 border-b border-border">
-                    <p className="font-display font-bold text-base text-foreground">{reviewSchool}</p>
+                  <div className="px-3 py-2 border-b border-border">
+                    <p className="font-display font-bold text-sm text-foreground">{reviewSchool}</p>
                     <p className="text-xs text-muted-foreground mt-0.5">
                       {reviewStudents.length} application{reviewStudents.length !== 1 ? "s" : ""} from this school
                     </p>
                   </div>
                   <div className="overflow-x-auto">
-                    <table className="w-full text-sm">
+                    <table className="w-full text-xs">
                       <thead className="bg-muted/30 text-[11px] uppercase tracking-wider text-muted-foreground">
                         <tr>
-                          <th className="text-left px-4 py-2.5">Student</th>
-                          <th className="text-left px-4 py-2.5">Grade</th>
-                          <th className="text-left px-4 py-2.5">Guardian</th>
-                          <th className="text-right px-4 py-2.5">
+                          <th className="text-left px-3 py-1.5">Student</th>
+                          <th className="text-left px-3 py-1.5">Grade</th>
+                          <th className="text-left px-3 py-1.5">Guardian</th>
+                          <th className="text-right px-3 py-1.5">
                             <span className="flex items-center justify-end gap-1" title="Click row amount to edit">
                               Amount Awarded
                               <Pencil className="h-2.5 w-2.5 opacity-50" />
                             </span>
                           </th>
-                          <th className="text-left px-4 py-2.5">Status</th>
-                          <th className="text-right px-4 py-2.5">Actions</th>
+                          <th className="text-left px-3 py-1.5">Status</th>
+                          <th className="text-right px-3 py-1.5">Actions</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-border">
                         {reviewStudents.map((r) => (
                           <tr key={r.id} className="hover:bg-muted/20">
-                            <td className="px-4 py-3">
+                            <td className="px-2 py-1">
                               <p className="font-semibold text-foreground">{r.student_name}</p>
                               <p className="font-mono text-[11px] text-primary">{r.reference}</p>
                             </td>
-                            <td className="px-4 py-3 text-muted-foreground">{r.current_grade}</td>
-                            <td className="px-4 py-3">
+                            <td className="px-2 py-1 text-muted-foreground">{r.current_grade}</td>
+                            <td className="px-2 py-1">
                               <p>{r.guardian_name}</p>
                               <p className="text-xs text-muted-foreground">{r.guardian_phone}</p>
                             </td>
-                            <td className="px-4 py-3 text-right">
+                            <td className="px-2 py-1 text-right">
                               {editAmountId === r.id ? (
                                 <div className="flex items-center justify-end gap-1.5" onClick={(e) => e.stopPropagation()}>
                                   <Input
@@ -1410,7 +1580,7 @@ function AdminBursariesPage() {
                                     step="500"
                                     value={editAmountValue}
                                     onChange={(e) => setEditAmountValue(e.target.value)}
-                                    className="h-8 w-28 text-right text-sm border-primary/50 focus-visible:ring-primary"
+                                    className="h-8 w-28 text-right text-xs border-primary/50 focus-visible:ring-primary"
                                     autoFocus
                                     onKeyDown={(e) => {
                                       if (e.key === "Enter") saveAmount(r.id);
@@ -1452,10 +1622,10 @@ function AdminBursariesPage() {
                                 </div>
                               )}
                             </td>
-                            <td className="px-4 py-3">
+                            <td className="px-2 py-1">
                               <Badge className={STATUS_COLORS[r.status] ?? ""}>{r.status}</Badge>
                             </td>
-                            <td className="px-4 py-3">
+                            <td className="px-2 py-1">
                               <div className="flex items-center justify-end gap-1.5">
                                 <Button size="sm" variant="ghost" onClick={() => setSelected(r)} title="View full application">
                                   <Eye className="h-3.5 w-3.5" />
@@ -1507,17 +1677,17 @@ function AdminBursariesPage() {
 
         {/* ── BROADSHEET TAB ────────────────────────────────────────────────── */}
         {tab === "broadsheet" && (
-          <div className="space-y-5">
+          <div className="space-y-2">
 
             {/* Header controls */}
-            <div className="bg-card border border-border rounded-2xl p-5 space-y-4">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div className="bg-card border border-border rounded-2xl p-3 space-y-3">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                 <div>
-                  <h2 className="font-display font-bold text-lg flex items-center gap-2">
+                  <h2 className="font-display font-bold text-sm flex items-center gap-2">
                     <FileSpreadsheet className="h-5 w-5 text-gold" />
                     Approved Bursary Broadsheet
                   </h2>
-                  <p className="text-sm text-muted-foreground mt-0.5">
+                  <p className="text-xs text-muted-foreground mt-0.5">
                     All approved applications sorted and grouped by school. Download as a PDF to send to schools.
                   </p>
                 </div>
@@ -1533,7 +1703,7 @@ function AdminBursariesPage() {
               </div>
 
               {/* Summary stats */}
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
                 <StatCard icon={CheckCircle2} label="Approved" value={String(approvedRows.length)} color="text-emerald-600" />
                 <StatCard icon={School} label="Schools" value={String(bySchool.size)} color="text-blue-600" />
                 <StatCard icon={Users} label="Total Students" value={String(approvedRows.length)} color="text-primary" />
@@ -1541,7 +1711,7 @@ function AdminBursariesPage() {
               </div>
 
               {/* Sort controls */}
-              <div className="flex flex-wrap items-center gap-3">
+              <div className="flex flex-wrap items-center gap-2">
                 <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Sort by:</span>
                 {(
                   [
@@ -1580,12 +1750,12 @@ function AdminBursariesPage() {
 
             {approvedRows.length === 0 ? (
               <div className="bg-card border-2 border-dashed border-border rounded-2xl p-12 text-center text-muted-foreground">
-                <CheckCircle2 className="h-10 w-10 mx-auto mb-3 opacity-30" />
+                <CheckCircle2 className="h-10 w-10 mx-auto mb-2 opacity-30" />
                 <p className="font-semibold">No approved applications yet.</p>
-                <p className="text-sm mt-1">Go to the Applications tab and mark applications as <strong>Approved</strong> to populate the broadsheet.</p>
+                <p className="text-xs mt-1">Go to the Applications tab and mark applications as <strong>Approved</strong> to populate the broadsheet.</p>
               </div>
             ) : (
-              <div className="space-y-4">
+              <div className="space-y-3">
                 {/* Per-school accordion */}
                 {Array.from(bySchool.entries()).map(([school, schoolRows], schoolIdx) => {
                   const schoolTotal = schoolRows.reduce((s, r) => s + (r.amount_requested ?? 0), 0);
@@ -1595,21 +1765,21 @@ function AdminBursariesPage() {
                       {/* School header */}
                       <button
                         onClick={() => toggleSchool(school)}
-                        className="w-full flex items-center justify-between gap-3 px-5 py-4 bg-muted/30 hover:bg-muted/50 transition-colors text-left"
+                        className="w-full flex items-center justify-between gap-2 px-3 py-2 bg-muted/30 hover:bg-muted/50 transition-colors text-left"
                       >
-                        <div className="flex items-center gap-3 min-w-0">
+                        <div className="flex items-center gap-2 min-w-0">
                           <div className="h-9 w-9 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
                             <School className="h-5 w-5 text-primary" />
                           </div>
                           <div className="min-w-0">
-                            <p className="font-display font-bold text-base text-foreground truncate">{school}</p>
+                            <p className="font-display font-bold text-sm text-foreground truncate">{school}</p>
                             <p className="text-xs text-muted-foreground">
                               {schoolRows[0].school_category && `${schoolRows[0].school_category} · `}
                               {schoolRows.length} student{schoolRows.length !== 1 ? "s" : ""}
                             </p>
                           </div>
                         </div>
-                        <div className="flex items-center gap-4 shrink-0">
+                        <div className="flex items-center gap-3 shrink-0">
                           <div className="text-right">
                             <p className="text-xs text-muted-foreground">Sub-total</p>
                             <p className="font-bold text-emerald-600">KSh {schoolTotal.toLocaleString()}</p>
@@ -1624,39 +1794,39 @@ function AdminBursariesPage() {
                       {/* Students table inside accordion */}
                       {isOpen && (
                         <div className="overflow-x-auto">
-                          <table className="w-full text-sm">
+                          <table className="w-full text-xs">
                             <thead className="bg-muted/20 text-[11px] uppercase tracking-wider text-muted-foreground">
                               <tr>
-                                <th className="text-left px-4 py-2.5 w-8">#</th>
-                                <th className="text-left px-4 py-2.5">Student Name</th>
-                                <th className="text-left px-4 py-2.5">Ref</th>
-                                <th className="text-left px-4 py-2.5">Grade</th>
-                                <th className="text-left px-4 py-2.5">Gender</th>
-                                <th className="text-left px-4 py-2.5">Guardian</th>
-                                <th className="text-left px-4 py-2.5">Phone</th>
-                                <th className="text-left px-4 py-2.5">Ward</th>
-                                <th className="text-right px-4 py-2.5">Amount</th>
-                                <th className="text-right px-4 py-2.5">Actions</th>
+                                <th className="text-left px-3 py-1.5 w-8">#</th>
+                                <th className="text-left px-3 py-1.5">Student Name</th>
+                                <th className="text-left px-3 py-1.5">Ref</th>
+                                <th className="text-left px-3 py-1.5">Grade</th>
+                                <th className="text-left px-3 py-1.5">Gender</th>
+                                <th className="text-left px-3 py-1.5">Guardian</th>
+                                <th className="text-left px-3 py-1.5">Phone</th>
+                                <th className="text-left px-3 py-1.5">Ward</th>
+                                <th className="text-right px-3 py-1.5">Amount</th>
+                                <th className="text-right px-3 py-1.5">Actions</th>
                               </tr>
                             </thead>
                             <tbody className="divide-y divide-border">
                               {schoolRows.map((r, idx) => (
                                 <tr key={r.id} className={`hover:bg-muted/20 ${idx % 2 === 1 ? "bg-muted/10" : ""}`}>
-                                  <td className="px-4 py-3 text-muted-foreground text-xs">
+                                  <td className="px-2 py-1 text-muted-foreground text-xs">
                                     {/* Global serial across all schools */}
                                     {(Array.from(bySchool.values()).slice(0, schoolIdx).reduce((s, arr) => s + arr.length, 0)) + idx + 1}
                                   </td>
-                                  <td className="px-4 py-3 font-semibold text-foreground">{r.student_name}</td>
-                                  <td className="px-4 py-3 font-mono text-xs text-primary">{r.reference}</td>
-                                  <td className="px-4 py-3 text-muted-foreground">{r.current_grade}</td>
-                                  <td className="px-4 py-3 text-muted-foreground capitalize">{r.gender || "—"}</td>
-                                  <td className="px-4 py-3">{r.guardian_name}</td>
-                                  <td className="px-4 py-3 text-muted-foreground">{r.guardian_phone}</td>
-                                  <td className="px-4 py-3 text-muted-foreground">{r.ward || "—"}</td>
-                                  <td className="px-4 py-3 text-right font-bold text-emerald-600">
+                                  <td className="px-2 py-1 font-semibold text-foreground">{r.student_name}</td>
+                                  <td className="px-2 py-1 font-mono text-xs text-primary">{r.reference}</td>
+                                  <td className="px-2 py-1 text-muted-foreground">{r.current_grade}</td>
+                                  <td className="px-2 py-1 text-muted-foreground capitalize">{r.gender || "—"}</td>
+                                  <td className="px-2 py-1">{r.guardian_name}</td>
+                                  <td className="px-2 py-1 text-muted-foreground">{r.guardian_phone}</td>
+                                  <td className="px-2 py-1 text-muted-foreground">{r.ward || "—"}</td>
+                                  <td className="px-2 py-1 text-right font-bold text-emerald-600">
                                     {r.amount_requested ? `KSh ${Number(r.amount_requested).toLocaleString()}` : "—"}
                                   </td>
-                                  <td className="px-4 py-3">
+                                  <td className="px-2 py-1">
                                     <div className="flex items-center justify-end gap-1">
                                       <Button size="icon" variant="ghost" onClick={() => setSelected(r)} title="View">
                                         <Eye className="h-3.5 w-3.5" />
@@ -1694,10 +1864,10 @@ function AdminBursariesPage() {
                             </tbody>
                             <tfoot>
                               <tr className="bg-emerald-50 dark:bg-emerald-950/20">
-                                <td colSpan={8} className="px-4 py-2.5 text-xs font-bold uppercase tracking-wider text-emerald-700">
+                                <td colSpan={8} className="px-3 py-1.5 text-xs font-bold uppercase tracking-wider text-emerald-700">
                                   School sub-total — {schoolRows.length} student{schoolRows.length !== 1 ? "s" : ""}
                                 </td>
-                                <td className="px-4 py-2.5 text-right font-bold text-emerald-700">
+                                <td className="px-3 py-1.5 text-right font-bold text-emerald-700">
                                   KSh {schoolTotal.toLocaleString()}
                                 </td>
                                 <td />
@@ -1711,10 +1881,10 @@ function AdminBursariesPage() {
                 })}
 
                 {/* Grand total card */}
-                <div className="bg-primary rounded-2xl px-6 py-5 flex flex-col sm:flex-row items-center justify-between gap-4">
+                <div className="bg-primary rounded-2xl px-3 py-2 flex flex-col sm:flex-row items-center justify-between gap-3">
                   <div className="text-white text-center sm:text-left">
-                    <p className="text-sm font-semibold opacity-80">Grand Total</p>
-                    <p className="text-3xl font-display font-bold">KSh {grandTotal.toLocaleString()}</p>
+                    <p className="text-xs font-semibold opacity-80">Grand Total</p>
+                    <p className="text-2xl font-display font-bold">KSh {grandTotal.toLocaleString()}</p>
                     <p className="text-xs opacity-70 mt-0.5">
                       {approvedRows.length} students across {bySchool.size} school{bySchool.size !== 1 ? "s" : ""}
                     </p>
@@ -1734,16 +1904,16 @@ function AdminBursariesPage() {
 
         {/* ── SCHOOL CONFIRMATION LETTERS TAB ─────────────────────────────────── */}
         {tab === "letters" && (
-          <div className="grid lg:grid-cols-[360px_1fr] gap-5">
+          <div className="grid lg:grid-cols-[360px_1fr] gap-2">
 
             {/* Left: school search & select */}
-            <div className="bg-card border border-border rounded-2xl p-5 space-y-4 h-fit">
+            <div className="bg-card border border-border rounded-2xl p-3 space-y-3 h-fit">
               <div>
-                <h2 className="font-display font-bold text-lg flex items-center gap-2">
+                <h2 className="font-display font-bold text-sm flex items-center gap-2">
                   <Mail className="h-5 w-5 text-gold" />
                   Confirmation Letters
                 </h2>
-                <p className="text-sm text-muted-foreground mt-0.5">
+                <p className="text-xs text-muted-foreground mt-0.5">
                   Search a school, then generate its official confirmation-of-beneficiaries letter.
                 </p>
               </div>
@@ -1758,28 +1928,36 @@ function AdminBursariesPage() {
                 />
               </div>
 
+              <label className="flex items-center gap-2 text-xs text-muted-foreground">
+                <Checkbox checked={showSentInLetters} onCheckedChange={(v) => setShowSentInLetters(!!v)} />
+                Show schools whose letter was already sent this term
+              </label>
+
               <div className="space-y-1.5 max-h-[480px] overflow-y-auto pr-1">
                 {letterSchoolList.length === 0 ? (
-                  <div className="text-center text-sm text-muted-foreground py-10">
+                  <div className="text-center text-xs text-muted-foreground py-10">
                     <School className="h-7 w-7 mx-auto mb-2 opacity-30" />
                     {bySchool.size === 0
                       ? "No approved applications yet."
                       : "No school matches your search."}
                   </div>
                 ) : (
-                  letterSchoolList.map(({ school, count, total, category }) => {
+                  letterSchoolList.map(({ school, count, total, category, letterSent }) => {
                     const active = letterSelectedSchool === school;
                     return (
                       <button
                         key={school}
-                        onClick={() => setLetterSelectedSchool(school)}
-                        className={`w-full text-left px-3.5 py-3 rounded-xl border transition-all ${
+                        onClick={() => { setLetterSelectedSchool(school); setLetterHiddenIds(new Set()); }}
+                        className={`w-full text-left px-3.5 py-2 rounded-xl border transition-all ${
                           active
                             ? "border-primary bg-primary/5 shadow-sm"
                             : "border-border hover:border-primary/40 hover:bg-muted/30"
                         }`}
                       >
-                        <p className="font-semibold text-sm text-foreground truncate">{school}</p>
+                        <p className="font-semibold text-xs text-foreground truncate flex items-center gap-1.5">
+                          {school}
+                          {letterSent && <Badge className="bg-emerald-500/15 text-emerald-700 text-[10px]">Sent</Badge>}
+                        </p>
                         <div className="flex items-center justify-between mt-1">
                           <span className="text-xs text-muted-foreground">
                             {category && `${category} · `}{count} student{count !== 1 ? "s" : ""}
@@ -1796,31 +1974,31 @@ function AdminBursariesPage() {
             </div>
 
             {/* Right: letter preview details & generate */}
-            <div className="bg-card border border-border rounded-2xl p-6">
+            <div className="bg-card border border-border rounded-2xl p-3">
               {!letterSelectedSchool ? (
                 <div className="h-full min-h-[400px] flex flex-col items-center justify-center text-center text-muted-foreground">
-                  <FileText className="h-12 w-12 mb-3 opacity-20" />
+                  <FileText className="h-12 w-12 mb-2 opacity-20" />
                   <p className="font-semibold">Select a school to get started</p>
-                  <p className="text-sm mt-1 max-w-xs">
+                  <p className="text-xs mt-1 max-w-xs">
                     Pick a school from the list to preview its beneficiaries and generate the official confirmation letter.
                   </p>
                 </div>
               ) : (
-                <div className="space-y-5">
-                  <div className="flex items-start justify-between gap-3">
+                <div className="space-y-2">
+                  <div className="flex items-start justify-between gap-2">
                     <div>
-                      <h3 className="font-display font-bold text-xl text-foreground">{letterSelectedSchool}</h3>
-                      <p className="text-sm text-muted-foreground mt-0.5">
-                        {letterSelectedRows.length} approved student{letterSelectedRows.length !== 1 ? "s" : ""} · Total KSh {letterSelectedTotal.toLocaleString()}
+                      <h3 className="font-display font-bold text-lg text-foreground">{letterSelectedSchool}</h3>
+                      <p className="text-xs text-muted-foreground mt-0.5">
+                        {letterVisibleRows.length} of {letterSelectedRows.length} approved student{letterSelectedRows.length !== 1 ? "s" : ""} included · Total KSh {letterSelectedTotal.toLocaleString()}
                       </p>
                     </div>
-                    <Button variant="hero" onClick={downloadConfirmationLetter} className="gap-2 shrink-0">
+                    <Button variant="hero" onClick={downloadConfirmationLetter} disabled={letterVisibleRows.length === 0} className="gap-2 shrink-0">
                       <Download className="h-4 w-4" /> Download Letter
                     </Button>
                   </div>
 
                   {/* Letter details form */}
-                  <div className="grid sm:grid-cols-2 gap-4 bg-muted/20 border border-border rounded-xl p-4">
+                  <div className="grid sm:grid-cols-2 gap-3 bg-muted/20 border border-border rounded-xl p-3">
                     <div>
                       <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Term / Year</label>
                       <Input
@@ -1879,38 +2057,50 @@ function AdminBursariesPage() {
                   {/* Student list preview */}
                   <div>
                     <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-2">
-                      Beneficiaries — auto-filled from approved applications
+                      Beneficiaries — auto-filled from approved applications. Uncheck a student to leave them off this
+                      letter; check them again to bring them back in, any time before you download.
                     </p>
                     <div className="border border-border rounded-xl overflow-hidden">
-                      <table className="w-full text-sm">
+                      <table className="w-full text-xs">
                         <thead className="bg-muted/30 text-[11px] uppercase tracking-wider text-muted-foreground">
                           <tr>
-                            <th className="text-left px-3 py-2 w-8">#</th>
-                            <th className="text-left px-3 py-2">Name</th>
-                            <th className="text-left px-3 py-2">Form / Adm No.</th>
-                            <th className="text-right px-3 py-2">Amount</th>
+                            <th className="text-left px-2 py-1 w-8"></th>
+                            <th className="text-left px-2 py-1 w-8">#</th>
+                            <th className="text-left px-2 py-1">Name</th>
+                            <th className="text-left px-2 py-1">Form / Adm No.</th>
+                            <th className="text-right px-2 py-1">Amount</th>
                           </tr>
                         </thead>
                         <tbody className="divide-y divide-border">
-                          {letterSelectedRows.map((r, i) => (
-                            <tr key={r.id} className={i % 2 === 1 ? "bg-muted/10" : ""}>
-                              <td className="px-3 py-2 text-muted-foreground text-xs">{i + 1}</td>
-                              <td className="px-3 py-2 font-medium text-foreground">{r.student_name}</td>
-                              <td className="px-3 py-2 text-muted-foreground text-xs">
-                                {[r.current_grade, r.registration_number].filter(Boolean).join(" / ")}
-                              </td>
-                              <td className="px-3 py-2 text-right font-semibold">
-                                {r.amount_requested ? `KSh ${Number(r.amount_requested).toLocaleString()}` : "—"}
-                              </td>
-                            </tr>
-                          ))}
+                          {letterSelectedRows.map((r, i) => {
+                            const hidden = letterHiddenIds.has(r.id);
+                            return (
+                              <tr key={r.id} className={`${i % 2 === 1 ? "bg-muted/10" : ""} ${hidden ? "opacity-40" : ""}`}>
+                                <td className="px-2 py-1">
+                                  <Checkbox
+                                    checked={!hidden}
+                                    onCheckedChange={() => toggleLetterStudentHidden(r.id)}
+                                    aria-label={`Include ${r.student_name} in this letter`}
+                                  />
+                                </td>
+                                <td className="px-2 py-1 text-muted-foreground text-xs">{i + 1}</td>
+                                <td className={`px-2 py-1 font-medium text-foreground ${hidden ? "line-through" : ""}`}>{r.student_name}</td>
+                                <td className="px-2 py-1 text-muted-foreground text-xs">
+                                  {[r.current_grade, r.registration_number].filter(Boolean).join(" / ")}
+                                </td>
+                                <td className="px-2 py-1 text-right font-semibold">
+                                  {r.amount_requested ? `KSh ${Number(r.amount_requested).toLocaleString()}` : "—"}
+                                </td>
+                              </tr>
+                            );
+                          })}
                         </tbody>
                         <tfoot>
                           <tr className="bg-emerald-50">
-                            <td colSpan={3} className="px-3 py-2 text-xs font-bold uppercase tracking-wider text-emerald-700">
-                              Total
+                            <td colSpan={4} className="px-2 py-1 text-xs font-bold uppercase tracking-wider text-emerald-700">
+                              Total ({letterVisibleRows.length} included)
                             </td>
-                            <td className="px-3 py-2 text-right font-bold text-emerald-700">
+                            <td className="px-2 py-1 text-right font-bold text-emerald-700">
                               KSh {letterSelectedTotal.toLocaleString()}
                             </td>
                           </tr>
@@ -1931,20 +2121,20 @@ function AdminBursariesPage() {
 
         {/* ── SCHOOLS TAB — archive / unarchive the school directory ──────────── */}
         {tab === "schools" && (
-          <div className="space-y-5">
-            <div className="bg-card border border-border rounded-2xl p-5">
-              <h2 className="font-display font-bold text-lg flex items-center gap-2">
+          <div className="space-y-2">
+            <div className="bg-card border border-border rounded-2xl p-3">
+              <h2 className="font-display font-bold text-sm flex items-center gap-2">
                 <Archive className="h-5 w-5 text-gold" />
                 Schools
               </h2>
-              <p className="text-sm text-muted-foreground mt-0.5">
+              <p className="text-xs text-muted-foreground mt-0.5">
                 Archive schools you no longer need to see in Review by Location or Confirmation Letters —
                 archiving doesn't delete anything, it just tucks the school out of the way until you unarchive it.
                 Select a single school, or use "Select all" to archive/unarchive every school currently listed at once.
               </p>
             </div>
 
-            <div className="flex flex-wrap items-center gap-3">
+            <div className="flex flex-wrap items-center gap-2">
               <div className="relative flex-1 min-w-[220px]">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <Input
@@ -1971,10 +2161,10 @@ function AdminBursariesPage() {
 
             {/* Bulk action bar */}
             {checkedSchools.size > 0 && (
-              <div className="flex flex-wrap items-center gap-3 px-4 py-3 bg-primary/5 border border-primary/20 rounded-xl">
+              <div className="flex flex-wrap items-center gap-2 px-2 py-1 bg-primary/5 border border-primary/20 rounded-xl">
                 <div className="flex items-center gap-2 flex-1 min-w-0">
                   <CheckSquare className="h-4 w-4 text-primary shrink-0" />
-                  <span className="text-sm font-semibold text-primary">
+                  <span className="text-xs font-semibold text-primary">
                     {checkedSchools.size} school{checkedSchools.size !== 1 ? "s" : ""} selected
                   </span>
                   <button onClick={clearCheckedSchools} className="ml-1 text-muted-foreground hover:text-foreground">
@@ -2006,21 +2196,21 @@ function AdminBursariesPage() {
 
             <div className="bg-card border border-border rounded-2xl overflow-hidden">
               <div className="overflow-x-auto">
-                <table className="w-full text-sm">
+                <table className="w-full text-xs">
                   <thead className="bg-muted/50 text-xs uppercase tracking-wider text-muted-foreground">
                     <tr>
-                      <th className="w-10 px-4 py-3">
+                      <th className="w-10 px-2 py-1">
                         <Checkbox
                           checked={allSchoolsChecked}
                           onCheckedChange={toggleAllSchools}
                           aria-label="Select all schools"
                         />
                       </th>
-                      <th className="text-left px-4 py-3">School</th>
-                      <th className="text-left px-4 py-3">Location</th>
-                      <th className="text-right px-4 py-3">Applications</th>
-                      <th className="text-left px-4 py-3">Status</th>
-                      <th className="text-right px-4 py-3">Actions</th>
+                      <th className="text-left px-2 py-1">School</th>
+                      <th className="text-left px-2 py-1">Location</th>
+                      <th className="text-right px-2 py-1">Applications</th>
+                      <th className="text-left px-2 py-1">Status</th>
+                      <th className="text-right px-2 py-1">Actions</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-border">
@@ -2034,56 +2224,76 @@ function AdminBursariesPage() {
                         const isChecked = checkedSchools.has(s.school);
                         return (
                           <tr key={s.school} className={isChecked ? "bg-primary/5" : "hover:bg-muted/30"}>
-                            <td className="px-4 py-3">
+                            <td className="px-2 py-1">
                               <Checkbox
                                 checked={isChecked}
                                 onCheckedChange={() => toggleOneSchool(s.school)}
                                 aria-label={`Select ${s.school}`}
                               />
                             </td>
-                            <td className="px-4 py-3">
+                            <td className="px-2 py-1">
                               <p className="font-semibold flex items-center gap-1.5">
                                 <School className="h-3.5 w-3.5 text-primary shrink-0" /> {s.school}
                               </p>
                               {s.category && <p className="text-xs text-muted-foreground">{s.category}</p>}
                             </td>
-                            <td className="px-4 py-3 text-muted-foreground text-xs">
+                            <td className="px-2 py-1 text-muted-foreground text-xs">
                               {[s.subCounty, s.county].filter(Boolean).join(", ") || "—"}
                             </td>
-                            <td className="px-4 py-3 text-right">
+                            <td className="px-2 py-1 text-right">
                               {s.count} {s.pending > 0 && (
                                 <span className="text-amber-700 font-semibold">· {s.pending} pending</span>
                               )}
                             </td>
-                            <td className="px-4 py-3">
-                              {s.archived ? (
-                                <Badge className="bg-amber-500/15 text-amber-700">Archived</Badge>
-                              ) : (
-                                <Badge className="bg-emerald-500/15 text-emerald-700">Active</Badge>
-                              )}
+                            <td className="px-2 py-1">
+                              <div className="flex flex-col gap-1 items-start">
+                                {s.archived ? (
+                                  <Badge className="bg-amber-500/15 text-amber-700">Archived</Badge>
+                                ) : (
+                                  <Badge className="bg-emerald-500/15 text-emerald-700">Active</Badge>
+                                )}
+                                {s.letterSent && (
+                                  <Badge className="bg-blue-500/15 text-blue-700 flex items-center gap-1">
+                                    <Mail className="h-3 w-3" /> Letter sent
+                                  </Badge>
+                                )}
+                              </div>
                             </td>
-                            <td className="px-4 py-3 text-right">
-                              {s.archived ? (
-                                <Button
-                                  size="sm"
-                                  variant="outline"
-                                  disabled={schoolsBusy}
-                                  onClick={() => runSchoolArchiveAction([s.school], "unarchive")}
-                                  className="gap-1.5 border-emerald-300 text-emerald-700 hover:bg-emerald-50"
-                                >
-                                  <ArchiveRestore className="h-3.5 w-3.5" /> Unarchive
-                                </Button>
-                              ) : (
-                                <Button
-                                  size="sm"
-                                  variant="outline"
-                                  disabled={schoolsBusy}
-                                  onClick={() => runSchoolArchiveAction([s.school], "archive")}
-                                  className="gap-1.5 border-amber-300 text-amber-700 hover:bg-amber-50"
-                                >
-                                  <Archive className="h-3.5 w-3.5" /> Archive
-                                </Button>
-                              )}
+                            <td className="px-2 py-1 text-right">
+                              <div className="flex flex-wrap gap-1.5 justify-end">
+                                {s.letterSent && (
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    disabled={schoolsBusy}
+                                    onClick={() => restoreLetterSchool(s.school)}
+                                    className="gap-1.5 border-blue-300 text-blue-700 hover:bg-blue-50"
+                                  >
+                                    <Mail className="h-3.5 w-3.5" /> Restore to Letters
+                                  </Button>
+                                )}
+                                {s.archived ? (
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    disabled={schoolsBusy}
+                                    onClick={() => runSchoolArchiveAction([s.school], "unarchive")}
+                                    className="gap-1.5 border-emerald-300 text-emerald-700 hover:bg-emerald-50"
+                                  >
+                                    <ArchiveRestore className="h-3.5 w-3.5" /> Unarchive
+                                  </Button>
+                                ) : (
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    disabled={schoolsBusy}
+                                    onClick={() => runSchoolArchiveAction([s.school], "archive")}
+                                    className="gap-1.5 border-amber-300 text-amber-700 hover:bg-amber-50"
+                                  >
+                                    <Archive className="h-3.5 w-3.5" /> Archive
+                                  </Button>
+                                )}
+                              </div>
                             </td>
                           </tr>
                         );
@@ -2094,10 +2304,16 @@ function AdminBursariesPage() {
               </div>
             </div>
 
-            <label className="flex items-center gap-2 text-xs text-muted-foreground">
-              <Checkbox checked={showArchivedInPickers} onCheckedChange={(v) => setShowArchivedInPickers(!!v)} />
-              Also show archived schools in the Review by Location and Confirmation Letters pickers
-            </label>
+            <div className="space-y-1">
+              <label className="flex items-center gap-2 text-xs text-muted-foreground">
+                <Checkbox checked={showArchivedInPickers} onCheckedChange={(v) => setShowArchivedInPickers(!!v)} />
+                Also show archived schools in the Review by Location and Confirmation Letters pickers
+              </label>
+              <label className="flex items-center gap-2 text-xs text-muted-foreground">
+                <Checkbox checked={showSentInLetters} onCheckedChange={(v) => setShowSentInLetters(!!v)} />
+                Also show "letter sent" schools in the Confirmation Letters picker
+              </label>
+            </div>
           </div>
         )}
       </div>
@@ -2118,8 +2334,8 @@ function AdminBursariesPage() {
                       Ref <span className="font-mono font-bold text-primary">{selected.reference}</span>
                     </DialogDescription>
                   </DialogHeader>
-                  <div className="space-y-4 py-2">
-                    <div className="grid sm:grid-cols-2 gap-4 text-sm">
+                  <div className="space-y-3 py-1.5">
+                    <div className="grid sm:grid-cols-2 gap-3 text-xs">
                       <div className="space-y-1.5">
                         <Label htmlFor="edit-student-name">Student Name</Label>
                         <Input
@@ -2253,7 +2469,7 @@ function AdminBursariesPage() {
                       </div>
                     </div>
                   </div>
-                  <DialogFooter className="gap-2 sm:gap-2 pt-4 border-t">
+                  <DialogFooter className="gap-2 sm:gap-2 pt-3 border-t">
                     <Button variant="outline" onClick={() => setIsEditing(false)} disabled={editBusy}>Cancel</Button>
                     <Button variant="hero" onClick={saveEditApplication} disabled={editBusy}>
                       {editBusy ? "Saving..." : "Save Changes"}
@@ -2280,13 +2496,13 @@ function AdminBursariesPage() {
                       same student, across all terms, so reviewers can see at a glance
                       whether they've received a bursary before and how it went. */}
                   {applicationHistory.length > 0 && (
-                    <div className="rounded-xl border border-primary/20 bg-primary/5 p-4 space-y-2">
+                    <div className="rounded-xl border border-primary/20 bg-primary/5 p-3 space-y-2">
                       <p className="text-xs font-bold uppercase tracking-wide text-primary flex items-center gap-1.5">
                         <History className="h-3.5 w-3.5" /> Application History ({applicationHistory.length})
                       </p>
                       <div className="space-y-1.5">
                         {applicationHistory.map((h) => (
-                          <div key={h.id} className="flex items-center justify-between gap-3 bg-card border border-border rounded-lg px-3 py-2 text-sm">
+                          <div key={h.id} className="flex items-center justify-between gap-2 bg-card border border-border rounded-lg px-2 py-1 text-xs">
                             <div className="min-w-0">
                               <p className="font-semibold truncate">{h.term}</p>
                               <p className="text-xs text-muted-foreground truncate">
@@ -2301,7 +2517,7 @@ function AdminBursariesPage() {
                     </div>
                   )}
 
-                  <div className="space-y-4">
+                  <div className="space-y-3">
                     <DetailGroup title="Student">
                       <Detail label="Term" value={selected.term} />
                       <Detail label="Registration No." value={selected.registration_number} />
@@ -2362,17 +2578,17 @@ function AdminBursariesPage() {
                     </DetailGroup>
                   </div>
                   {selected.reason && (
-                    <div className="mt-3">
+                    <div className="mt-2">
                       <p className="text-xs uppercase tracking-wider text-muted-foreground mb-1">Reason</p>
-                      <p className="text-sm whitespace-pre-line bg-muted/40 p-3 rounded-lg">{selected.reason}</p>
+                      <p className="text-xs whitespace-pre-line bg-muted/40 p-3 rounded-lg">{selected.reason}</p>
                     </div>
                   )}
                   {selected.sms_last_message && (
-                    <div className="mt-3">
+                    <div className="mt-2">
                       <p className="text-xs uppercase tracking-wider text-muted-foreground mb-1">
                         Last SMS · {selected.sms_last_sent_at ? new Date(selected.sms_last_sent_at).toLocaleString() : ""}
                       </p>
-                      <p className="text-sm bg-gold/10 p-3 rounded-lg">{selected.sms_last_message}</p>
+                      <p className="text-xs bg-gold/10 p-3 rounded-lg">{selected.sms_last_message}</p>
                     </div>
                   )}
                   <DialogFooter className="gap-2 sm:gap-2">
@@ -2428,7 +2644,7 @@ function AdminBursariesPage() {
           </DialogHeader>
 
           {reviewSchoolVariants.length > 1 && (
-            <div className="rounded-lg bg-muted/40 border border-border px-3 py-2.5 text-xs text-muted-foreground">
+            <div className="rounded-lg bg-muted/40 border border-border px-2 py-1.5 text-xs text-muted-foreground">
               <p className="font-semibold text-foreground mb-1">Spellings currently in this group:</p>
               <ul className="list-disc list-inside space-y-0.5">
                 {reviewSchoolVariants.map((v) => <li key={v}>{v}</li>)}
@@ -2436,7 +2652,7 @@ function AdminBursariesPage() {
             </div>
           )}
 
-          <div className="space-y-4">
+          <div className="space-y-3">
             <div>
               <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
                 Official school name
@@ -2501,11 +2717,11 @@ function StatCard({ icon: Icon, label, value, color }: {
   label: string; value: string; color: string;
 }) {
   return (
-    <div className="bg-muted/30 border border-border rounded-xl px-4 py-3 flex items-center gap-3">
+    <div className="bg-muted/30 border border-border rounded-xl px-2 py-1 flex items-center gap-2">
       <Icon className={`h-5 w-5 shrink-0 ${color}`} />
       <div>
         <p className="text-xs text-muted-foreground">{label}</p>
-        <p className={`font-display font-bold text-base ${color}`}>{value}</p>
+        <p className={`font-display font-bold text-sm ${color}`}>{value}</p>
       </div>
     </div>
   );
@@ -2524,7 +2740,7 @@ function DetailGroup({ title, children }: { title: string; children: React.React
   return (
     <div className="bg-muted/20 border border-border rounded-xl p-3">
       <p className="text-[10px] font-bold uppercase tracking-widest text-gold mb-2">{title}</p>
-      <div className="grid sm:grid-cols-2 gap-3 text-sm">{children}</div>
+      <div className="grid sm:grid-cols-2 gap-2 text-xs">{children}</div>
     </div>
   );
 }

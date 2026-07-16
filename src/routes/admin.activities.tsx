@@ -57,12 +57,12 @@ function AdminActivitiesPage() {
   return (
     <AdminLayout title="Daily Campaign Activities">
       <Toaster />
-      <div className="grid lg:grid-cols-[400px_1fr] gap-6">
+      <div className="grid lg:grid-cols-[400px_1fr] gap-3">
         <form
           onSubmit={submit}
-          className="bg-card border border-border rounded-2xl p-6 space-y-4 h-fit"
+          className="bg-card border border-border rounded-2xl p-3 space-y-3 h-fit"
         >
-          <h2 className="font-display text-lg font-bold flex items-center gap-2">
+          <h2 className="font-display text-sm font-bold flex items-center gap-2">
             <Plus className="h-4 w-4 text-primary" /> Add activity
           </h2>
           <div>
@@ -78,7 +78,7 @@ function AdminActivitiesPage() {
               placeholder="What's happening?"
             />
           </div>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-2 gap-2">
             <div>
               <Label>Date *</Label>
               <Input type="date" value={date} onChange={(e) => setDate(e.target.value)} />
@@ -97,7 +97,7 @@ function AdminActivitiesPage() {
             <select
               value={ward}
               onChange={(e) => setWard(e.target.value)}
-              className="w-full h-10 rounded-md border border-input bg-background px-3 text-sm"
+              className="w-full h-10 rounded-md border border-input bg-background px-3 text-xs"
             >
               <option value="">— Any —</option>
               {MATHARE_WARDS.map((w) => (
@@ -113,19 +113,19 @@ function AdminActivitiesPage() {
           </p>
         </form>
 
-        <div className="space-y-6">
+        <div className="space-y-3">
           <section>
-            <h3 className="font-display text-lg font-bold mb-3 flex items-center gap-2">
+            <h3 className="font-display text-sm font-bold mb-2 flex items-center gap-2">
               <Calendar className="h-4 w-4 text-primary" /> Upcoming ({upcoming.length})
             </h3>
             {upcoming.length === 0 ? (
-              <p className="text-sm text-muted-foreground bg-card border border-border rounded-xl p-6">
+              <p className="text-xs text-muted-foreground bg-card border border-border rounded-xl p-3">
                 No upcoming activities. Schedule one on the left.
               </p>
             ) : (
-              <ul className="space-y-3">
+              <ul className="space-y-2">
                 {upcoming.map((a) => (
-                  <li key={a.id} className="bg-card border border-border rounded-xl p-4 flex justify-between gap-3">
+                  <li key={a.id} className="bg-card border border-border rounded-xl p-3 flex justify-between gap-2">
                     <div className="min-w-0">
                       <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-primary">
                         <Calendar className="h-3 w-3" />
@@ -133,7 +133,7 @@ function AdminActivitiesPage() {
                         {a.time && <><Clock className="h-3 w-3 ml-2" />{a.time}</>}
                       </div>
                       <p className="font-display font-bold mt-1">{a.title}</p>
-                      {a.description && <p className="text-sm text-muted-foreground mt-1">{a.description}</p>}
+                      {a.description && <p className="text-xs text-muted-foreground mt-1">{a.description}</p>}
                       {(a.location || a.ward) && (
                         <p className="text-xs text-muted-foreground mt-2 flex items-center gap-1">
                           <MapPin className="h-3 w-3" /> {[a.location, a.ward].filter(Boolean).join(" • ")}
@@ -150,10 +150,10 @@ function AdminActivitiesPage() {
           </section>
           {past.length > 0 && (
             <section>
-              <h3 className="font-display text-base font-bold mb-3 text-muted-foreground">Past ({past.length})</h3>
+              <h3 className="font-display text-sm font-bold mb-2 text-muted-foreground">Past ({past.length})</h3>
               <ul className="space-y-2">
                 {past.map((a) => (
-                  <li key={a.id} className="bg-muted/40 border border-border rounded-lg p-3 flex justify-between items-center text-sm">
+                  <li key={a.id} className="bg-muted/40 border border-border rounded-lg p-3 flex justify-between items-center text-xs">
                     <span>
                       <span className="text-muted-foreground">{a.date}</span> — {a.title}
                     </span>

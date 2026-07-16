@@ -365,6 +365,24 @@ export type Database = {
         }
         Relationships: []
       }
+      school_letters_generated: {
+        Row: {
+          generated_at: string
+          school_name: string
+          term: string
+        }
+        Insert: {
+          generated_at?: string
+          school_name: string
+          term: string
+        }
+        Update: {
+          generated_at?: string
+          school_name?: string
+          term?: string
+        }
+        Relationships: []
+      }
       site_settings: {
         Row: {
           id: string

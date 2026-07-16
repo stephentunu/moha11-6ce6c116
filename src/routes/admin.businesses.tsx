@@ -51,8 +51,8 @@ function AdminBusinessesPage() {
   return (
     <AdminLayout title="Business Moderation">
       <Toaster />
-      <div className="space-y-6">
-        <div className="flex flex-col sm:flex-row gap-3 sm:items-center sm:justify-between">
+      <div className="space-y-3">
+        <div className="flex flex-col sm:flex-row gap-2 sm:items-center sm:justify-between">
           <div className="relative w-full sm:max-w-sm">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
@@ -62,7 +62,7 @@ function AdminBusinessesPage() {
               className="pl-9 h-10"
             />
           </div>
-          <p className="text-sm text-muted-foreground">
+          <p className="text-xs text-muted-foreground">
             <span className="font-bold text-foreground">{filtered.length}</span> of {businesses.length} businesses
           </p>
         </div>
@@ -74,21 +74,21 @@ function AdminBusinessesPage() {
             </div>
           ) : (
             <div className="overflow-x-auto">
-              <table className="w-full text-sm">
+              <table className="w-full text-xs">
                 <thead className="bg-muted/40 text-xs uppercase tracking-wider text-muted-foreground">
                   <tr>
-                    <th className="text-left px-4 py-3 font-semibold">Business</th>
-                    <th className="text-left px-4 py-3 font-semibold hidden md:table-cell">Owner</th>
-                    <th className="text-left px-4 py-3 font-semibold hidden lg:table-cell">Location</th>
-                    <th className="text-left px-4 py-3 font-semibold">Status</th>
-                    <th className="text-right px-4 py-3 font-semibold">Actions</th>
+                    <th className="text-left px-2.5 py-1.5 font-semibold">Business</th>
+                    <th className="text-left px-2.5 py-1.5 font-semibold hidden md:table-cell">Owner</th>
+                    <th className="text-left px-2.5 py-1.5 font-semibold hidden lg:table-cell">Location</th>
+                    <th className="text-left px-2.5 py-1.5 font-semibold">Status</th>
+                    <th className="text-right px-2.5 py-1.5 font-semibold">Actions</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-border">
                   {filtered.map((b) => (
                     <tr key={b.id} className="hover:bg-muted/30">
-                      <td className="px-4 py-3">
-                        <div className="flex items-center gap-3 min-w-0">
+                      <td className="px-2.5 py-1.5">
+                        <div className="flex items-center gap-2 min-w-0">
                           <img
                             src={b.imageUrl}
                             alt={b.businessName}
@@ -100,21 +100,21 @@ function AdminBusinessesPage() {
                           </div>
                         </div>
                       </td>
-                      <td className="px-4 py-3 hidden md:table-cell">
+                      <td className="px-2.5 py-1.5 hidden md:table-cell">
                         <p className="font-medium">{b.ownerName}</p>
                         <p className="text-xs text-muted-foreground flex items-center gap-1">
                           <Phone className="h-3 w-3" />
                           {b.phone}
                         </p>
                       </td>
-                      <td className="px-4 py-3 hidden lg:table-cell">
+                      <td className="px-2.5 py-1.5 hidden lg:table-cell">
                         <p className="flex items-center gap-1 text-xs">
                           <MapPin className="h-3 w-3 text-muted-foreground" />
                           {b.ward}
                         </p>
                         <p className="text-xs text-muted-foreground line-clamp-1">{b.location}</p>
                       </td>
-                      <td className="px-4 py-3">
+                      <td className="px-2.5 py-1.5">
                         {b.status === "active" ? (
                           <Badge className="bg-green-500/10 text-green-700 dark:text-green-400 border-green-500/20 gap-1">
                             <ShieldCheck className="h-3 w-3" /> Verified
@@ -125,7 +125,7 @@ function AdminBusinessesPage() {
                           </Badge>
                         )}
                       </td>
-                      <td className="px-4 py-3">
+                      <td className="px-2.5 py-1.5">
                         <div className="flex items-center justify-end gap-2">
                           {b.status === "active" ? (
                             <Button

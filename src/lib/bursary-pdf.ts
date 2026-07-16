@@ -1,5 +1,4 @@
 ﻿import { jsPDF } from "jspdf";
-import * as XLSX from "@e965/xlsx";
 
 export type BursaryPdfData = {
   reference: string;
@@ -368,11 +367,13 @@ export type ConfirmationLetterRow = {
 
 export type ConfirmationLetterOptions = {
   schoolName: string;
-  termLabel?: string;       // e.g. "2026 T2" â€” defaults to current year + "T2"
+  termLabel?: string;       // e.g. "2026 T2" — defaults to current year + "T2"
   chequeNumber?: string;    // left blank (dotted line) if not provided
   dateLabel?: string;       // left blank (dotted line) if not provided
   officerName?: string;
   officerPhone?: string;
+  schoolCounty?: string | null;    // printed in the footer, for sorting printed letters by location
+  schoolSubCounty?: string | null;
 };
 
 export function generateConfirmationLetter(
@@ -437,6 +438,23 @@ export function generateConfirmationLetter(
   doc.line(M, y, M + 85, y);
   y += 9;
 
+  // â”€â”€ County / Sub-county â”€â”€ placed here, right under the addressee and
+  // before the RE line, so it's immediately visible for sorting the
+  // printed letters by location once they're downloaded. â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  const locationBits = [opts.schoolCounty, opts.schoolSubCounty].filter(
+    (v): v is string => !!v && v.trim().length > 0,
+  );
+  if (locationBits.length > 0) {
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(9.5);
+    doc.setTextColor(0, 0, 0);
+    doc.text(
+      `County: ${opts.schoolCounty?.trim() || "—"}   |   Sub-County: ${opts.schoolSubCounty?.trim() || "—"}`,
+      M, y,
+    );
+    y += 10;
+  }
+
   // â”€â”€ RE line â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   doc.setFont("helvetica", "bold");
   doc.setFontSize(10.5);
@@ -453,7 +471,7 @@ export function generateConfirmationLetter(
   // â”€â”€ Narrative paragraph â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   doc.setFont("helvetica", "normal");
   doc.setFontSize(10.5);
-  const introLine1 = "This letter serves to confirm that the following students from your school are successful beneficiaries of";
+  const introLine1 = "This letter serves to confirm that the following student(s) from your school are successful beneficiaries of";
   doc.text(introLine1, M, y, { maxWidth: contentW });
   y += 6;
 
@@ -517,8 +535,25 @@ export function generateConfirmationLetter(
   const colAdm = { x: M + 92, w: 45 };
   const colAmt = { x: M + 137, w: contentW - 137 };
   const headerH = 8;
-  const rowH = 7.6;
-  const tableRows = Math.max(rows.length, 15); // always at least 15 rows like the official template
+
+  // Reserve room below the table for the closing paragraph + signature block
+  // (~55mm) and a bottom margin, then size the table — row count and row
+  // height — to fit exactly what's left, so the whole letter always prints
+  // on a single page instead of spilling the signature onto a second one.
+  const BOTTOM_MARGIN = 20;
+  const CLOSING_BLOCK_HEIGHT = 55;
+  const pageHeight = doc.internal.pageSize.getHeight();
+  const maxTableBottom = pageHeight - BOTTOM_MARGIN - CLOSING_BLOCK_HEIGHT;
+  const availableForRows = maxTableBottom - y - headerH;
+
+  // A few blank rows below the real entries look tidy (matches the official
+  // template), but never so many that they'd force a second page.
+  const idealRows = Math.min(rows.length + 3, 15);
+  const tableRows = Math.max(rows.length, idealRows);
+
+  const DEFAULT_ROW_H = 7.6;
+  const MIN_ROW_H = 5.2;
+  const rowH = Math.max(MIN_ROW_H, Math.min(DEFAULT_ROW_H, availableForRows / tableRows));
 
   const tableTop = y;
 
@@ -539,10 +574,12 @@ export function generateConfirmationLetter(
 
   doc.setFont("helvetica", "normal");
   doc.setFontSize(9.5);
+  const rowTextY = Math.min(5.2, rowH - 2.2);
 
   for (let i = 0; i < tableRows; i++) {
-    // Page break if needed (rare for 15 rows on A4 portrait, but safe to guard)
-    if (y + rowH > 277) {
+    // Page break only as a last-resort safety net — with the sizing above
+    // this should never actually trigger for a realistic beneficiary count.
+    if (y + rowH > pageHeight - BOTTOM_MARGIN) {
       doc.addPage();
       y = 20;
     }
@@ -552,19 +589,19 @@ export function generateConfirmationLetter(
     doc.line(colAdm.x, y, colAdm.x, y + rowH);
     doc.line(colAmt.x, y, colAmt.x, y + rowH);
 
-    doc.text(String(i + 1), colNo.x + colNo.w / 2, y + 5.2, { align: "center" });
+    doc.text(String(i + 1), colNo.x + colNo.w / 2, y + rowTextY, { align: "center" });
 
     const r = rows[i];
     if (r) {
       const nameLines = doc.splitTextToSize(r.student_name, colName.w - 4);
-      doc.text(String(nameLines[0] ?? ""), colName.x + 2, y + 5.2);
+      doc.text(String(nameLines[0] ?? ""), colName.x + 2, y + rowTextY);
 
       const admLabel = [r.current_grade, r.registration_number].filter(Boolean).join(" / ");
       const admLines = doc.splitTextToSize(admLabel, colAdm.w - 4);
-      doc.text(String(admLines[0] ?? ""), colAdm.x + 2, y + 5.2);
+      doc.text(String(admLines[0] ?? ""), colAdm.x + 2, y + rowTextY);
 
       if (r.amount_requested) {
-        doc.text(`${Number(r.amount_requested).toLocaleString()}.00`, colAmt.x + colAmt.w - 2, y + 5.2, { align: "right" });
+        doc.text(`${Number(r.amount_requested).toLocaleString()}.00`, colAmt.x + colAmt.w - 2, y + rowTextY, { align: "right" });
       }
     }
 
@@ -573,10 +610,13 @@ export function generateConfirmationLetter(
 
   y += 8;
 
-  // â”€â”€ Closing paragraph â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── Closing paragraph ───────────────────────────────────────────────────
   doc.setFont("helvetica", "normal");
   doc.setFontSize(10.5);
-  if (y > 255) { doc.addPage(); y = 20; }
+  // Only start a fresh page if the closing block genuinely won't fit above
+  // the bottom margin — with the table sized against CLOSING_BLOCK_HEIGHT
+  // above, this is a safety net rather than the normal path.
+  if (y + 47 > pageHeight - BOTTOM_MARGIN) { doc.addPage(); y = 20; }
   doc.text(
     "We are requested to distribute the funds accordingly. For any discrepancies or confirmation of the",
     M, y, { maxWidth: contentW },
@@ -590,10 +630,10 @@ export function generateConfirmationLetter(
   y += 14;
 
   doc.setFont("helvetica", "normal");
-  doc.text(`${officerName} â€“ `, M, y);
-  const nameLabelW = doc.getTextWidth(`${officerName} â€“ `);
+  doc.text(`${officerName} – `, M, y);
+  const nameLabelW = doc.getTextWidth(`${officerName} – `);
   doc.setFont("helvetica", "bold");
-  doc.text(`${officerPhone} (WhatsApp)`, M + nameLabelW, y);
+  doc.text(officerPhone, M + nameLabelW, y);
   y += 5.5;
   doc.setFont("helvetica", "bold");
   const fieldOfficer = "Field Operations Officer";
@@ -621,7 +661,6 @@ export type BroadsheetRow = {
   school_bank_account?: string | null;
   /** County the school is in â€” used for County â†’ School grouping in the broadsheet */
   school_county?: string | null;
-  school_sub_county?: string | null;
 };
 
 export function generateBroadsheetPdf(rows: BroadsheetRow[], title = "Approved Bursary Awards") {
@@ -634,31 +673,21 @@ export function generateBroadsheetPdf(rows: BroadsheetRow[], title = "Approved B
   const generated = new Date().toLocaleDateString("en-KE", { day: "numeric", month: "short", year: "numeric" });
   const grandTotal = rows.reduce((s, r) => s + (r.amount_requested ?? 0), 0);
 
-  // Sort: county asc → school name asc → student name asc
+  // Sort: school name asc, then student name asc
   const sorted = [...rows].sort((a, b) => {
-    const ca = (a.school_county || "UNSPECIFIED").toUpperCase().trim();
-    const cb = (b.school_county || "UNSPECIFIED").toUpperCase().trim();
-    if (ca !== cb) return ca.localeCompare(cb);
     const sa = a.school_name.toUpperCase().trim();
     const sb = b.school_name.toUpperCase().trim();
     if (sa !== sb) return sa.localeCompare(sb);
     return a.student_name.localeCompare(b.student_name);
   });
 
-  // Group: county → Map<schoolName, rows[]>
-  const byCounty = new Map<string, Map<string, BroadsheetRow[]>>();
+  // Group by school
+  const bySchool = new Map<string, BroadsheetRow[]>();
   for (const r of sorted) {
-    const countyKey = (r.school_county || "UNSPECIFIED").toUpperCase().trim();
-    const schoolKey = r.school_name.toUpperCase().trim();
-    if (!byCounty.has(countyKey)) byCounty.set(countyKey, new Map());
-    const schoolMap = byCounty.get(countyKey)!;
-    if (!schoolMap.has(schoolKey)) schoolMap.set(schoolKey, []);
-    schoolMap.get(schoolKey)!.push(r);
+    const key = r.school_name.toUpperCase().trim();
+    if (!bySchool.has(key)) bySchool.set(key, []);
+    bySchool.get(key)!.push(r);
   }
-
-  // Total school count across all counties
-  let totalSchools = 0;
-  for (const sm of byCounty.values()) totalSchools += sm.size;
 
   let page = 1;
   let y = 0;
@@ -676,10 +705,9 @@ export function generateBroadsheetPdf(rows: BroadsheetRow[], title = "Approved B
     bank:     { x: M+220,    w: 69 },
   };
 
-  const ROW_H    = 5.5;
-  const HEAD_H   = 6.5;
-  const SCH_H    = 5.5;
-  const COUNTY_H = 6.5;
+  const ROW_H  = 5.5;
+  const HEAD_H = 6.5;
+  const SCH_H  = 5.5;
 
   const addPageHeader = () => {
     doc.setFillColor(20, 83, 45);
@@ -691,7 +719,7 @@ export function generateBroadsheetPdf(rows: BroadsheetRow[], title = "Approved B
     doc.setFont("helvetica", "normal");
     doc.setFontSize(7);
     doc.text(
-      `${rows.length} students  |  ${totalSchools} schools  |  ${byCounty.size} counties  |  Grand Total: KSh ${grandTotal.toLocaleString()}  |  ${generated}  |  Page ${page}`,
+      `${rows.length} students  |  ${bySchool.size} schools  |  Grand Total: KSh ${grandTotal.toLocaleString()}  |  ${generated}  |  Page ${page}`,
       W - M, 8, { align: "right" }
     );
     doc.setTextColor(0, 0, 0);
@@ -775,25 +803,9 @@ export function generateBroadsheetPdf(rows: BroadsheetRow[], title = "Approved B
     y += ROW_H;
   };
 
-  const drawCountyHeader = (countyName: string, countyTotal: number, countyStudents: number, countySchoolCount: number) => {
-    doc.setFillColor(20, 83, 45);
-    doc.rect(M, y, W - 2*M, COUNTY_H, "F");
-    doc.setFont("helvetica", "bold");
-    doc.setFontSize(7.5);
-    doc.setTextColor(255, 255, 255);
-    doc.text(`COUNTY: ${countyName}`, M + 2, y + 4.5);
-    doc.setFont("helvetica", "normal");
-    doc.setFontSize(6.5);
-    doc.text(
-      `${countySchoolCount} school${countySchoolCount !== 1 ? "s" : ""}  ·  ${countyStudents} student${countyStudents !== 1 ? "s" : ""}  ·  KSh ${countyTotal.toLocaleString()}`,
-      W - M - 1, y + 4.5, { align: "right" }
-    );
-    doc.setTextColor(0, 0, 0);
-    y += COUNTY_H;
-  };
-
   const drawSchoolHeader = (schoolName: string, schoolRows: BroadsheetRow[]) => {
     const category = schoolRows[0].school_category ? ` · ${schoolRows[0].school_category}` : "";
+    const county   = schoolRows[0].school_county    ? ` · ${schoolRows[0].school_county}`    : "";
     const subTotal = schoolRows.reduce((s, r) => s + (r.amount_requested ?? 0), 0);
 
     doc.setFillColor(229, 237, 231);
@@ -803,8 +815,7 @@ export function generateBroadsheetPdf(rows: BroadsheetRow[], title = "Approved B
     doc.setFont("helvetica", "bold");
     doc.setFontSize(7);
     doc.setTextColor(20, 83, 45);
-    // Indent school header slightly to show hierarchy under county
-    doc.text(`  ${schoolName}${category}`, M + 1.5, y + 3.9);
+    doc.text(`${schoolName}${category}${county}`, M + 1.5, y + 3.9);
     doc.setFont("helvetica", "normal");
     doc.setFontSize(6.5);
     doc.text(
@@ -815,55 +826,17 @@ export function generateBroadsheetPdf(rows: BroadsheetRow[], title = "Approved B
     y += SCH_H;
   };
 
-  const drawSchoolSubtotal = (schoolRows: BroadsheetRow[]) => {
-    const subTotal = schoolRows.reduce((s, r) => s + (r.amount_requested ?? 0), 0);
-    doc.setFillColor(245, 255, 248);
-    doc.rect(M, y, W - 2*M, 5, "F");
-    doc.setDrawColor(160, 200, 170);
-    doc.rect(M, y, W - 2*M, 5);
-    doc.setFont("helvetica", "bold");
-    doc.setFontSize(6.5);
-    doc.setTextColor(20, 83, 45);
-    doc.text(
-      `School Sub-total — ${schoolRows.length} student${schoolRows.length !== 1 ? "s" : ""}`,
-      M + 2, y + 3.4
-    );
-    doc.text(
-      `KSh ${subTotal.toLocaleString()}`,
-      cols.amount.x + cols.amount.w - 1, y + 3.4, { align: "right" }
-    );
-    doc.setTextColor(0, 0, 0);
-    y += 5;
-  };
-
-  // ── Render ──────────────────────────────────────────────────────────────────
+  // Render
   addPageHeader();
   drawColumnHeaders();
 
   let serial = 1;
-  for (const [countyKey, schoolMap] of byCounty) {
-    // Compute county-level totals
-    const countyStudents = Array.from(schoolMap.values()).reduce((s, arr) => s + arr.length, 0);
-    const countyTotal    = Array.from(schoolMap.values()).reduce((s, arr) => s + arr.reduce((ss, r) => ss + (r.amount_requested ?? 0), 0), 0);
-
-    // County header — keep it with at least one school+student row
-    checkY(COUNTY_H + SCH_H + ROW_H + 1);
-    drawCountyHeader(countyKey, countyTotal, countyStudents, schoolMap.size);
-    drawColumnHeaders();
-
-    for (const [, schoolRows] of schoolMap) {
-      // Keep school header with at least its first student row
-      checkY(SCH_H + ROW_H + 1);
-      drawSchoolHeader(schoolRows[0].school_name.toUpperCase().trim(), schoolRows);
-
-      for (let i = 0; i < schoolRows.length; i++) {
-        checkY(ROW_H + 1);
-        drawRow(schoolRows[i], serial++, i % 2 === 1);
-      }
-
-      // School sub-total row
-      checkY(5 + 1);
-      drawSchoolSubtotal(schoolRows);
+  for (const [schoolKey, schoolRows] of bySchool) {
+    checkY(SCH_H + ROW_H + 1);
+    drawSchoolHeader(schoolKey, schoolRows);
+    for (let i = 0; i < schoolRows.length; i++) {
+      checkY(ROW_H + 1);
+      drawRow(schoolRows[i], serial++, i % 2 === 1);
     }
   }
 
@@ -875,7 +848,7 @@ export function generateBroadsheetPdf(rows: BroadsheetRow[], title = "Approved B
   doc.setFontSize(8);
   doc.setTextColor(255, 255, 255);
   doc.text(
-    `GRAND TOTAL — ${rows.length} student${rows.length !== 1 ? "s" : ""} across ${totalSchools} school${totalSchools !== 1 ? "s" : ""} in ${byCounty.size} county${byCounty.size !== 1 ? "s" : ""}`,
+    `GRAND TOTAL — ${rows.length} student${rows.length !== 1 ? "s" : ""} across ${bySchool.size} school${bySchool.size !== 1 ? "s" : ""}`,
     M + 2, y + 4.8
   );
   doc.text(`KSh ${grandTotal.toLocaleString()}`, cols.amount.x + cols.amount.w - 1, y + 4.8, { align: "right" });
@@ -885,312 +858,4 @@ export function generateBroadsheetPdf(rows: BroadsheetRow[], title = "Approved B
 
   const safeTitle = title.replace(/[^a-z0-9]/gi, "-").slice(0, 40);
   doc.save(`Moha-Broadsheet-${safeTitle}-${Date.now()}.pdf`);
-}
-
-
-
-// ── CHEQUE SUMMARY EXCEL EXPORT ────────────────────────────────────────────
-// Single-sheet workbook laid out for cheque-writing:
-//
-//   MOHA EDUCATION KITTY — BURSARY CHEQUE SUMMARY          [title row]
-//   Generated: …                                            [date row]
-//   (blank)
-//   ┌──────────────────────────────────────────────────────────────────────┐
-//   │ COUNTY: NAIROBI                                                      │  ← county header (merged)
-//   ├──────────────────────┬───────────────┬──────────────┬────────────────┤
-//   │ SCHOOL NAME          │ BANK ACCOUNT  │ NO. OF STDS  │ TOTAL (KSh)   │  ← column headers
-//   ├──────────────────────┼───────────────┼──────────────┼────────────────┤
-//   │ KANGA HIGH SCHOOL    │ 1234567890    │     3        │    45,000      │
-//   │ MATHARE GIRLS        │ 0987654321    │     2        │    30,000      │
-//   ├──────────────────────┴───────────────┼──────────────┼────────────────┤
-//   │ NAIROBI COUNTY TOTAL (2 schools)     │     5        │    75,000      │
-//   └──────────────────────────────────────┴──────────────┴────────────────┘
-//   (blank)
-//   … next county …
-//   (blank)
-//   GRAND TOTAL                            │    XX        │   XXX,000      │
-//
-// Individual students are NOT listed — purely for cheque-writing.
-
-export function generateBroadsheetExcel(
-  rows: BroadsheetRow[],
-  title = "Moha Bursary Cheque Summary",
-) {
-  // ── Build county → school summaries ───────────────────────────────────────
-  type SchoolSummary = {
-    school: string;
-    bankAccount: string;
-    students: number;
-    total: number;
-  };
-  const byCounty = new Map<string, SchoolSummary[]>();
-
-  for (const r of rows) {
-    const county = (r.school_county || "UNSPECIFIED").toUpperCase().trim();
-    const school = r.school_name.toUpperCase().trim();
-    const bank   = (r.school_bank_account || "—").trim();
-
-    if (!byCounty.has(county)) byCounty.set(county, []);
-    const list = byCounty.get(county)!;
-    const existing = list.find((s) => s.school === school);
-    if (existing) {
-      existing.students += 1;
-      existing.total    += r.amount_requested ?? 0;
-      // Use the first non-empty bank account we find for this school
-      if (existing.bankAccount === "—" && bank !== "—") existing.bankAccount = bank;
-    } else {
-      list.push({ school, bankAccount: bank, students: 1, total: r.amount_requested ?? 0 });
-    }
-  }
-
-  // Sort counties alphabetically; schools within each county alphabetically
-  const sortedCounties = Array.from(byCounty.entries())
-    .sort(([a], [b]) => a.localeCompare(b))
-    .map(([county, schools]) => ({
-      county,
-      schools: [...schools].sort((a, b) => a.school.localeCompare(b.school)),
-    }));
-
-  const grandTotal    = rows.reduce((s, r) => s + (r.amount_requested ?? 0), 0);
-  const grandStudents = rows.length;
-  const totalSchools  = sortedCounties.reduce((s, { schools }) => s + schools.length, 0);
-
-  // ── Build a single flat array of rows ─────────────────────────────────────
-  // Each element: [col-A, col-B, col-C, col-D]
-  //   col-A = School Name  (or county label, or total label)
-  //   col-B = Bank Account
-  //   col-C = No. of Students
-  //   col-D = Total Amount (KSh)
-  // We track which row index each "special" row lands on so we can merge cells.
-
-  type AoaRow = (string | number)[];
-  const data: AoaRow[] = [];
-
-  // Row 0: Title
-  data.push(["MOHA EDUCATION KITTY — BURSARY CHEQUE SUMMARY", "", "", ""]);
-  // Row 1: Generated date
-  data.push([
-    `Generated: ${new Date().toLocaleDateString("en-KE", {
-      day: "numeric", month: "long", year: "numeric",
-    })}`,
-    "", "", "",
-  ]);
-  // Row 2: blank
-  data.push(["", "", "", ""]);
-  // Row 3: global column headers
-  data.push(["SCHOOL NAME", "BANK ACCOUNT NO.", "NO. OF STUDENTS", "TOTAL AMOUNT (KSh)"]);
-
-  const FIXED_HEADER_ROWS = 4; // rows 0-3 above
-
-  // Merges we'll accumulate (0-indexed)
-  const merges: { s: { r: number; c: number }; e: { r: number; c: number } }[] = [
-    // Title row — merge A:D
-    { s: { r: 0, c: 0 }, e: { r: 0, c: 3 } },
-    // Date row — merge A:D
-    { s: { r: 1, c: 0 }, e: { r: 1, c: 3 } },
-    // Blank row — merge A:D
-    { s: { r: 2, c: 0 }, e: { r: 2, c: 3 } },
-  ];
-
-  for (const { county, schools } of sortedCounties) {
-    const countyTotal    = schools.reduce((s, sc) => s + sc.total,    0);
-    const countyStudents = schools.reduce((s, sc) => s + sc.students, 0);
-
-    // County header row — merge A:D
-    const countyRowIdx = data.length;
-    data.push([`COUNTY: ${county}`, "", "", ""]);
-    merges.push({ s: { r: countyRowIdx, c: 0 }, e: { r: countyRowIdx, c: 3 } });
-
-    // School rows
-    for (const sc of schools) {
-      data.push([sc.school, sc.bankAccount, sc.students, sc.total]);
-    }
-
-    // County subtotal row — merge A:B for the label
-    const subtotalRowIdx = data.length;
-    data.push([
-      `${county} TOTAL  (${schools.length} school${schools.length !== 1 ? "s" : ""})`,
-      "",
-      countyStudents,
-      countyTotal,
-    ]);
-    merges.push({ s: { r: subtotalRowIdx, c: 0 }, e: { r: subtotalRowIdx, c: 1 } });
-
-    // Blank separator
-    data.push(["", "", "", ""]);
-  }
-
-  // Grand total row — merge A:B for the label
-  const grandRowIdx = data.length;
-  data.push([
-    `GRAND TOTAL — ${byCounty.size} ${byCounty.size !== 1 ? "counties" : "county"}  ·  ${totalSchools} schools  ·  ${grandStudents} students`,
-    "",
-    grandStudents,
-    grandTotal,
-  ]);
-  merges.push({ s: { r: grandRowIdx, c: 0 }, e: { r: grandRowIdx, c: 1 } });
-
-  // ── Build worksheet ────────────────────────────────────────────────────────
-  const ws = XLSX.utils.aoa_to_sheet(data);
-
-  ws["!cols"] = [
-    { wch: 52 }, // School Name / county label
-    { wch: 24 }, // Bank Account
-    { wch: 16 }, // No. of Students
-    { wch: 22 }, // Total Amount
-  ];
-
-  ws["!merges"] = merges;
-
-  // ── Workbook ───────────────────────────────────────────────────────────────
-  const wb = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(wb, ws, "CHEQUE SUMMARY");
-
-  const safeTitle = title.replace(/[^a-z0-9]/gi, "-").slice(0, 40);
-  XLSX.writeFile(wb, `Moha-Cheque-Summary-${safeTitle}-${Date.now()}.xlsx`);
-}
-
-// ═══════════════════════════════════════════════════════════════════════════
-//  DETAILED APPROVED BROADSHEET (Excel) — matches the MOHA report template.
-//
-//  Layout (mirrors the uploaded SAMPLE_OF_MOHA_REPORT_TEMPLATE):
-//
-//    ┌───────────────────────────────────────────────────────────────────────┐
-//    │                          TITLE (merged A1:H4)                          │  I1:I4 = header space
-//    ├────┬────────────┬───────┬─────────────┬───────────┬──────────┬────────┤
-//    │ NO │ STUDENT'S… │ GRADE │ SCHOOL NAME │ SCHOOL … │ PARENT…  │ …AMOUNT│
-//    ├────┼────────────┼───────┼─────────────┼───────────┼──────────┼────────┤
-//    │  1 │ …          │ …     │ …           │ …         │ …        │  …     │
-//    │  … │ …          │ …     │ …           │ …         │ …        │  …     │
-//    └────┴────────────┴───────┴─────────────┴───────────┴──────────┴────────┘
-//    (blank)
-//    WARD SUMMARIES
-//      WARD  │ NO. OF SCHOOLS │ NO. OF STUDENTS │ TOTAL AMOUNT
-//      …     │ …              │ …               │ …
-//      GRAND TOTAL            │ …               │ …
-// ═══════════════════════════════════════════════════════════════════════════
-
-export function generateApprovedBroadsheetExcel(
-  rows: BroadsheetRow[],
-  title = "MOHA EDUCATION KITTY — APPROVED BURSARY BROADSHEET",
-) {
-  type AoaRow = (string | number)[];
-  const data: AoaRow[] = [];
-  const merges: { s: { r: number; c: number }; e: { r: number; c: number } }[] = [];
-
-  // ── Title block: rows 0-3, merged A:H (cols 0..7). Col I (8) left blank on
-  //    those rows to match the template exactly.
-  const generated = new Date().toLocaleDateString("en-KE", {
-    day: "numeric", month: "long", year: "numeric",
-  });
-  const titleLines = [
-    title,
-    "",
-    `Generated: ${generated}   ·   ${rows.length} approved student${rows.length !== 1 ? "s" : ""}`,
-    "",
-  ];
-  for (let i = 0; i < 4; i++) {
-    data.push([titleLines[i] ?? "", "", "", "", "", "", "", "", ""]);
-  }
-  merges.push({ s: { r: 0, c: 0 }, e: { r: 3, c: 7 } });
-
-  // ── Column headers (row 4) ─────────────────────────────────────────────────
-  data.push([
-    "NO",
-    "STUDENT'S NAME",
-    "GRADE",
-    "SCHOOL NAME",
-    "SCHOOL LOCATION",
-    "PARENTS/GUARDIAN NAME",
-    "PARENTS/GUARDIAN PHONE",
-    "WARD",
-    "AMOUNT",
-  ]);
-
-  // ── Student rows, sorted by ward then school then name ────────────────────
-  const sorted = [...rows].sort((a, b) => {
-    const w = (a.ward || "").localeCompare(b.ward || "");
-    if (w !== 0) return w;
-    const s = a.school_name.localeCompare(b.school_name);
-    if (s !== 0) return s;
-    return a.student_name.localeCompare(b.student_name);
-  });
-
-  sorted.forEach((r, i) => {
-    const location = [r.school_sub_county, r.school_county].filter(Boolean).join(", ") || "—";
-    data.push([
-      i + 1,
-      r.student_name,
-      r.current_grade,
-      r.school_name,
-      location,
-      r.guardian_name,
-      r.guardian_phone,
-      r.ward || "—",
-      r.amount_requested ?? 0,
-    ]);
-  });
-
-  // ── Ward summaries ─────────────────────────────────────────────────────────
-  type WardStat = { schools: Set<string>; students: number; total: number };
-  const wardMap = new Map<string, WardStat>();
-  for (const r of sorted) {
-    const key = (r.ward || "Unspecified").trim();
-    if (!wardMap.has(key)) wardMap.set(key, { schools: new Set(), students: 0, total: 0 });
-    const w = wardMap.get(key)!;
-    w.schools.add(r.school_name.trim().toUpperCase());
-    w.students += 1;
-    w.total += r.amount_requested ?? 0;
-  }
-
-  data.push(["", "", "", "", "", "", "", "", ""]);
-  const summaryTitleRow = data.length;
-  data.push(["WARD SUMMARIES", "", "", "", "", "", "", "", ""]);
-  merges.push({ s: { r: summaryTitleRow, c: 0 }, e: { r: summaryTitleRow, c: 8 } });
-
-  data.push(["WARD", "NO. OF SCHOOLS", "NO. OF STUDENTS", "TOTAL AMOUNT (KSh)", "", "", "", "", ""]);
-  const summaryHeaderRow = data.length - 1;
-  merges.push({ s: { r: summaryHeaderRow, c: 3 }, e: { r: summaryHeaderRow, c: 8 } });
-
-  const sortedWards = Array.from(wardMap.entries()).sort(([a], [b]) => a.localeCompare(b));
-  for (const [ward, stat] of sortedWards) {
-    const rowIdx = data.length;
-    data.push([ward, stat.schools.size, stat.students, stat.total, "", "", "", "", ""]);
-    merges.push({ s: { r: rowIdx, c: 3 }, e: { r: rowIdx, c: 8 } });
-  }
-
-  const grandStudents = sorted.length;
-  const grandTotal = sorted.reduce((s, r) => s + (r.amount_requested ?? 0), 0);
-  const grandSchools = new Set(sorted.map((r) => r.school_name.trim().toUpperCase())).size;
-
-  const grandRow = data.length;
-  data.push([
-    "GRAND TOTAL",
-    grandSchools,
-    grandStudents,
-    grandTotal,
-    "", "", "", "", "",
-  ]);
-  merges.push({ s: { r: grandRow, c: 3 }, e: { r: grandRow, c: 8 } });
-
-  // ── Build worksheet ────────────────────────────────────────────────────────
-  const ws = XLSX.utils.aoa_to_sheet(data);
-  ws["!cols"] = [
-    { wch: 5 },   // NO
-    { wch: 28 },  // STUDENT'S NAME
-    { wch: 10 },  // GRADE
-    { wch: 32 },  // SCHOOL NAME
-    { wch: 24 },  // SCHOOL LOCATION
-    { wch: 26 },  // PARENTS/GUARDIAN NAME
-    { wch: 20 },  // PARENTS/GUARDIAN PHONE
-    { wch: 16 },  // WARD
-    { wch: 14 },  // AMOUNT
-  ];
-  ws["!merges"] = merges;
-
-  const wb = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(wb, ws, "APPROVED BROADSHEET");
-
-  const safeTitle = title.replace(/[^a-z0-9]/gi, "-").slice(0, 40);
-  XLSX.writeFile(wb, `Moha-Approved-Broadsheet-${safeTitle}-${Date.now()}.xlsx`);
 }

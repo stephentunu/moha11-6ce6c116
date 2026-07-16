@@ -144,9 +144,9 @@ function AdminSmsPage() {
   return (
     <AdminLayout title="Bulk SMS">
       <Toaster />
-      <div className="grid lg:grid-cols-3 gap-6">
-        <div className="lg:col-span-2 bg-card rounded-xl border p-6">
-          <h3 className="font-display font-bold text-lg mb-4 flex items-center gap-2">
+      <div className="grid lg:grid-cols-3 gap-3">
+        <div className="lg:col-span-2 bg-card rounded-xl border p-3">
+          <h3 className="font-display font-bold text-sm mb-3 flex items-center gap-2">
             <MessageSquare className="h-5 w-5" /> Compose message
           </h3>
 
@@ -165,7 +165,7 @@ function AdminSmsPage() {
             </SelectContent>
           </Select>
 
-          <label className="text-xs uppercase tracking-wider text-muted-foreground mt-5 block">
+          <label className="text-xs uppercase tracking-wider text-muted-foreground mt-2 block">
             Message
           </label>
           <Textarea
@@ -183,8 +183,8 @@ function AdminSmsPage() {
             <span>Reply STOP to opt out is appended automatically by your provider settings.</span>
           </div>
 
-          <div className="mt-5 p-4 rounded-lg bg-muted/40 border flex items-center justify-between">
-            <div className="flex items-center gap-2 text-sm">
+          <div className="mt-2 p-3 rounded-lg bg-muted/40 border flex items-center justify-between">
+            <div className="flex items-center gap-2 text-xs">
               <Users className="h-4 w-4 text-primary" />
               Sending to <strong>{targetCount}</strong> active supporter
               {targetCount === 1 ? "" : "s"}
@@ -196,9 +196,9 @@ function AdminSmsPage() {
           </div>
         </div>
 
-        <div className="bg-card rounded-xl border p-6">
-          <h3 className="font-display font-bold mb-4">Audience snapshot</h3>
-          <ul className="space-y-2 text-sm">
+        <div className="bg-card rounded-xl border p-3">
+          <h3 className="font-display font-bold mb-3">Audience snapshot</h3>
+          <ul className="space-y-2 text-xs">
             <li className="flex justify-between">
               <span className="text-muted-foreground">All wards</span>
               <strong>{activeCount.all}</strong>
@@ -213,12 +213,12 @@ function AdminSmsPage() {
         </div>
       </div>
 
-      <div className="mt-8 bg-card rounded-xl border">
-        <div className="p-4 border-b">
+      <div className="mt-5 bg-card rounded-xl border">
+        <div className="p-3 border-b">
           <h3 className="font-display font-bold">Recent campaigns</h3>
         </div>
         <div className="overflow-x-auto">
-          <table className="w-full text-sm">
+          <table className="w-full text-xs">
             <thead className="bg-muted/50 text-xs uppercase text-muted-foreground">
               <tr>
                 <th className="text-left p-3">Sent</th>
@@ -258,7 +258,7 @@ function AdminSmsPage() {
               ))}
               {!history.length && (
                 <tr>
-                  <td colSpan={5} className="p-8 text-center text-muted-foreground">
+                  <td colSpan={5} className="p-4 text-center text-muted-foreground">
                     No campaigns yet.
                   </td>
                 </tr>

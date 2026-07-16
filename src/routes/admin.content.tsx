@@ -111,10 +111,10 @@ function AdminContentPage() {
   return (
     <AdminLayout title="Content Manager">
       <Toaster />
-      <div className="space-y-6 max-w-4xl">
+      <div className="space-y-3 max-w-4xl">
         {/* Home page */}
         <Section title="Home Page" icon={Home}>
-          <div className="grid gap-4">
+          <div className="grid gap-3">
             <Field label="Headline (large gold word)">
               <Input
                 value={draft.homeHeadline}
@@ -155,7 +155,7 @@ function AdminContentPage() {
                 className="hidden"
                 onChange={handleImage}
               />
-              <div className="flex items-start gap-4">
+              <div className="flex items-start gap-3">
                 <div className="relative h-28 w-40 rounded-lg overflow-hidden bg-muted border border-border shrink-0">
                   {draft.heroImageUrl ? (
                     <img src={draft.heroImageUrl} alt="hero" className="h-full w-full object-cover" />
@@ -190,7 +190,7 @@ function AdminContentPage() {
 
         {/* Priorities */}
         <Section title="Priorities Page" icon={Target}>
-          <div className="grid gap-4">
+          <div className="grid gap-3">
             <Field label="Headline">
               <Input
                 value={draft.prioritiesHeadline}
@@ -211,7 +211,7 @@ function AdminContentPage() {
 
         {/* Foundations */}
         <Section title="Foundations Page" icon={HeartHandshake}>
-          <div className="grid gap-4">
+          <div className="grid gap-3">
             <Field label="Headline">
               <Input
                 value={draft.foundationsHeadline}
@@ -232,8 +232,8 @@ function AdminContentPage() {
 
         {/* Bursary Application Window */}
         <Section icon={GraduationCap} title="Bursary Application Window">
-          <div className="space-y-3">
-            <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-xs text-amber-800 font-medium flex items-start gap-2">
+          <div className="space-y-2">
+            <div className="rounded-lg border border-amber-200 bg-amber-50 px-2.5 py-1.5 text-xs text-amber-800 font-medium flex items-start gap-2">
               <span className="shrink-0 mt-0.5">🌐</span>
               <span>
                 This setting is stored in the <strong>database</strong> and is immediately visible to
@@ -242,9 +242,9 @@ function AdminContentPage() {
             </div>
 
             {/* Term selection — determines which "folder" new applications fall into */}
-            <div className="rounded-lg border border-border bg-muted/20 px-4 py-3 space-y-3">
+            <div className="rounded-lg border border-border bg-muted/20 px-2.5 py-1.5 space-y-2">
               <div>
-                <p className="text-sm font-semibold">Term this window is for</p>
+                <p className="text-xs font-semibold">Term this window is for</p>
                 <p className="text-xs text-muted-foreground mt-0.5">
                   Every application submitted while this window is open is tagged with the term below.
                   Opening a new term automatically empties the admin dashboard's current application list —
@@ -252,7 +252,7 @@ function AdminContentPage() {
                 </p>
               </div>
               {!termLoading && currentTerm && (
-                <div className="rounded-lg border border-emerald-300 bg-emerald-50 px-3 py-2 text-sm font-semibold text-emerald-700">
+                <div className="rounded-lg border border-emerald-300 bg-emerald-50 px-2.5 py-1.5 text-xs font-semibold text-emerald-700">
                   Currently open: {currentTerm}
                 </div>
               )}
@@ -286,7 +286,7 @@ function AdminContentPage() {
               </div>
             </div>
 
-            <p className="text-sm text-muted-foreground">
+            <p className="text-xs text-muted-foreground">
               Set the start date for the bursary application window. Applications will automatically
               close <strong>10 days</strong> after the start date. Leave blank to close the window.
             </p>
@@ -315,7 +315,7 @@ function AdminContentPage() {
               const now = new Date();
               const open = now >= start && now <= end;
               return (
-                <div className={`rounded-lg border px-4 py-3 text-sm font-semibold ${open ? "border-emerald-300 bg-emerald-50 text-emerald-700" : "border-rose-300 bg-rose-50 text-rose-700"}`}>
+                <div className={`rounded-lg border px-2.5 py-1.5 text-xs font-semibold ${open ? "border-emerald-300 bg-emerald-50 text-emerald-700" : "border-rose-300 bg-rose-50 text-rose-700"}`}>
                   {open
                     ? `✓ Window OPEN — closes ${end.toLocaleDateString("en-KE", { day: "numeric", month: "long", year: "numeric" })}`
                     : now < start
@@ -326,7 +326,7 @@ function AdminContentPage() {
               );
             })()}
             {!windowStart && !windowLoading && (
-              <div className="rounded-lg border border-border bg-muted/30 px-4 py-3 text-sm text-muted-foreground">
+              <div className="rounded-lg border border-border bg-muted/30 px-2.5 py-1.5 text-xs text-muted-foreground">
                 No window set — the bursary form is currently hidden from all users.
               </div>
             )}
@@ -342,8 +342,8 @@ function AdminContentPage() {
         </Section>
 
         {/* Sticky save bar */}
-        <div className="sticky bottom-4 bg-card border border-border rounded-2xl p-4 shadow-elegant flex items-center justify-between gap-3">
-          <p className="text-sm text-muted-foreground">
+        <div className="sticky bottom-4 bg-card border border-border rounded-2xl p-3 shadow-elegant flex items-center justify-between gap-2">
+          <p className="text-xs text-muted-foreground">
             {dirty ? "You have unsaved changes." : "All changes saved."}
           </p>
           <div className="flex items-center gap-2">
@@ -370,8 +370,8 @@ function Section({
   children: React.ReactNode;
 }) {
   return (
-    <div className="bg-card border border-border rounded-2xl p-6 shadow-sm">
-      <h2 className="font-display text-lg font-bold flex items-center gap-2 mb-5">
+    <div className="bg-card border border-border rounded-2xl p-3 shadow-sm">
+      <h2 className="font-display text-sm font-bold flex items-center gap-2 mb-2">
         <Icon className="h-4 w-4 text-primary" /> {title}
       </h2>
       {children}
@@ -382,7 +382,7 @@ function Section({
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div>
-      <Label className="font-semibold text-sm mb-1.5 block">{label}</Label>
+      <Label className="font-semibold text-xs mb-1.5 block">{label}</Label>
       {children}
     </div>
   );

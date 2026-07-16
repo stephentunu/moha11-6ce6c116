@@ -57,7 +57,7 @@ function AdminInboxPage() {
     <AdminLayout title="Message Inbox">
       <Toaster />
 
-      <div className="grid gap-4 mb-4 sm:grid-cols-3">
+      <div className="grid gap-3 mb-3 sm:grid-cols-3">
         <StatCard
           label="Total"
           value={messages.length}
@@ -112,7 +112,7 @@ function AdminInboxPage() {
 
             <div className="flex-1 overflow-y-auto">
               {filtered.length === 0 ? (
-                <div className="p-12 text-center text-sm text-muted-foreground">
+                <div className="p-12 text-center text-xs text-muted-foreground">
                   No messages found.
                 </div>
               ) : (
@@ -125,14 +125,14 @@ function AdminInboxPage() {
                           if (!m.read) markMessageRead(m.id, true);
                         }}
                         className={cn(
-                          "w-full text-left px-4 py-3 hover:bg-muted/50 transition",
+                          "w-full text-left px-2.5 py-1.5 hover:bg-muted/50 transition",
                           selected?.id === m.id && "bg-muted/60"
                         )}
                       >
                         <div className="flex items-start justify-between gap-2 mb-1">
                           <div className="flex items-center gap-2 min-w-0">
                             {!m.read && <span className="h-2 w-2 rounded-full bg-gold shrink-0" />}
-                            <p className="font-semibold text-sm truncate">{m.name}</p>
+                            <p className="font-semibold text-xs truncate">{m.name}</p>
                           </div>
                           <p className="text-[10px] text-muted-foreground shrink-0">
                             {formatTime(m.createdAt)}
@@ -161,11 +161,11 @@ function AdminInboxPage() {
           </div>
 
           {/* Detail */}
-          <div className="p-6">
+          <div className="p-3">
             {selected ? (
               <MessageDetail message={selected} onDeleted={() => setSelectedId(null)} />
             ) : (
-              <div className="h-full flex items-center justify-center text-muted-foreground text-sm">
+              <div className="h-full flex items-center justify-center text-muted-foreground text-xs">
                 Select a message to read.
               </div>
             )}
@@ -178,8 +178,8 @@ function AdminInboxPage() {
 
 function MessageDetail({ message, onDeleted }: { message: Message; onDeleted: () => void }) {
   return (
-    <div className="space-y-5">
-      <div className="flex items-start justify-between gap-3 flex-wrap">
+    <div className="space-y-2">
+      <div className="flex items-start justify-between gap-2 flex-wrap">
         <div>
           <Badge
             className={cn(
@@ -191,8 +191,8 @@ function MessageDetail({ message, onDeleted }: { message: Message; onDeleted: ()
           >
             {message.kind === "ask" ? "Ask Me" : "Opinion"}
           </Badge>
-          <h2 className="font-display text-2xl font-bold">{message.name}</h2>
-          <p className="text-sm text-muted-foreground">
+          <h2 className="font-display text-xl font-bold">{message.name}</h2>
+          <p className="text-xs text-muted-foreground">
             {message.kind === "ask" ? "Contact" : "Ward"}:{" "}
             <span className="font-medium text-foreground">{message.contact}</span>
           </p>
@@ -226,7 +226,7 @@ function MessageDetail({ message, onDeleted }: { message: Message; onDeleted: ()
         </div>
       </div>
 
-      <div className="bg-muted/40 border border-border rounded-xl p-5 whitespace-pre-wrap text-sm leading-relaxed">
+      <div className="bg-muted/40 border border-border rounded-xl p-3 whitespace-pre-wrap text-xs leading-relaxed">
         {message.body}
       </div>
     </div>
@@ -245,12 +245,12 @@ function StatCard({
   color: string;
 }) {
   return (
-    <div className="bg-card border border-border rounded-2xl p-5 shadow-sm flex items-center gap-4">
+    <div className="bg-card border border-border rounded-2xl p-3 shadow-sm flex items-center gap-3">
       <div className={`h-11 w-11 rounded-xl flex items-center justify-center ${color}`}>
         <Icon className="h-5 w-5" />
       </div>
       <div>
-        <p className="text-2xl font-display font-black leading-none">{value}</p>
+        <p className="text-xl font-display font-black leading-none">{value}</p>
         <p className="text-xs text-muted-foreground mt-1">{label}</p>
       </div>
     </div>
