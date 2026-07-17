@@ -1,4 +1,4 @@
-import { useState, useMemo, type ReactNode } from "react";
+import { useState, useMemo, useEffect, useRef, type ReactNode } from "react";
 import { useLanguage } from "@/hooks/useLanguage";
 import { z } from "zod";
 import { toast } from "sonner";
@@ -31,7 +31,9 @@ const StudentSchema = z.object({
   dob: z.string().optional(),
   currentGrade: z.string().trim().min(1, "Grade / class is required").max(40),
   gender: z.string().optional(),
-  birthCertNumber: z.string().trim().max(40).optional(),
+  birthCertNumber: z.string().trim()
+    .min(1, "Birth certificate number is required")
+    .regex(/^\d{5,12}$/, "Birth certificate number must be 5–12 digits, numbers only"),
   studentOutstanding: z.string().trim().max(500).optional(),
   studentAnnualFee: z.string().optional(),
   amountRequested: z.string().optional(),
@@ -47,9 +49,17 @@ const SchoolSchema = z.object({
   schoolSubCounty: z.string().min(1, "School sub-county is required"),
 });
 
+const digitsField = (label: string, required: boolean) => {
+  const base = z.string().trim();
+  const checked = required
+    ? base.min(7, `${label} is required`).regex(/^\d{7,15}$/, `${label} must contain numbers only`)
+    : base.regex(/^\d{7,15}$/, `${label} must contain numbers only`).optional().or(z.literal(""));
+  return checked;
+};
+
 const GuardianSchema = z.object({
   guardianName: z.string().trim().min(2, "Guardian / contact name is required").max(120),
-  guardianPhone: z.string().trim().min(7, "Phone contact is required").max(20),
+  guardianPhone: digitsField("Phone contact", true),
 });
 
 const ConsentSchema = z.object({
@@ -151,6 +161,13 @@ const SCHOOL_CATEGORIES = [
   { v: "University", l: "University" },
 ];
 
+// Strips everything except digits as the user types, so fields that expect a
+// number (birth certificate, phone, national ID) can never end up holding
+// letters — enforced at the keystroke, not just on submit.
+function digitsOnly(value: string, maxLen = 15): string {
+  return value.replace(/\D/g, "").slice(0, maxLen);
+}
+
 // ─── Main component ───────────────────────────────────────────────────────────
 
 export function BursaryApplicationDialog({ trigger }: { trigger: ReactNode }) {
@@ -162,6 +179,50 @@ export function BursaryApplicationDialog({ trigger }: { trigger: ReactNode }) {
   const [result, setResult] = useState<{ reference: string } | null>(null);
 
   const set = <K extends keyof Form>(k: K, v: Form[K]) => setForm((f) => ({ ...f, [k]: v }));
+
+  // Same as `set`, but strips any non-digit characters first — use for every
+  // field that must hold a number (birth cert, phone, national ID).
+  const setDigits = <K extends keyof Form>(k: K, raw: string, maxLen = 15) =>
+    setForm((f) => ({ ...f, [k]: digitsOnly(raw, maxLen) as Form[K] }));
+
+  // ── School name autocomplete ──────────────────────────────────────────────
+  // Suggests schools already on record, filtered to whatever the applicant
+  // has typed so far (matching on the start of the name, per school).
+  const [knownSchools, setKnownSchools] = useState<string[]>([]);
+  const [schoolSuggestOpen, setSchoolSuggestOpen] = useState(false);
+  const schoolFieldRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      const { data, error } = await supabase
+        .from("bursary_applications" as never)
+        .select("school_name");
+      if (cancelled || error || !data) return;
+      const names = new Set<string>();
+      for (const row of data as unknown as { school_name: string | null }[]) {
+        if (row.school_name && row.school_name.trim()) names.add(row.school_name.trim());
+      }
+      setKnownSchools(Array.from(names).sort((a, b) => a.localeCompare(b)));
+    })();
+    return () => { cancelled = true; };
+  }, []);
+
+  useEffect(() => {
+    const onClickOutside = (e: MouseEvent) => {
+      if (schoolFieldRef.current && !schoolFieldRef.current.contains(e.target as Node)) {
+        setSchoolSuggestOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", onClickOutside);
+    return () => document.removeEventListener("mousedown", onClickOutside);
+  }, []);
+
+  const schoolSuggestions = useMemo(() => {
+    const q = form.schoolName.trim().toLowerCase();
+    if (!q) return [];
+    return knownSchools.filter((s) => s.toLowerCase().startsWith(q)).slice(0, 8);
+  }, [form.schoolName, knownSchools]);
 
   const schoolSubCounties = useMemo(
     () => (form.schoolCounty ? KENYA_COUNTIES[form.schoolCounty] ?? [] : []),
@@ -248,6 +309,27 @@ export function BursaryApplicationDialog({ trigger }: { trigger: ReactNode }) {
       const currentTerm = await fetchBursaryTerm();
       const payloadWithTerm = currentTerm ? { ...payload, term: currentTerm } : payload;
 
+      // Birth certificate numbers must be unique per student within a term —
+      // check up front so the applicant gets a clear message instead of a
+      // raw database error, before we even attempt the insert.
+      if (currentTerm) {
+        const { data: dupe } = await supabase
+          .from("bursary_applications" as never)
+          .select("student_name")
+          .eq("id_or_birth_cert_number", form.birthCertNumber)
+          .eq("term", currentTerm)
+          .limit(1)
+          .maybeSingle();
+        if (dupe) {
+          const existingName = (dupe as unknown as { student_name: string }).student_name;
+          toast.error(
+            `This birth certificate number is already registered this term (to ${existingName}). Each student needs their own unique number — please check and try again.`,
+          );
+          setSubmitting(false);
+          return;
+        }
+      }
+
       let { data, error } = await supabase
         .from("bursary_applications" as never)
         .insert(payloadWithTerm as never)
@@ -286,7 +368,14 @@ export function BursaryApplicationDialog({ trigger }: { trigger: ReactNode }) {
         ward: form.ward || null,
       });
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Failed to submit application");
+      const raw = e instanceof Error ? e.message : "";
+      if (/duplicate key|unique constraint|uniq_birth_cert/i.test(raw)) {
+        toast.error(
+          "This birth certificate number is already registered for another applicant this term. Each student needs their own unique number.",
+        );
+      } else {
+        toast.error(raw || "Failed to submit application");
+      }
     } finally {
       setSubmitting(false);
     }
@@ -438,12 +527,18 @@ export function BursaryApplicationDialog({ trigger }: { trigger: ReactNode }) {
                       </SelectContent>
                     </Select>
                   </Field>
-                  <Field label={t("Birth certificate number")}>
+                  <Field label={t("Birth certificate number *")}>
                     <Input
                       value={form.birthCertNumber}
-                      onChange={(e) => set("birthCertNumber", e.target.value)}
+                      onChange={(e) => setDigits("birthCertNumber", e.target.value, 12)}
                       placeholder={t("As on birth certificate")}
+                      inputMode="numeric"
+                      pattern="[0-9]*"
+                      maxLength={12}
                     />
+                    <p className="text-[11px] text-muted-foreground mt-1">
+                      {t("Numbers only. Must be unique to this student — it cannot already be in use by another applicant this term.")}
+                    </p>
                   </Field>
                 </div>
 
@@ -530,7 +625,29 @@ export function BursaryApplicationDialog({ trigger }: { trigger: ReactNode }) {
                 <SectionLabel icon={School}>{t("School's Details")}</SectionLabel>
                 <div className="grid sm:grid-cols-2 gap-4">
                   <Field label={t("School name *")}>
-                    <Input value={form.schoolName} onChange={(e) => set("schoolName", e.target.value)} />
+                    <div ref={schoolFieldRef} className="relative">
+                      <Input
+                        value={form.schoolName}
+                        onChange={(e) => { set("schoolName", e.target.value); setSchoolSuggestOpen(true); }}
+                        onFocus={() => setSchoolSuggestOpen(true)}
+                        placeholder={t("Start typing to search existing schools…")}
+                        autoComplete="off"
+                      />
+                      {schoolSuggestOpen && schoolSuggestions.length > 0 && (
+                        <div className="absolute z-20 mt-1 w-full max-h-56 overflow-y-auto rounded-lg border border-border bg-popover shadow-lg">
+                          {schoolSuggestions.map((s) => (
+                            <button
+                              key={s}
+                              type="button"
+                              onClick={() => { set("schoolName", s); setSchoolSuggestOpen(false); }}
+                              className="w-full text-left px-3 py-2 text-sm hover:bg-muted/60 truncate"
+                            >
+                              {s}
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                    </div>
                   </Field>
                   <Field label={t("School category *")}>
                     <Select value={form.schoolCategory} onValueChange={(v) => set("schoolCategory", v)}>
@@ -599,8 +716,21 @@ export function BursaryApplicationDialog({ trigger }: { trigger: ReactNode }) {
                     <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">{t("Father's Details")}</p>
                     <div className="grid sm:grid-cols-2 gap-4">
                       <Field label={t("Name")}><Input value={form.fatherName} onChange={(e) => set("fatherName", e.target.value)} /></Field>
-                      <Field label={t("Phone contact")}><Input value={form.fatherPhone} onChange={(e) => set("fatherPhone", e.target.value)} placeholder="07XX XXX XXX" /></Field>
-                      <Field label={t("National ID")}><Input value={form.fatherNationalId} onChange={(e) => set("fatherNationalId", e.target.value)} /></Field>
+                      <Field label={t("Phone contact")}>
+                        <Input
+                          value={form.fatherPhone}
+                          onChange={(e) => setDigits("fatherPhone", e.target.value, 15)}
+                          placeholder="07XX XXX XXX"
+                          inputMode="tel"
+                        />
+                      </Field>
+                      <Field label={t("National ID")}>
+                        <Input
+                          value={form.fatherNationalId}
+                          onChange={(e) => setDigits("fatherNationalId", e.target.value, 10)}
+                          inputMode="numeric"
+                        />
+                      </Field>
                       <Field label={t("Occupation")}><Input value={form.fatherOccupation} onChange={(e) => set("fatherOccupation", e.target.value)} /></Field>
                     </div>
                     <div className="flex items-center justify-between pt-1">
@@ -619,8 +749,21 @@ export function BursaryApplicationDialog({ trigger }: { trigger: ReactNode }) {
                     <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">{t("Mother's Details")}</p>
                     <div className="grid sm:grid-cols-2 gap-4">
                       <Field label={t("Name")}><Input value={form.motherName} onChange={(e) => set("motherName", e.target.value)} /></Field>
-                      <Field label={t("Phone contact")}><Input value={form.motherPhone} onChange={(e) => set("motherPhone", e.target.value)} placeholder="07XX XXX XXX" /></Field>
-                      <Field label={t("National ID")}><Input value={form.motherNationalId} onChange={(e) => set("motherNationalId", e.target.value)} /></Field>
+                      <Field label={t("Phone contact")}>
+                        <Input
+                          value={form.motherPhone}
+                          onChange={(e) => setDigits("motherPhone", e.target.value, 15)}
+                          placeholder="07XX XXX XXX"
+                          inputMode="tel"
+                        />
+                      </Field>
+                      <Field label={t("National ID")}>
+                        <Input
+                          value={form.motherNationalId}
+                          onChange={(e) => setDigits("motherNationalId", e.target.value, 10)}
+                          inputMode="numeric"
+                        />
+                      </Field>
                       <Field label={t("Occupation")}><Input value={form.motherOccupation} onChange={(e) => set("motherOccupation", e.target.value)} /></Field>
                     </div>
                     <div className="flex items-center justify-between pt-1">
@@ -640,8 +783,21 @@ export function BursaryApplicationDialog({ trigger }: { trigger: ReactNode }) {
                   </p>
                   <div className="grid sm:grid-cols-2 gap-4">
                     <Field label={t("Name *")}><Input value={form.guardianName} onChange={(e) => set("guardianName", e.target.value)} placeholder="Full name" /></Field>
-                    <Field label={t("Phone contact *")}><Input value={form.guardianPhone} onChange={(e) => set("guardianPhone", e.target.value)} placeholder="07XX XXX XXX" /></Field>
-                    <Field label={t("National ID")}><Input value={form.guardianNationalId} onChange={(e) => set("guardianNationalId", e.target.value)} /></Field>
+                    <Field label={t("Phone contact *")}>
+                      <Input
+                        value={form.guardianPhone}
+                        onChange={(e) => setDigits("guardianPhone", e.target.value, 15)}
+                        placeholder="07XX XXX XXX"
+                        inputMode="tel"
+                      />
+                    </Field>
+                    <Field label={t("National ID")}>
+                      <Input
+                        value={form.guardianNationalId}
+                        onChange={(e) => setDigits("guardianNationalId", e.target.value, 10)}
+                        inputMode="numeric"
+                      />
+                    </Field>
                     <Field label={t("Occupation")}><Input value={form.guardianOccupation} onChange={(e) => set("guardianOccupation", e.target.value)} /></Field>
                   </div>
                   <div className="flex items-center justify-between pt-1">
