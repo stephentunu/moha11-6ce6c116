@@ -26,7 +26,8 @@ import { generateBursaryPdf } from "@/lib/bursary-pdf";
 // ─── Schemas ────────────────────────────────────────────────────────────────
 
 const StudentSchema = z.object({
-  studentName: z.string().trim().min(2, "Student name is required").max(120),
+  studentName: z.string().trim().min(2, "Student name is required").max(120)
+    .regex(/^[^\d]*$/, "Student name must not contain numbers"),
   admissionNumber: z.string().trim().max(40).optional(),
   dob: z.string().optional(),
   currentGrade: z.string().trim().min(1, "Grade / class is required").max(40),
@@ -49,16 +50,21 @@ const SchoolSchema = z.object({
   schoolSubCounty: z.string().min(1, "School sub-county is required"),
 });
 
+// Standard maximum length for a phone number field (e.g. "+254712345678"
+// is 13 characters). Applies to father/mother/guardian phone contacts.
+const PHONE_MAX_LEN = 13;
+
 const digitsField = (label: string, required: boolean) => {
   const base = z.string().trim();
   const checked = required
-    ? base.min(7, `${label} is required`).regex(/^\d{7,15}$/, `${label} must contain numbers only`)
-    : base.regex(/^\d{7,15}$/, `${label} must contain numbers only`).optional().or(z.literal(""));
+    ? base.min(7, `${label} is required`).regex(new RegExp(`^\\d{7,${PHONE_MAX_LEN}}$`), `${label} must contain numbers only, up to ${PHONE_MAX_LEN} digits`)
+    : base.regex(new RegExp(`^\\d{7,${PHONE_MAX_LEN}}$`), `${label} must contain numbers only, up to ${PHONE_MAX_LEN} digits`).optional().or(z.literal(""));
   return checked;
 };
 
 const GuardianSchema = z.object({
-  guardianName: z.string().trim().min(2, "Guardian / contact name is required").max(120),
+  guardianName: z.string().trim().min(2, "Guardian / contact name is required").max(120)
+    .regex(/^[^\d]*$/, "Guardian name must not contain numbers"),
   guardianPhone: digitsField("Phone contact", true),
 });
 
@@ -168,6 +174,103 @@ function digitsOnly(value: string, maxLen = 15): string {
   return value.replace(/\D/g, "").slice(0, maxLen);
 }
 
+// Strips digits as the user types, for fields that hold a person's name
+// (student, father, mother, guardian) — names must never contain numbers.
+// Letters, spaces, and standard name punctuation (hyphens, apostrophes,
+// periods for initials) are preserved.
+function lettersOnly(value: string, maxLen = 120): string {
+  return value.replace(/[0-9]/g, "").slice(0, maxLen);
+}
+
+// Uppercases every "free text" field on the form. Applicants sometimes type
+// in lower case or mixed case; official bursary records must be in capital
+// letters, so this is applied automatically at submission time rather than
+// relying on the applicant to remember to use caps lock.
+const UPPERCASE_FIELDS: (keyof Form)[] = [
+  "studentName", "admissionNumber", "studentOutstanding",
+  "schoolName", "schoolBankAccount",
+  "fatherName", "fatherOccupation", "fatherDisabilityDetail",
+  "motherName", "motherOccupation", "motherDisabilityDetail",
+  "guardianName", "guardianOccupation", "guardianDisabilityDetail",
+  "studentDisabilityDetail",
+  "parentResidenceSubCounty", "pollingStation",
+  "previousBursarySource", "reason",
+];
+
+function toUppercaseForm(f: Form): Form {
+  const upper = { ...f };
+  for (const key of UPPERCASE_FIELDS) {
+    const value = upper[key];
+    if (typeof value === "string") {
+      (upper[key] as string) = value.toUpperCase();
+    }
+  }
+  return upper;
+}
+
+// ─── Draft persistence (resume an interrupted application) ────────────────
+// If an applicant's device loses power, connectivity, or they simply need
+// to step away, their in-progress answers are saved to this device's local
+// storage and automatically restored the next time they open the form —
+// no account or login required. The draft is cleared once the application
+// is successfully submitted.
+const DRAFT_STORAGE_KEY = "moha_bursary_application_draft_v1";
+const DRAFT_MAX_AGE_MS = 1000 * 60 * 60 * 24 * 14; // 14 days
+
+type Draft = { form: Form; step: number; savedAt: number };
+
+function loadDraft(): Draft | null {
+  if (typeof window === "undefined") return null;
+  try {
+    const raw = window.localStorage.getItem(DRAFT_STORAGE_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as Partial<Draft>;
+    if (!parsed || typeof parsed !== "object" || !parsed.form) return null;
+    if (typeof parsed.savedAt === "number" && Date.now() - parsed.savedAt > DRAFT_MAX_AGE_MS) {
+      window.localStorage.removeItem(DRAFT_STORAGE_KEY);
+      return null;
+    }
+    return {
+      form: { ...EMPTY, ...parsed.form },
+      step: typeof parsed.step === "number" && parsed.step >= 1 && parsed.step <= 4 ? parsed.step : 1,
+      savedAt: parsed.savedAt ?? Date.now(),
+    };
+  } catch {
+    return null;
+  }
+}
+
+function saveDraft(form: Form, step: number) {
+  if (typeof window === "undefined") return;
+  try {
+    window.localStorage.setItem(DRAFT_STORAGE_KEY, JSON.stringify({ form, step, savedAt: Date.now() }));
+  } catch {
+    // Storage unavailable (private browsing, quota, etc.) — non-critical,
+    // the applicant can still complete the form in this session.
+  }
+}
+
+function clearDraft() {
+  if (typeof window === "undefined") return;
+  try {
+    window.localStorage.removeItem(DRAFT_STORAGE_KEY);
+  } catch {
+    // ignore
+  }
+}
+
+// True if the form holds any applicant-entered content worth resuming
+// (as opposed to a fresh, untouched form with just the default flags set).
+function hasDraftProgress(form: Form): boolean {
+  return (Object.keys(form) as (keyof Form)[]).some((key) => {
+    if (key === "dataConsent" || key === "fatherAlive" || key === "motherAlive") return false;
+    const value = form[key];
+    if (typeof value === "string") return value.trim().length > 0;
+    if (typeof value === "boolean") return value === true;
+    return value !== null && value !== undefined;
+  });
+}
+
 // ─── Main component ───────────────────────────────────────────────────────────
 
 export function BursaryApplicationDialog({ trigger }: { trigger: ReactNode }) {
@@ -178,12 +281,70 @@ export function BursaryApplicationDialog({ trigger }: { trigger: ReactNode }) {
   const [submitting, setSubmitting] = useState(false);
   const [result, setResult] = useState<{ reference: string } | null>(null);
 
+  // Whether a saved draft with real progress was restored on load, so the
+  // UI can let the applicant know their earlier answers are still here.
+  const [resumedDraft, setResumedDraft] = useState(false);
+  const resumeAnnouncedRef = useRef(false);
+  // Guards against the autosave effect firing on its very first pass (before
+  // the restore effect's setForm/setStep have actually landed), which would
+  // otherwise immediately overwrite a just-restored draft with stale data.
+  const skipFirstSaveRef = useRef(true);
+
   const set = <K extends keyof Form>(k: K, v: Form[K]) => setForm((f) => ({ ...f, [k]: v }));
 
   // Same as `set`, but strips any non-digit characters first — use for every
   // field that must hold a number (birth cert, phone, national ID).
   const setDigits = <K extends keyof Form>(k: K, raw: string, maxLen = 15) =>
     setForm((f) => ({ ...f, [k]: digitsOnly(raw, maxLen) as Form[K] }));
+
+  // Same as `set`, but strips any digit characters first — use for every
+  // field that must hold a person's name (student, father, mother, guardian).
+  const setLetters = <K extends keyof Form>(k: K, raw: string, maxLen = 120) =>
+    setForm((f) => ({ ...f, [k]: lettersOnly(raw, maxLen) as Form[K] }));
+
+  // ── Resume-in-progress draft ──────────────────────────────────────────────
+  // On first mount, restore any saved draft from this device so an applicant
+  // who was interrupted (device died, connectivity dropped, they had to step
+  // away) picks up exactly where they left off, rather than starting over.
+  useEffect(() => {
+    const draft = loadDraft();
+    if (draft && hasDraftProgress(draft.form)) {
+      setForm(draft.form);
+      setStep(draft.step);
+      setResumedDraft(true);
+    }
+  }, []);
+
+  // Autosave the draft as the applicant progresses. The first pass is
+  // skipped (see skipFirstSaveRef above); once the application has been
+  // successfully submitted the draft is no longer needed either.
+  useEffect(() => {
+    if (skipFirstSaveRef.current) {
+      skipFirstSaveRef.current = false;
+      return;
+    }
+    if (result) return;
+    saveDraft(form, step);
+  }, [form, step, result]);
+
+  // Let the applicant know their previous answers were restored, the first
+  // time they actually open the dialog with a resumed draft in it.
+  useEffect(() => {
+    if (open && resumedDraft && !resumeAnnouncedRef.current) {
+      toast.info(t("Welcome back — we've restored your saved application so you can continue where you left off."));
+      resumeAnnouncedRef.current = true;
+    }
+  }, [open, resumedDraft, t]);
+
+  // Discards the saved draft and starts a completely blank application —
+  // offered to applicants who resumed a draft but would rather start over.
+  const startOver = () => {
+    clearDraft();
+    setForm(EMPTY);
+    setStep(1);
+    setResumedDraft(false);
+    toast.success(t("Started a new application."));
+  };
 
   // ── School name autocomplete ──────────────────────────────────────────────
   // Suggests schools already on record, filtered to whatever the applicant
@@ -247,7 +408,7 @@ export function BursaryApplicationDialog({ trigger }: { trigger: ReactNode }) {
     }
   };
 
-  const reset = () => { setForm(EMPTY); setStep(1); setResult(null); };
+  const reset = () => { setForm(EMPTY); setStep(1); setResult(null); setResumedDraft(false); clearDraft(); };
 
   const submit = async () => {
     if (!form.dataConsent) {
@@ -256,50 +417,55 @@ export function BursaryApplicationDialog({ trigger }: { trigger: ReactNode }) {
     }
     setSubmitting(true);
     try {
+      // Applicants sometimes type in lower case or mixed case — normalize
+      // all free-text fields to capital letters before anything is saved,
+      // so official records are always consistent regardless of how the
+      // applicant typed them in.
+      const upperForm = toUppercaseForm(form);
       const payload = {
-        student_name: form.studentName,
-        registration_number: form.admissionNumber || null,
-        id_or_birth_cert_number: form.birthCertNumber || null,
-        dob: form.dob || null,
-        current_grade: form.currentGrade,
-        gender: form.gender || null,
-        father_alive: form.fatherAlive,
-        mother_alive: form.motherAlive,
-        father_name: form.fatherAlive ? (form.fatherName || null) : null,
-        father_phone: form.fatherAlive ? (form.fatherPhone || null) : null,
-        father_occupation: form.fatherAlive ? (form.fatherOccupation || null) : null,
-        father_national_id: form.fatherAlive ? (form.fatherNationalId || null) : null,
-        mother_name: form.motherAlive ? (form.motherName || null) : null,
-        mother_phone: form.motherAlive ? (form.motherPhone || null) : null,
-        mother_occupation: form.motherAlive ? (form.motherOccupation || null) : null,
-        mother_national_id: form.motherAlive ? (form.motherNationalId || null) : null,
-        student_disability: form.studentDisability,
-        student_disability_detail: form.studentDisabilityDetail || null,
-        school_name: form.schoolName,
-        school_category: form.schoolCategory,
-        school_county: form.schoolCounty,
-        school_sub_county: form.schoolSubCounty,
-        year_of_admission: form.yearOfAdmission || null,
-        student_outstanding: form.studentOutstanding || null,
-        school_bank_account: form.schoolBankAccount || null,
-        guardian_name: form.guardianName,
-        guardian_phone: form.guardianPhone,
-        parent_national_id: form.guardianNationalId || null,
-        parent_occupation: form.guardianOccupation || null,
-        parent_residence_sub_county: form.parentResidenceSubCounty || null,
-        ward: form.ward || null,
-        polling_station: form.pollingStation || null,
-        parent_disability: form.guardianDisability,
-        parent_disability_detail: form.guardianDisabilityDetail || null,
-        siblings_in_school: form.siblingsInSchool ? Number(form.siblingsInSchool) : 0,
-        student_annual_fee: form.studentAnnualFee ? Number(form.studentAnnualFee) : null,
-        outstanding_balance: form.outstandingBalance ? Number(form.outstandingBalance) : null,
-        monthly_budget: form.monthlyBudget ? Number(form.monthlyBudget) : null,
-        amount_requested: form.amountRequested ? Number(form.amountRequested) : 0,
-        received_bursary_before: form.receivedBursaryBefore ?? false,
-        previous_bursary_source: form.receivedBursaryBefore ? (form.previousBursarySource || null) : null,
-        previous_bursary_amount: form.receivedBursaryBefore && form.previousBursaryAmount ? Number(form.previousBursaryAmount) : null,
-        reason: form.reason || null,
+        student_name: upperForm.studentName,
+        registration_number: upperForm.admissionNumber || null,
+        id_or_birth_cert_number: upperForm.birthCertNumber || null,
+        dob: upperForm.dob || null,
+        current_grade: upperForm.currentGrade,
+        gender: upperForm.gender || null,
+        father_alive: upperForm.fatherAlive,
+        mother_alive: upperForm.motherAlive,
+        father_name: upperForm.fatherAlive ? (upperForm.fatherName || null) : null,
+        father_phone: upperForm.fatherAlive ? (upperForm.fatherPhone || null) : null,
+        father_occupation: upperForm.fatherAlive ? (upperForm.fatherOccupation || null) : null,
+        father_national_id: upperForm.fatherAlive ? (upperForm.fatherNationalId || null) : null,
+        mother_name: upperForm.motherAlive ? (upperForm.motherName || null) : null,
+        mother_phone: upperForm.motherAlive ? (upperForm.motherPhone || null) : null,
+        mother_occupation: upperForm.motherAlive ? (upperForm.motherOccupation || null) : null,
+        mother_national_id: upperForm.motherAlive ? (upperForm.motherNationalId || null) : null,
+        student_disability: upperForm.studentDisability,
+        student_disability_detail: upperForm.studentDisabilityDetail || null,
+        school_name: upperForm.schoolName,
+        school_category: upperForm.schoolCategory,
+        school_county: upperForm.schoolCounty,
+        school_sub_county: upperForm.schoolSubCounty,
+        year_of_admission: upperForm.yearOfAdmission || null,
+        student_outstanding: upperForm.studentOutstanding || null,
+        school_bank_account: upperForm.schoolBankAccount || null,
+        guardian_name: upperForm.guardianName,
+        guardian_phone: upperForm.guardianPhone,
+        parent_national_id: upperForm.guardianNationalId || null,
+        parent_occupation: upperForm.guardianOccupation || null,
+        parent_residence_sub_county: upperForm.parentResidenceSubCounty || null,
+        ward: upperForm.ward || null,
+        polling_station: upperForm.pollingStation || null,
+        parent_disability: upperForm.guardianDisability,
+        parent_disability_detail: upperForm.guardianDisabilityDetail || null,
+        siblings_in_school: upperForm.siblingsInSchool ? Number(upperForm.siblingsInSchool) : 0,
+        student_annual_fee: upperForm.studentAnnualFee ? Number(upperForm.studentAnnualFee) : null,
+        outstanding_balance: upperForm.outstandingBalance ? Number(upperForm.outstandingBalance) : null,
+        monthly_budget: upperForm.monthlyBudget ? Number(upperForm.monthlyBudget) : null,
+        amount_requested: upperForm.amountRequested ? Number(upperForm.amountRequested) : 0,
+        received_bursary_before: upperForm.receivedBursaryBefore ?? false,
+        previous_bursary_source: upperForm.receivedBursaryBefore ? (upperForm.previousBursarySource || null) : null,
+        previous_bursary_amount: upperForm.receivedBursaryBefore && upperForm.previousBursaryAmount ? Number(upperForm.previousBursaryAmount) : null,
+        reason: upperForm.reason || null,
       };
 
       // Attach the currently-open term (e.g. "Term 1 - 2026") so this
@@ -316,7 +482,7 @@ export function BursaryApplicationDialog({ trigger }: { trigger: ReactNode }) {
         const { data: dupe } = await supabase
           .from("bursary_applications" as never)
           .select("student_name")
-          .eq("id_or_birth_cert_number", form.birthCertNumber)
+          .eq("id_or_birth_cert_number", upperForm.birthCertNumber)
           .eq("term", currentTerm)
           .limit(1)
           .maybeSingle();
@@ -357,15 +523,20 @@ export function BursaryApplicationDialog({ trigger }: { trigger: ReactNode }) {
       if (error) throw error;
       const ref = (data as unknown as { reference: string }).reference;
       setResult({ reference: ref });
+      // Keep the (now-uppercased) values in the form so the downloadable PDF
+      // below matches exactly what was saved, and drop the saved draft since
+      // the application has been successfully submitted.
+      setForm(upperForm);
+      clearDraft();
       toast.success(`Application submitted — Ref ${ref}`);
 
       // Add the guardian to the Supporters list — best-effort, never blocks
       // or fails the application submission itself.
       syncGuardianAsSupporter({
-        name: form.guardianName,
-        phone: form.guardianPhone,
-        idNumber: form.guardianNationalId,
-        ward: form.ward || null,
+        name: upperForm.guardianName,
+        phone: upperForm.guardianPhone,
+        idNumber: upperForm.guardianNationalId,
+        ward: upperForm.ward || null,
       });
     } catch (e) {
       const raw = e instanceof Error ? e.message : "";
@@ -432,7 +603,17 @@ export function BursaryApplicationDialog({ trigger }: { trigger: ReactNode }) {
   };
 
   return (
-    <Dialog open={open} onOpenChange={(o) => { setOpen(o); if (!o) reset(); }}>
+    <Dialog
+      open={open}
+      onOpenChange={(o) => {
+        setOpen(o);
+        // If the applicant closes the dialog mid-application (without having
+        // submitted), keep their answers — both in state and in the saved
+        // draft — so reopening the form resumes exactly where they left off.
+        // Only reset once an application has actually been submitted.
+        if (!o && result) reset();
+      }}
+    >
       <DialogTrigger asChild>{trigger}</DialogTrigger>
       <DialogContent className="max-w-3xl max-h-[92vh] overflow-y-auto">
         <DialogHeader>
@@ -495,6 +676,20 @@ export function BursaryApplicationDialog({ trigger }: { trigger: ReactNode }) {
           <>
             <Stepper step={step} t={t} />
 
+            {resumedDraft && (
+              <div className="flex items-center justify-between gap-3 rounded-lg border border-gold/30 bg-gold/5 px-3 py-2 text-xs text-muted-foreground">
+                <span>{t("Continuing your saved application draft.")}</span>
+                <button
+                  type="button"
+                  onClick={startOver}
+                  className="shrink-0 font-semibold text-primary hover:underline"
+                >
+                  {t("Start over")}
+                </button>
+              </div>
+            )}
+
+
             {/* ── STEP 1: STUDENT ─────────────────────────────────────────── */}
             {step === 1 && (
               <div className="space-y-5">
@@ -502,7 +697,11 @@ export function BursaryApplicationDialog({ trigger }: { trigger: ReactNode }) {
 
                 <div className="grid sm:grid-cols-2 gap-4">
                   <Field label={t("Student name *")}>
-                    <Input value={form.studentName} onChange={(e) => set("studentName", e.target.value)} placeholder={t("Full legal name")} />
+                    <Input
+                      value={form.studentName}
+                      onChange={(e) => setLetters("studentName", e.target.value, 120)}
+                      placeholder={t("Full legal name")}
+                    />
                   </Field>
                   <Field label={t("Admission / Registration number")}>
                     <Input value={form.admissionNumber} onChange={(e) => set("admissionNumber", e.target.value)} placeholder="e.g. ADM/2024/001" />
@@ -715,13 +914,14 @@ export function BursaryApplicationDialog({ trigger }: { trigger: ReactNode }) {
                   <div className="rounded-lg border border-border bg-muted/30 p-4 space-y-3">
                     <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">{t("Father's Details")}</p>
                     <div className="grid sm:grid-cols-2 gap-4">
-                      <Field label={t("Name")}><Input value={form.fatherName} onChange={(e) => set("fatherName", e.target.value)} /></Field>
+                      <Field label={t("Name")}><Input value={form.fatherName} onChange={(e) => setLetters("fatherName", e.target.value, 120)} /></Field>
                       <Field label={t("Phone contact")}>
                         <Input
                           value={form.fatherPhone}
-                          onChange={(e) => setDigits("fatherPhone", e.target.value, 15)}
+                          onChange={(e) => setDigits("fatherPhone", e.target.value, PHONE_MAX_LEN)}
                           placeholder="07XX XXX XXX"
                           inputMode="tel"
+                          maxLength={PHONE_MAX_LEN}
                         />
                       </Field>
                       <Field label={t("National ID")}>
@@ -748,13 +948,14 @@ export function BursaryApplicationDialog({ trigger }: { trigger: ReactNode }) {
                   <div className="rounded-lg border border-border bg-muted/30 p-4 space-y-3">
                     <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">{t("Mother's Details")}</p>
                     <div className="grid sm:grid-cols-2 gap-4">
-                      <Field label={t("Name")}><Input value={form.motherName} onChange={(e) => set("motherName", e.target.value)} /></Field>
+                      <Field label={t("Name")}><Input value={form.motherName} onChange={(e) => setLetters("motherName", e.target.value, 120)} /></Field>
                       <Field label={t("Phone contact")}>
                         <Input
                           value={form.motherPhone}
-                          onChange={(e) => setDigits("motherPhone", e.target.value, 15)}
+                          onChange={(e) => setDigits("motherPhone", e.target.value, PHONE_MAX_LEN)}
                           placeholder="07XX XXX XXX"
                           inputMode="tel"
+                          maxLength={PHONE_MAX_LEN}
                         />
                       </Field>
                       <Field label={t("National ID")}>
@@ -782,13 +983,14 @@ export function BursaryApplicationDialog({ trigger }: { trigger: ReactNode }) {
                     {t("Primary Contactable Parent / Guardian")} <span className="text-[10px] normal-case text-muted-foreground">(The parent or guardian who can be reached for communication)</span>
                   </p>
                   <div className="grid sm:grid-cols-2 gap-4">
-                    <Field label={t("Name *")}><Input value={form.guardianName} onChange={(e) => set("guardianName", e.target.value)} placeholder="Full name" /></Field>
+                    <Field label={t("Name *")}><Input value={form.guardianName} onChange={(e) => setLetters("guardianName", e.target.value, 120)} placeholder="Full name" /></Field>
                     <Field label={t("Phone contact *")}>
                       <Input
                         value={form.guardianPhone}
-                        onChange={(e) => setDigits("guardianPhone", e.target.value, 15)}
+                        onChange={(e) => setDigits("guardianPhone", e.target.value, PHONE_MAX_LEN)}
                         placeholder="07XX XXX XXX"
                         inputMode="tel"
+                        maxLength={PHONE_MAX_LEN}
                       />
                     </Field>
                     <Field label={t("National ID")}>

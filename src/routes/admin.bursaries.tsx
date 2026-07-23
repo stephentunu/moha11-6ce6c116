@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, Fragment } from "react";
 import {
   GraduationCap, Send, Eye, Trash2, Download, Search,
   FileSpreadsheet, CheckCircle2, School, ArrowUpDown,
@@ -31,7 +31,7 @@ import { AdminLayout } from "@/components/AdminLayout";
 import { supabase } from "@/integrations/supabase/client";
 import { sendBursarySms } from "@/lib/bursary.functions";
 import { cn } from "@/lib/utils";
-import { MATHARE_WARDS, useBursaryTerm, fetchArchivedSchools, archiveSchools, unarchiveSchools, fetchGeneratedLetterSchools, markLetterGenerated, unmarkLetterGenerated } from "@/lib/admin-store";
+import { MATHARE_WARDS, useBursaryTerm, fetchArchivedSchools, archiveSchools, unarchiveSchools, fetchGeneratedLetterSchools, markLetterGenerated, unmarkLetterGenerated, parseTermLabel } from "@/lib/admin-store";
 import { COUNTY_NAMES, KENYA_COUNTIES } from "@/lib/kenya-counties";
 import { BursaryApplicationDialog } from "@/components/BursaryApplicationDialog";
 
@@ -128,6 +128,9 @@ function AdminBursariesPage() {
   const [filter, setFilter] = useState<string>("all");
   const [search, setSearch] = useState("");
   const [selected, setSelected] = useState<Row | null>(null);
+  // Row whose "Application History" dialog is open, launched directly from
+  // the applications list (separate from the full detail/edit dialog above).
+  const [historyRow, setHistoryRow] = useState<Row | null>(null);
   const [smsOpen, setSmsOpen] = useState(false);
   const [smsTarget, setSmsTarget] = useState<Row | null>(null);
   const [smsText, setSmsText] = useState("");
@@ -574,20 +577,20 @@ function AdminBursariesPage() {
     }
   };
 
-  // ── Application History — cross-term lookup for the selected student, so
-  // admins reviewing a new application can immediately see whether this
+  // ── Application History — cross-term lookup for a given student, so
+  // admins reviewing an application can immediately see whether this
   // student has applied before and what happened (approved/pending/
   // rejected), regardless of which term that earlier application was in.
   // Matches on ID/birth-cert number or registration/admission number first
   // (most reliable), falling back to student name + guardian phone. ─────────
-  const applicationHistory = useMemo(() => {
-    if (!selected) return [];
-    const idKey = (selected.id_or_birth_cert_number || "").trim().toLowerCase();
-    const regKey = (selected.registration_number || "").trim().toLowerCase();
-    const nameKey = selected.student_name.trim().toLowerCase();
-    const phoneKey = (selected.guardian_phone || "").trim();
-    return rows
-      .filter((r) => r.id !== selected.id)
+  const computeApplicationHistory = (row: Row | null, allRows: Row[]): Row[] => {
+    if (!row) return [];
+    const idKey = (row.id_or_birth_cert_number || "").trim().toLowerCase();
+    const regKey = (row.registration_number || "").trim().toLowerCase();
+    const nameKey = row.student_name.trim().toLowerCase();
+    const phoneKey = (row.guardian_phone || "").trim();
+    return allRows
+      .filter((r) => r.id !== row.id)
       .filter((r) => {
         if (idKey && (r.id_or_birth_cert_number || "").trim().toLowerCase() === idKey) return true;
         if (regKey && (r.registration_number || "").trim().toLowerCase() === regKey) return true;
@@ -595,7 +598,65 @@ function AdminBursariesPage() {
         return false;
       })
       .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
-  }, [selected, rows]);
+  };
+
+  const applicationHistory = useMemo(() => computeApplicationHistory(selected, rows), [selected, rows]);
+
+  // History for whichever row the admin clicked the History icon on, in the
+  // main applications list — shown in its own focused dialog.
+  const historyRowHistory = useMemo(() => computeApplicationHistory(historyRow, rows), [historyRow, rows]);
+
+  // Orders term labels like "Term 1 - 2026" chronologically (year, then
+  // Term 1/2/3 within that year) so the comparison table below reads top
+  // to bottom the same way an admin would flip through a physical register.
+  const TERM_ORDER: Record<string, number> = { "Term 1": 1, "Term 2": 2, "Term 3": 3 };
+  const termSortKey = (termLabel: string | null | undefined): number => {
+    if (!termLabel) return 0;
+    const { termName, year } = parseTermLabel(termLabel);
+    const y = parseInt(year, 10) || 0;
+    const t = TERM_ORDER[termName.trim()] || 0;
+    return y * 10 + t;
+  };
+
+  // All applications for the student behind the History dialog — the one
+  // being reviewed plus every prior term — ordered chronologically (Term 1,
+  // 2, 3…) so admins can read straight down the list and compare, exactly
+  // like flipping through a paper register.
+  const historyComparisonRows = useMemo(() => {
+    if (!historyRow) return [];
+    return [...historyRowHistory, historyRow].sort(
+      (a, b) => termSortKey(a.term) - termSortKey(b.term) || new Date(a.created_at).getTime() - new Date(b.created_at).getTime(),
+    );
+  }, [historyRow, historyRowHistory]);
+
+  // Flags whether a past term's core identity details (name/school/ward)
+  // differ from the application currently under review — the details most
+  // likely to reveal a duplicate or inconsistent applicant, so admins can
+  // spot it at a glance rather than re-reading every field by hand.
+  const historyMismatch = (row: Row) => {
+    if (!historyRow || row.id === historyRow.id) {
+      return { student: false, school: false, ward: false, any: false };
+    }
+    const student = row.student_name.trim().toLowerCase() !== historyRow.student_name.trim().toLowerCase();
+    const school = effectiveSchoolName(row).trim().toLowerCase() !== effectiveSchoolName(historyRow).trim().toLowerCase();
+    const ward = (row.ward || "").trim().toLowerCase() !== (historyRow.ward || "").trim().toLowerCase();
+    return { student, school, ward, any: student || school || ward };
+  };
+
+  const historyMismatchCount = useMemo(
+    () => historyComparisonRows.filter((r) => historyMismatch(r).any).length,
+    [historyComparisonRows, historyRow],
+  );
+
+  const [expandedHistoryIds, setExpandedHistoryIds] = useState<Set<string>>(new Set());
+  useEffect(() => { setExpandedHistoryIds(new Set()); }, [historyRow]);
+  const toggleHistoryExpanded = (id: string) => {
+    setExpandedHistoryIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  };
 
   // ── Applications tab drill-down data (built from `filtered`, so the search
   // box and status filter chips stay in effect for the dropdown options too) ─
@@ -1279,6 +1340,9 @@ function AdminBursariesPage() {
                               <Button size="icon" variant="ghost" className="h-6 w-6" onClick={() => setSelected(r)} title="View">
                                 <Eye className="h-3 w-3" />
                               </Button>
+                              <Button size="icon" variant="ghost" className="h-6 w-6" onClick={() => setHistoryRow(r)} title="Application History">
+                                <History className="h-3 w-3 text-gold" />
+                              </Button>
                               <Button size="icon" variant="ghost" className="h-6 w-6" onClick={() => { setSelected(r); startEditing(r); }} title="Edit">
                                 <Pencil className="h-3 w-3 text-primary" />
                               </Button>
@@ -1338,6 +1402,9 @@ function AdminBursariesPage() {
                       <div className="flex items-center gap-0.5 shrink-0">
                         <Button size="icon" variant="ghost" className="h-6 w-6" onClick={() => setSelected(r)} title="View">
                           <Eye className="h-3 w-3" />
+                        </Button>
+                        <Button size="icon" variant="ghost" className="h-6 w-6" onClick={() => setHistoryRow(r)} title="Application History">
+                          <History className="h-3 w-3 text-gold" />
                         </Button>
                         <Button size="icon" variant="ghost" className="h-6 w-6" onClick={() => { setSelected(r); startEditing(r); }} title="Edit">
                           <Pencil className="h-3 w-3 text-primary" />
@@ -2607,6 +2674,141 @@ function AdminBursariesPage() {
               )}
             </>
           )}
+        </DialogContent>
+      </Dialog>
+
+      {/* ── Application History dialog — launched directly from the list via
+          the History icon. Lays every term's application out as one linear
+          register (Term, Ref, Student, School/Grade, Ward, Amount, Status),
+          the same way an admin would compare entries in a paper log book,
+          and highlights any term whose student/school/ward details don't
+          match the application currently under review — the quickest way
+          to catch an inconsistent or duplicate applicant before approving. */}
+      <Dialog open={!!historyRow} onOpenChange={(o) => { if (!o) setHistoryRow(null); }}>
+        <DialogContent className="max-w-4xl max-h-[85vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <History className="h-5 w-5 text-gold" />
+              Application History{historyRow ? ` — ${historyRow.student_name}` : ""}
+            </DialogTitle>
+            <DialogDescription>
+              Every term this student has applied, laid out for side-by-side comparison against the application under review.
+            </DialogDescription>
+          </DialogHeader>
+
+          {historyRowHistory.length === 0 ? (
+            <div className="py-10 text-center text-sm text-muted-foreground">
+              <History className="h-8 w-8 mx-auto mb-2 opacity-40" />
+              No previous applications found for this student — nothing to compare yet.
+            </div>
+          ) : (
+            <>
+              <div
+                className={`flex items-center gap-2 rounded-lg border px-3 py-2 text-xs font-medium ${
+                  historyMismatchCount === 0
+                    ? "border-emerald-300 bg-emerald-50 text-emerald-800"
+                    : "border-destructive/40 bg-destructive/5 text-destructive"
+                }`}
+              >
+                {historyMismatchCount === 0 ? (
+                  <>
+                    <CheckCircle2 className="h-3.5 w-3.5 shrink-0" />
+                    Consistent — name, school and ward match across every past term on record.
+                  </>
+                ) : (
+                  <>
+                    <XCircle className="h-3.5 w-3.5 shrink-0" />
+                    {historyMismatchCount} past term{historyMismatchCount > 1 ? "s" : ""} {historyMismatchCount > 1 ? "don't" : "doesn't"} match this application — check the highlighted rows before approving.
+                  </>
+                )}
+              </div>
+
+              <div className="mt-3 overflow-x-auto rounded-lg border border-border">
+                <table className="w-full text-xs">
+                  <thead className="bg-muted/50 text-left">
+                    <tr>
+                      <th className="px-2.5 py-2 font-semibold">Term</th>
+                      <th className="px-2.5 py-2 font-semibold">Ref</th>
+                      <th className="px-2.5 py-2 font-semibold">Student</th>
+                      <th className="px-2.5 py-2 font-semibold">School / Grade</th>
+                      <th className="px-2.5 py-2 font-semibold">Ward</th>
+                      <th className="px-2.5 py-2 font-semibold">Amount</th>
+                      <th className="px-2.5 py-2 font-semibold">Status</th>
+                      <th className="px-2.5 py-2" />
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-border">
+                    {historyComparisonRows.map((h) => {
+                      const isCurrent = h.id === historyRow?.id;
+                      const mismatch = historyMismatch(h);
+                      const expanded = expandedHistoryIds.has(h.id);
+                      return (
+                        <Fragment key={h.id}>
+                          <tr className={isCurrent ? "bg-primary/5" : mismatch.any ? "bg-destructive/5" : ""}>
+                            <td className="px-2.5 py-2 align-top whitespace-nowrap">
+                              {h.term || "—"}
+                              {isCurrent && <Badge className="ml-1.5 align-middle">Reviewing</Badge>}
+                            </td>
+                            <td className="px-2.5 py-2 align-top font-mono text-[11px] text-primary whitespace-nowrap">{h.reference}</td>
+                            <td className={`px-2.5 py-2 align-top ${mismatch.student ? "font-semibold text-destructive" : ""}`}>
+                              {h.student_name}
+                            </td>
+                            <td className={`px-2.5 py-2 align-top ${mismatch.school ? "font-semibold text-destructive" : ""}`}>
+                              {effectiveSchoolName(h) || "—"}{h.current_grade ? ` / ${h.current_grade}` : ""}
+                            </td>
+                            <td className={`px-2.5 py-2 align-top ${mismatch.ward ? "font-semibold text-destructive" : ""}`}>
+                              {h.ward || "—"}
+                            </td>
+                            <td className="px-2.5 py-2 align-top whitespace-nowrap">
+                              {h.amount_requested ? `KSh ${Number(h.amount_requested).toLocaleString()}` : "—"}
+                            </td>
+                            <td className="px-2.5 py-2 align-top">
+                              <Badge className={STATUS_COLORS[h.status] ?? ""}>{h.status}</Badge>
+                            </td>
+                            <td className="px-2.5 py-2 align-top">
+                              <Button
+                                size="icon"
+                                variant="ghost"
+                                className="h-6 w-6"
+                                onClick={() => toggleHistoryExpanded(h.id)}
+                                title={expanded ? "Hide details" : "Show more details"}
+                              >
+                                {expanded ? <ChevronDown className="h-3.5 w-3.5" /> : <ChevronRight className="h-3.5 w-3.5" />}
+                              </Button>
+                            </td>
+                          </tr>
+                          {expanded && (
+                            <tr className={isCurrent ? "bg-primary/5" : mismatch.any ? "bg-destructive/5" : ""}>
+                              <td colSpan={8} className="px-2.5 pb-3">
+                                <div className="grid sm:grid-cols-3 gap-2 rounded-lg border border-border bg-background p-3">
+                                  <Detail
+                                    label="Date of application"
+                                    value={new Date(h.created_at).toLocaleDateString("en-KE", { year: "numeric", month: "long", day: "numeric" })}
+                                  />
+                                  <Detail label="Birth certificate No." value={h.id_or_birth_cert_number} />
+                                  <Detail label="Admission No." value={h.registration_number} />
+                                  <Detail label="Parent's name" value={h.guardian_name} />
+                                  <Detail label="Parent's contact" value={h.guardian_phone} />
+                                </div>
+                              </td>
+                            </tr>
+                          )}
+                        </Fragment>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+
+              <p className="mt-2 text-[11px] text-muted-foreground">
+                Rows highlighted in red have a student name, school, or ward that differs from the application under review (marked "Reviewing"). Use the arrow on each row to see that term's full details.
+              </p>
+            </>
+          )}
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setHistoryRow(null)}>Close</Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
 
