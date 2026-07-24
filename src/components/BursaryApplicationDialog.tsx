@@ -19,7 +19,7 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import { supabase } from "@/integrations/supabase/client";
-import { MATHARE_WARDS, syncGuardianAsSupporter, fetchBursaryTerm } from "@/lib/admin-store";
+import { MATHARE_WARDS, syncGuardianAsSupporter, fetchBursaryTerm, parseTermLabel } from "@/lib/admin-store";
 import { KENYA_COUNTIES, COUNTY_NAMES } from "@/lib/kenya-counties";
 import { generateBursaryPdf } from "@/lib/bursary-pdf";
 
@@ -153,7 +153,7 @@ const EMPTY: Form = {
 };
 
 const GRADES = [
-  "Grade 10", "Form 3", "Form 4",
+  "Grade 10", "Grade 11", "Grade 12", "Form 3", "Form 4",
   "TVET / College", "University / Degree",
 ];
 
@@ -346,7 +346,26 @@ export function BursaryApplicationDialog({ trigger }: { trigger: ReactNode }) {
     toast.success(t("Started a new application."));
   };
 
-  // ── School name autocomplete ──────────────────────────────────────────────
+  // ── Live "current term" heading ─────────────────────────────────────────
+  // The form header used to hard-code "Term 2 (2026/2027)". It now reflects
+  // whatever term is actually open for applications (set by an admin).
+  // Deliberately a plain fetch rather than the realtime-subscribing
+  // useBursaryTerm() hook: this dialog can be mounted on the same page as
+  // the admin dashboard (which already subscribes via that hook), and two
+  // subscriptions to the same named realtime channel collide. A fresh fetch
+  // whenever the dialog is opened is all a form actually needs here.
+  const [bursaryTermLabel, setBursaryTermLabel] = useState("");
+  useEffect(() => {
+    if (!open) return;
+    fetchBursaryTerm().then(setBursaryTermLabel);
+  }, [open]);
+  const { termName: bursaryTermName, year: bursaryTermYear } = parseTermLabel(bursaryTermLabel || "");
+  const bursaryTermDisplay =
+    bursaryTermName && bursaryTermYear
+      ? `${bursaryTermName} (${bursaryTermYear}/${Number(bursaryTermYear) + 1})`
+      : "the current term";
+
+
   // Suggests schools already on record, filtered to whatever the applicant
   // has typed so far (matching on the start of the name, per school).
   const [knownSchools, setKnownSchools] = useState<string[]>([]);
@@ -475,21 +494,42 @@ export function BursaryApplicationDialog({ trigger }: { trigger: ReactNode }) {
       const currentTerm = await fetchBursaryTerm();
       const payloadWithTerm = currentTerm ? { ...payload, term: currentTerm } : payload;
 
-      // Birth certificate numbers must be unique per student within a term —
-      // check up front so the applicant gets a clear message instead of a
-      // raw database error, before we even attempt the insert.
+      // A student may only submit one application per term. Two checks catch
+      // a repeat submission: an exact birth-certificate-number match (most
+      // reliable), and a student-name + guardian-phone match (catches the
+      // same applicant re-applying with a slightly different or re-typed
+      // birth certificate number). Both run before the insert so the
+      // applicant gets one clear, specific message instead of a raw
+      // database error or — worse — a silent second application.
       if (currentTerm) {
-        const { data: dupe } = await supabase
+        const { data: dupeByBirthCert } = await supabase
           .from("bursary_applications" as never)
           .select("student_name")
           .eq("id_or_birth_cert_number", upperForm.birthCertNumber)
           .eq("term", currentTerm)
           .limit(1)
           .maybeSingle();
-        if (dupe) {
-          const existingName = (dupe as unknown as { student_name: string }).student_name;
+        if (dupeByBirthCert) {
+          const existingName = (dupeByBirthCert as unknown as { student_name: string }).student_name;
           toast.error(
             `This birth certificate number is already registered this term (to ${existingName}). Each student needs their own unique number — please check and try again.`,
+          );
+          setSubmitting(false);
+          return;
+        }
+
+        const { data: dupeByIdentity } = await supabase
+          .from("bursary_applications" as never)
+          .select("student_name, reference")
+          .eq("student_name", upperForm.studentName)
+          .eq("guardian_phone", upperForm.guardianPhone)
+          .eq("term", currentTerm)
+          .limit(1)
+          .maybeSingle();
+        if (dupeByIdentity) {
+          const existing = dupeByIdentity as unknown as { student_name: string; reference: string };
+          toast.error(
+            `A bursary application for ${existing.student_name} was already submitted this term under this parent/guardian's phone contact (Ref ${existing.reference}). Only one application per student is allowed each term — contact the Moha Coordination Office if you believe this is a mistake.`,
           );
           setSubmitting(false);
           return;
@@ -622,7 +662,7 @@ export function BursaryApplicationDialog({ trigger }: { trigger: ReactNode }) {
             {t("Constituency Bursary Application Form")}
           </DialogTitle>
           <DialogDescription>
-            {t("Ward Bursary Application Form — Term 2 (2026/2027). Complete all four sections and download your application form to sign and submit at the Moha Coordination Office, Kiamaiko-Mathare.")}
+            {t(`Ward Bursary Application Form — ${bursaryTermDisplay}. Complete all four sections and download your application form to sign and submit at the Moha Coordination Office, Kiamaiko-Mathare.`)}
           </DialogDescription>
         </DialogHeader>
 

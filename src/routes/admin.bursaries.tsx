@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useEffect, useMemo, useState, Fragment } from "react";
+import { useEffect, useMemo, useState, useRef } from "react";
 import {
   GraduationCap, Send, Eye, Trash2, Download, Search,
   FileSpreadsheet, CheckCircle2, School, ArrowUpDown,
@@ -212,6 +212,7 @@ function AdminBursariesPage() {
   const [isEditing, setIsEditing] = useState(false);
   const [editFields, setEditFields] = useState({
     student_name: "",
+    registration_number: "",
     school_name: "",
     canonical_school_name: "",
     school_category: "",
@@ -648,14 +649,46 @@ function AdminBursariesPage() {
     [historyComparisonRows, historyRow],
   );
 
-  const [expandedHistoryIds, setExpandedHistoryIds] = useState<Set<string>>(new Set());
-  useEffect(() => { setExpandedHistoryIds(new Set()); }, [historyRow]);
-  const toggleHistoryExpanded = (id: string) => {
-    setExpandedHistoryIds((prev) => {
-      const next = new Set(prev);
-      if (next.has(id)) next.delete(id); else next.add(id);
-      return next;
+  // ── Draggable History dialog ────────────────────────────────────────────
+  // Lets an admin drag the History comparison window aside by its header, so
+  // it can sit next to the applications table instead of covering it — handy
+  // when cross-checking a flagged row against the list behind it. Position
+  // is relative to the dialog's normal centered spot and resets every time a
+  // different student's history is opened.
+  const [historyDragOffset, setHistoryDragOffset] = useState({ x: 0, y: 0 });
+  const historyDragState = useRef({ dragging: false, startX: 0, startY: 0, originX: 0, originY: 0 });
+
+  useEffect(() => {
+    setHistoryDragOffset({ x: 0, y: 0 });
+  }, [historyRow?.id]);
+
+  const handleHistoryDragMove = (e: PointerEvent) => {
+    if (!historyDragState.current.dragging) return;
+    setHistoryDragOffset({
+      x: historyDragState.current.originX + (e.clientX - historyDragState.current.startX),
+      y: historyDragState.current.originY + (e.clientY - historyDragState.current.startY),
     });
+  };
+
+  const handleHistoryDragEnd = () => {
+    historyDragState.current.dragging = false;
+    window.removeEventListener("pointermove", handleHistoryDragMove);
+    window.removeEventListener("pointerup", handleHistoryDragEnd);
+  };
+
+  const handleHistoryDragStart = (e: React.PointerEvent) => {
+    // Ignore drags started from the close button or other interactive
+    // controls inside the header — only the bare header area should drag.
+    if ((e.target as HTMLElement).closest("button, a")) return;
+    historyDragState.current = {
+      dragging: true,
+      startX: e.clientX,
+      startY: e.clientY,
+      originX: historyDragOffset.x,
+      originY: historyDragOffset.y,
+    };
+    window.addEventListener("pointermove", handleHistoryDragMove);
+    window.addEventListener("pointerup", handleHistoryDragEnd);
   };
 
   // ── Applications tab drill-down data (built from `filtered`, so the search
@@ -826,6 +859,7 @@ function AdminBursariesPage() {
   const startEditing = (r: Row) => {
     setEditFields({
       student_name: r.student_name || "",
+      registration_number: r.registration_number || "",
       school_name: r.school_name || "",
       canonical_school_name: r.canonical_school_name || "",
       school_category: r.school_category || "",
@@ -853,10 +887,12 @@ function AdminBursariesPage() {
 
     setEditBusy(true);
     const parsedAmount = editFields.amount_requested ? parseFloat(editFields.amount_requested) : null;
+    const admissionNumber = editFields.registration_number.trim().toUpperCase() || null;
     const { error } = await supabase
       .from("bursary_applications" as never)
       .update({
         student_name: studentName,
+        registration_number: admissionNumber,
         school_name: schoolName,
         canonical_school_name: editFields.canonical_school_name.trim() || null,
         school_category: editFields.school_category || null,
@@ -883,6 +919,7 @@ function AdminBursariesPage() {
         ? {
             ...prev,
             student_name: studentName,
+            registration_number: admissionNumber,
             school_name: schoolName,
             canonical_school_name: editFields.canonical_school_name.trim() || null,
             school_category: editFields.school_category || null,
@@ -2412,6 +2449,15 @@ function AdminBursariesPage() {
                         />
                       </div>
                       <div className="space-y-1.5">
+                        <Label htmlFor="edit-admission-number">Admission Number</Label>
+                        <Input
+                          id="edit-admission-number"
+                          value={editFields.registration_number}
+                          onChange={(e) => setEditFields(prev => ({ ...prev, registration_number: e.target.value }))}
+                          placeholder="e.g. correct a mistyped digit"
+                        />
+                      </div>
+                      <div className="space-y-1.5">
                         <Label htmlFor="edit-status">Status (Approval)</Label>
                         <Select
                           value={editFields.status}
@@ -2679,14 +2725,28 @@ function AdminBursariesPage() {
 
       {/* ── Application History dialog — launched directly from the list via
           the History icon. Lays every term's application out as one linear
-          register (Term, Ref, Student, School/Grade, Ward, Amount, Status),
-          the same way an admin would compare entries in a paper log book,
-          and highlights any term whose student/school/ward details don't
-          match the application currently under review — the quickest way
-          to catch an inconsistent or duplicate applicant before approving. */}
+          register — one row per term, every field visible at once, no
+          clicking to expand — the same way an admin would compare entries
+          in a paper log book, and highlights any term whose student/school/
+          ward details don't match the application currently under review —
+          the quickest way to catch an inconsistent or duplicate applicant
+          before approving. */}
       <Dialog open={!!historyRow} onOpenChange={(o) => { if (!o) setHistoryRow(null); }}>
-        <DialogContent className="max-w-4xl max-h-[85vh] overflow-y-auto">
-          <DialogHeader>
+        <DialogContent
+          className={`max-h-[85vh] overflow-y-auto transition-[max-width] duration-200 ${
+            historyRowHistory.length === 0 ? "max-w-sm" : "max-w-6xl"
+          }`}
+          style={
+            historyDragOffset.x !== 0 || historyDragOffset.y !== 0
+              ? { transform: `translate(calc(-50% + ${historyDragOffset.x}px), calc(-50% + ${historyDragOffset.y}px))` }
+              : undefined
+          }
+        >
+          <DialogHeader
+            onPointerDown={handleHistoryDragStart}
+            className="cursor-move select-none rounded-md -m-1 p-1 hover:bg-muted/40"
+            title="Drag to move this window"
+          >
             <DialogTitle className="flex items-center gap-2">
               <History className="h-5 w-5 text-gold" />
               Application History{historyRow ? ` — ${historyRow.student_name}` : ""}
@@ -2700,6 +2760,7 @@ function AdminBursariesPage() {
             <div className="py-10 text-center text-sm text-muted-foreground">
               <History className="h-8 w-8 mx-auto mb-2 opacity-40" />
               No previous applications found for this student — nothing to compare yet.
+
             </div>
           ) : (
             <>
@@ -2728,72 +2789,52 @@ function AdminBursariesPage() {
                   <thead className="bg-muted/50 text-left">
                     <tr>
                       <th className="px-2.5 py-2 font-semibold">Term</th>
-                      <th className="px-2.5 py-2 font-semibold">Ref</th>
-                      <th className="px-2.5 py-2 font-semibold">Student</th>
+                      <th className="px-2.5 py-2 font-semibold">Student / Adm No.</th>
                       <th className="px-2.5 py-2 font-semibold">School / Grade</th>
                       <th className="px-2.5 py-2 font-semibold">Ward</th>
                       <th className="px-2.5 py-2 font-semibold">Amount</th>
                       <th className="px-2.5 py-2 font-semibold">Status</th>
-                      <th className="px-2.5 py-2" />
+                      <th className="px-2.5 py-2 font-semibold">Date of Application</th>
+                      <th className="px-2.5 py-2 font-semibold">Birth Certificate No.</th>
+                      <th className="px-2.5 py-2 font-semibold">Parent's Name / Contact</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-border">
                     {historyComparisonRows.map((h) => {
                       const isCurrent = h.id === historyRow?.id;
                       const mismatch = historyMismatch(h);
-                      const expanded = expandedHistoryIds.has(h.id);
                       return (
-                        <Fragment key={h.id}>
-                          <tr className={isCurrent ? "bg-primary/5" : mismatch.any ? "bg-destructive/5" : ""}>
-                            <td className="px-2.5 py-2 align-top whitespace-nowrap">
-                              {h.term || "—"}
-                              {isCurrent && <Badge className="ml-1.5 align-middle">Reviewing</Badge>}
-                            </td>
-                            <td className="px-2.5 py-2 align-top font-mono text-[11px] text-primary whitespace-nowrap">{h.reference}</td>
-                            <td className={`px-2.5 py-2 align-top ${mismatch.student ? "font-semibold text-destructive" : ""}`}>
-                              {h.student_name}
-                            </td>
-                            <td className={`px-2.5 py-2 align-top ${mismatch.school ? "font-semibold text-destructive" : ""}`}>
-                              {effectiveSchoolName(h) || "—"}{h.current_grade ? ` / ${h.current_grade}` : ""}
-                            </td>
-                            <td className={`px-2.5 py-2 align-top ${mismatch.ward ? "font-semibold text-destructive" : ""}`}>
-                              {h.ward || "—"}
-                            </td>
-                            <td className="px-2.5 py-2 align-top whitespace-nowrap">
-                              {h.amount_requested ? `KSh ${Number(h.amount_requested).toLocaleString()}` : "—"}
-                            </td>
-                            <td className="px-2.5 py-2 align-top">
-                              <Badge className={STATUS_COLORS[h.status] ?? ""}>{h.status}</Badge>
-                            </td>
-                            <td className="px-2.5 py-2 align-top">
-                              <Button
-                                size="icon"
-                                variant="ghost"
-                                className="h-6 w-6"
-                                onClick={() => toggleHistoryExpanded(h.id)}
-                                title={expanded ? "Hide details" : "Show more details"}
-                              >
-                                {expanded ? <ChevronDown className="h-3.5 w-3.5" /> : <ChevronRight className="h-3.5 w-3.5" />}
-                              </Button>
-                            </td>
-                          </tr>
-                          {expanded && (
-                            <tr className={isCurrent ? "bg-primary/5" : mismatch.any ? "bg-destructive/5" : ""}>
-                              <td colSpan={8} className="px-2.5 pb-3">
-                                <div className="grid sm:grid-cols-3 gap-2 rounded-lg border border-border bg-background p-3">
-                                  <Detail
-                                    label="Date of application"
-                                    value={new Date(h.created_at).toLocaleDateString("en-KE", { year: "numeric", month: "long", day: "numeric" })}
-                                  />
-                                  <Detail label="Birth certificate No." value={h.id_or_birth_cert_number} />
-                                  <Detail label="Admission No." value={h.registration_number} />
-                                  <Detail label="Parent's name" value={h.guardian_name} />
-                                  <Detail label="Parent's contact" value={h.guardian_phone} />
-                                </div>
-                              </td>
-                            </tr>
-                          )}
-                        </Fragment>
+                        <tr key={h.id} className={isCurrent ? "bg-primary/5" : mismatch.any ? "bg-destructive/5" : ""}>
+                          <td className="px-2.5 py-2 align-top whitespace-nowrap">{h.term || "—"}</td>
+                          <td className={`px-2.5 py-2 align-top ${mismatch.student ? "font-semibold text-destructive" : ""}`}>
+                            {h.student_name}
+                            {h.registration_number && (
+                              <div className="text-muted-foreground font-normal">{h.registration_number}</div>
+                            )}
+                          </td>
+                          <td className={`px-2.5 py-2 align-top ${mismatch.school ? "font-semibold text-destructive" : ""}`}>
+                            {effectiveSchoolName(h) || "—"}{h.current_grade ? ` / ${h.current_grade}` : ""}
+                          </td>
+                          <td className={`px-2.5 py-2 align-top ${mismatch.ward ? "font-semibold text-destructive" : ""}`}>
+                            {h.ward || "—"}
+                          </td>
+                          <td className="px-2.5 py-2 align-top whitespace-nowrap">
+                            {h.amount_requested ? `KSh ${Number(h.amount_requested).toLocaleString()}` : "—"}
+                          </td>
+                          <td className="px-2.5 py-2 align-top">
+                            <Badge className={STATUS_COLORS[h.status] ?? ""}>{h.status}</Badge>
+                          </td>
+                          <td className="px-2.5 py-2 align-top whitespace-nowrap">
+                            {new Date(h.created_at).toLocaleDateString("en-KE", { year: "numeric", month: "short", day: "numeric" })}
+                          </td>
+                          <td className="px-2.5 py-2 align-top whitespace-nowrap">{h.id_or_birth_cert_number || "—"}</td>
+                          <td className="px-2.5 py-2 align-top">
+                            {h.guardian_name || "—"}
+                            {h.guardian_phone && (
+                              <div className="text-muted-foreground font-normal">{h.guardian_phone}</div>
+                            )}
+                          </td>
+                        </tr>
                       );
                     })}
                   </tbody>
@@ -2801,7 +2842,7 @@ function AdminBursariesPage() {
               </div>
 
               <p className="mt-2 text-[11px] text-muted-foreground">
-                Rows highlighted in red have a student name, school, or ward that differs from the application under review (marked "Reviewing"). Use the arrow on each row to see that term's full details.
+                Rows highlighted in red have a student name, school, or ward that differs from the application currently under review.
               </p>
             </>
           )}
