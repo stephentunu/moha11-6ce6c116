@@ -2822,7 +2822,7 @@ function AdminBursariesPage() {
                             {h.amount_requested ? `KSh ${Number(h.amount_requested).toLocaleString()}` : "—"}
                           </td>
                           <td className="px-2.5 py-2 align-top">
-                            <Badge className={STATUS_COLORS[h.status] ?? ""}>{h.status}</Badge>
+                            <Badge className={`${STATUS_COLORS[h.status] ?? ""} capitalize`}>{h.status}</Badge>
                           </td>
                           <td className="px-2.5 py-2 align-top whitespace-nowrap">
                             {new Date(h.created_at).toLocaleDateString("en-KE", { year: "numeric", month: "short", day: "numeric" })}
