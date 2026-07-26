@@ -8,7 +8,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
 import { Toaster } from "@/components/ui/sonner";
 import { AdminLayout } from "@/components/AdminLayout";
-import { useContent, updateContent, useBursaryWindow, saveBursaryWindowStart, type SiteContent, useBursaryTerm, saveBursaryTerm, TERM_NAMES, buildTermLabel, parseTermLabel } from "@/lib/admin-store";
+import { useContent, updateContent, useBursaryWindow, saveBursaryWindowStart, saveBursaryWindowDuration, DEFAULT_BURSARY_WINDOW_DURATION_DAYS, type SiteContent, useBursaryTerm, saveBursaryTerm, TERM_NAMES, buildTermLabel, parseTermLabel } from "@/lib/admin-store";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
@@ -26,8 +26,9 @@ export const Route = createFileRoute("/admin/content")({
 function AdminContentPage() {
   const [content] = useContent();
   const [draft, setDraft] = useState<SiteContent>(content);
-  const { windowStart, loading: windowLoading } = useBursaryWindow();
+  const { windowStart, windowDurationDays, loading: windowLoading } = useBursaryWindow();
   const [draftWindowStart, setDraftWindowStart] = useState<string>("");
+  const [draftWindowDuration, setDraftWindowDuration] = useState<string>(String(DEFAULT_BURSARY_WINDOW_DURATION_DAYS));
   const [savingWindow, setSavingWindow] = useState(false);
   const { term: currentTerm, loading: termLoading } = useBursaryTerm();
   const currentYear = new Date().getFullYear();
@@ -38,6 +39,7 @@ function AdminContentPage() {
 
   useEffect(() => { setDraft(content); }, [content]);
   useEffect(() => { setDraftWindowStart(windowStart); }, [windowStart]);
+  useEffect(() => { setDraftWindowDuration(String(windowDurationDays)); }, [windowDurationDays]);
   useEffect(() => {
     if (!currentTerm) return;
     const { termName, year } = parseTermLabel(currentTerm);
@@ -72,9 +74,18 @@ function AdminContentPage() {
 
   const saveWindow = async (dateStr: string) => {
     setSavingWindow(true);
-    await saveBursaryWindowStart(dateStr);
+    const parsedDays = parseInt(draftWindowDuration, 10);
+    const validDays = Number.isFinite(parsedDays) && parsedDays > 0 ? parsedDays : DEFAULT_BURSARY_WINDOW_DURATION_DAYS;
+    await Promise.all([
+      saveBursaryWindowStart(dateStr),
+      saveBursaryWindowDuration(validDays),
+    ]);
     setSavingWindow(false);
-    toast.success(dateStr ? `Bursary window set — opens ${dateStr}` : "Bursary window closed");
+    toast.success(
+      dateStr
+        ? `Bursary window set — opens ${dateStr}, open for ${validDays} day${validDays === 1 ? "" : "s"}`
+        : "Bursary window closed",
+    );
   };
 
   const draftTermLabel = buildTermLabel(draftTermName, draftTermYear || currentYear);
@@ -287,39 +298,54 @@ function AdminContentPage() {
             </div>
 
             <p className="text-xs text-muted-foreground">
-              Set the start date for the bursary application window. Applications will automatically
-              close <strong>10 days</strong> after the start date. Leave blank to close the window.
+              Set the start date and how many days the window should stay open for. Applications
+              automatically close that many days after the start date. Leave the start date blank
+              to close the window.
             </p>
-            <Field label="Application window start date">
-              <div className="flex gap-2">
+            <div className="flex flex-wrap gap-2 items-end">
+              <Field label="Application window start date">
                 <Input
                   type="date"
                   value={draftWindowStart}
                   onChange={(e) => setDraftWindowStart(e.target.value)}
                   disabled={windowLoading}
-                  className="flex-1"
+                  className="w-44"
                 />
-                <Button
-                  variant="hero"
-                  onClick={() => saveWindow(draftWindowStart)}
-                  disabled={savingWindow || windowLoading || draftWindowStart === windowStart}
-                >
-                  {savingWindow ? "Saving…" : "Save & Publish"}
-                </Button>
-              </div>
-            </Field>
+              </Field>
+              <Field label="Duration (days)">
+                <Input
+                  type="number"
+                  min={1}
+                  value={draftWindowDuration}
+                  onChange={(e) => setDraftWindowDuration(e.target.value)}
+                  disabled={windowLoading}
+                  className="w-24"
+                />
+              </Field>
+              <Button
+                variant="hero"
+                onClick={() => saveWindow(draftWindowStart)}
+                disabled={
+                  savingWindow ||
+                  windowLoading ||
+                  (draftWindowStart === windowStart && draftWindowDuration === String(windowDurationDays))
+                }
+              >
+                {savingWindow ? "Saving…" : "Save & Publish"}
+              </Button>
+            </div>
             {windowStart && (() => {
               const start = new Date(windowStart);
               const end = new Date(start);
-              end.setDate(end.getDate() + 10);
+              end.setDate(end.getDate() + windowDurationDays);
               const now = new Date();
               const open = now >= start && now <= end;
               return (
                 <div className={`rounded-lg border px-2.5 py-1.5 text-xs font-semibold ${open ? "border-emerald-300 bg-emerald-50 text-emerald-700" : "border-rose-300 bg-rose-50 text-rose-700"}`}>
                   {open
-                    ? `✓ Window OPEN — closes ${end.toLocaleDateString("en-KE", { day: "numeric", month: "long", year: "numeric" })}`
+                    ? `✓ Window OPEN — closes ${end.toLocaleDateString("en-KE", { day: "numeric", month: "long", year: "numeric" })} (${windowDurationDays}-day window)`
                     : now < start
-                      ? `⏳ Window opens ${start.toLocaleDateString("en-KE", { day: "numeric", month: "long", year: "numeric" })}`
+                      ? `⏳ Window opens ${start.toLocaleDateString("en-KE", { day: "numeric", month: "long", year: "numeric" })} (${windowDurationDays}-day window)`
                       : `✗ Window CLOSED — ended ${end.toLocaleDateString("en-KE", { day: "numeric", month: "long", year: "numeric" })}`
                   }
                 </div>
