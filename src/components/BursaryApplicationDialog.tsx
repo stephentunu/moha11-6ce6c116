@@ -62,10 +62,27 @@ const digitsField = (label: string, required: boolean) => {
   return checked;
 };
 
+// Kenyan National ID / birth certificate numbers realistically run from 7
+// digits (older, shorter-format IDs) up to 13 digits (birth certificate
+// serials, and headroom for future longer ID formats).
+const ID_MIN_LEN = 7;
+const ID_MAX_LEN = 13;
+
+const idNumberField = (label: string) => {
+  const base = z.string().trim();
+  return base
+    .regex(new RegExp(`^\\d{${ID_MIN_LEN},${ID_MAX_LEN}}$`), `${label} must be ${ID_MIN_LEN}-${ID_MAX_LEN} digits`)
+    .optional()
+    .or(z.literal(""));
+};
+
 const GuardianSchema = z.object({
   guardianName: z.string().trim().min(2, "Guardian / contact name is required").max(120)
     .regex(/^[^\d]*$/, "Guardian name must not contain numbers"),
   guardianPhone: digitsField("Phone contact", true),
+  guardianNationalId: idNumberField("Guardian's National ID"),
+  fatherNationalId: idNumberField("Father's National ID"),
+  motherNationalId: idNumberField("Mother's National ID"),
 });
 
 const ConsentSchema = z.object({
@@ -172,6 +189,29 @@ const SCHOOL_CATEGORIES = [
 // letters — enforced at the keystroke, not just on submit.
 function digitsOnly(value: string, maxLen = 15): string {
   return value.replace(/\D/g, "").slice(0, maxLen);
+}
+
+// Duplicate-application warnings carry important, specific instructions
+// (which existing application matched, who to contact) — the default toast
+// duration is too short for an applicant to read and act on that. Keep
+// these on screen for up to 30 seconds instead of the default ~4s — but
+// let the applicant dismiss it early with a single click/tap anywhere on
+// the page, rather than being stuck waiting out the full 30s once they've
+// actually read it (reading speed varies from person to person).
+const DUPLICATE_FLAG_TOAST_DURATION_MS = 30_000;
+
+function showDuplicateFlagToast(message: string) {
+  const id = toast.error(message, { duration: DUPLICATE_FLAG_TOAST_DURATION_MS });
+  if (typeof window === "undefined") return id;
+  const dismiss = () => {
+    toast.dismiss(id);
+    window.removeEventListener("pointerdown", dismiss);
+  };
+  // Registering the listener on the next tick (rather than immediately)
+  // means the very click that triggered this toast — e.g. the "Submit"
+  // button press — doesn't instantly dismiss it before it's even seen.
+  window.setTimeout(() => window.addEventListener("pointerdown", dismiss), 0);
+  return id;
 }
 
 // Strips digits as the user types, for fields that hold a person's name
@@ -494,13 +534,16 @@ export function BursaryApplicationDialog({ trigger }: { trigger: ReactNode }) {
       const currentTerm = await fetchBursaryTerm();
       const payloadWithTerm = currentTerm ? { ...payload, term: currentTerm } : payload;
 
-      // A student may only submit one application per term. Two checks catch
-      // a repeat submission: an exact birth-certificate-number match (most
-      // reliable), and a student-name + guardian-phone match (catches the
-      // same applicant re-applying with a slightly different or re-typed
-      // birth certificate number). Both run before the insert so the
-      // applicant gets one clear, specific message instead of a raw
-      // database error or — worse — a silent second application.
+      // A student may only submit one application per term. Three checks
+      // catch a repeat submission — any one of them is enough to flag it:
+      // an exact birth-certificate-number match (most reliable), a student
+      // -name + guardian-phone match (catches a re-typed or slightly
+      // different birth certificate number), and a school + admission
+      // number match (catches a re-typed or slightly different birth
+      // certificate for a student re-applying at the same school). All run
+      // before the insert so the applicant gets one clear, specific message
+      // instead of a raw database error or — worse — a silent second
+      // application.
       if (currentTerm) {
         const { data: dupeByBirthCert } = await supabase
           .from("bursary_applications" as never)
@@ -511,7 +554,7 @@ export function BursaryApplicationDialog({ trigger }: { trigger: ReactNode }) {
           .maybeSingle();
         if (dupeByBirthCert) {
           const existingName = (dupeByBirthCert as unknown as { student_name: string }).student_name;
-          toast.error(
+          showDuplicateFlagToast(
             `This birth certificate number is already registered this term (to ${existingName}). Each student needs their own unique number — please check and try again.`,
           );
           setSubmitting(false);
@@ -528,11 +571,35 @@ export function BursaryApplicationDialog({ trigger }: { trigger: ReactNode }) {
           .maybeSingle();
         if (dupeByIdentity) {
           const existing = dupeByIdentity as unknown as { student_name: string; reference: string };
-          toast.error(
+          showDuplicateFlagToast(
             `A bursary application for ${existing.student_name} was already submitted this term under this parent/guardian's phone contact (Ref ${existing.reference}). Only one application per student is allowed each term — contact the Moha Coordination Office if you believe this is a mistake.`,
           );
           setSubmitting(false);
           return;
+        }
+
+        // Admission numbers are only unique within a school (many schools
+        // independently assign "1", "2", "3"...), so this check matches on
+        // school name + admission number together rather than admission
+        // number alone — otherwise unrelated students at different schools
+        // could be wrongly flagged as duplicates of each other.
+        if (upperForm.admissionNumber && upperForm.schoolName) {
+          const { data: dupeBySchoolAdmission } = await supabase
+            .from("bursary_applications" as never)
+            .select("student_name, reference")
+            .eq("school_name", upperForm.schoolName)
+            .eq("registration_number", upperForm.admissionNumber)
+            .eq("term", currentTerm)
+            .limit(1)
+            .maybeSingle();
+          if (dupeBySchoolAdmission) {
+            const existing = dupeBySchoolAdmission as unknown as { student_name: string; reference: string };
+            showDuplicateFlagToast(
+              `A bursary application for admission number ${upperForm.admissionNumber} at ${upperForm.schoolName} was already submitted this term (to ${existing.student_name}, Ref ${existing.reference}). Only one application per student is allowed each term — contact the Moha Coordination Office if you believe this is a mistake.`,
+            );
+            setSubmitting(false);
+            return;
+          }
         }
       }
 
@@ -596,6 +663,7 @@ export function BursaryApplicationDialog({ trigger }: { trigger: ReactNode }) {
     if (!result) return;
     generateBursaryPdf({
       reference: result.reference,
+      term: bursaryTermDisplay,
       student_name: form.studentName,
       registration_number: form.admissionNumber,
       dob: form.dob,
@@ -662,7 +730,7 @@ export function BursaryApplicationDialog({ trigger }: { trigger: ReactNode }) {
             {t("Constituency Bursary Application Form")}
           </DialogTitle>
           <DialogDescription>
-            {t(`Ward Bursary Application Form — ${bursaryTermDisplay}. Complete all four sections and download your application form to sign and submit at the Moha Coordination Office, Kiamaiko-Mathare.`)}
+            {t(`Constituency Bursary Application Form — ${bursaryTermDisplay}. Complete all four sections and download your application form to sign and submit at the Moha Coordination Office, Kiamaiko-Mathare.`)}
           </DialogDescription>
         </DialogHeader>
 
@@ -812,13 +880,28 @@ export function BursaryApplicationDialog({ trigger }: { trigger: ReactNode }) {
                   </Field>
                   <div className="space-y-4">
                     <Field label={t("Student annual fee payable (KSh)")}>
-                      <Input type="number" min="0" value={form.studentAnnualFee} onChange={(e) => set("studentAnnualFee", e.target.value)} placeholder="0" />
+                      <Input
+                        value={form.studentAnnualFee}
+                        onChange={(e) => setDigits("studentAnnualFee", e.target.value, 9)}
+                        placeholder="0"
+                        inputMode="numeric"
+                      />
                     </Field>
                     <Field label={t("Student's outstanding fee balance (KSh)")}>
-                      <Input type="number" min="0" value={form.outstandingBalance} onChange={(e) => set("outstandingBalance", e.target.value)} placeholder="0" />
+                      <Input
+                        value={form.outstandingBalance}
+                        onChange={(e) => setDigits("outstandingBalance", e.target.value, 9)}
+                        placeholder="0"
+                        inputMode="numeric"
+                      />
                     </Field>
                     <Field label={t("Amount applying for (KSh)")}>
-                      <Input type="number" min="0" value={form.amountRequested} onChange={(e) => set("amountRequested", e.target.value)} placeholder="0" />
+                      <Input
+                        value={form.amountRequested}
+                        onChange={(e) => setDigits("amountRequested", e.target.value, 9)}
+                        placeholder="0"
+                        inputMode="numeric"
+                      />
                     </Field>
                   </div>
                 </div>
@@ -850,7 +933,12 @@ export function BursaryApplicationDialog({ trigger }: { trigger: ReactNode }) {
                         <Input value={form.previousBursarySource} onChange={(e) => set("previousBursarySource", e.target.value)} />
                       </Field>
                       <Field label={t("Amount received (KSh)")}>
-                        <Input type="number" min="0" value={form.previousBursaryAmount} onChange={(e) => set("previousBursaryAmount", e.target.value)} placeholder="0" />
+                        <Input
+                          value={form.previousBursaryAmount}
+                          onChange={(e) => setDigits("previousBursaryAmount", e.target.value, 9)}
+                          placeholder="0"
+                          inputMode="numeric"
+                        />
                       </Field>
                     </div>
                   )}
@@ -967,8 +1055,9 @@ export function BursaryApplicationDialog({ trigger }: { trigger: ReactNode }) {
                       <Field label={t("National ID")}>
                         <Input
                           value={form.fatherNationalId}
-                          onChange={(e) => setDigits("fatherNationalId", e.target.value, 10)}
+                          onChange={(e) => setDigits("fatherNationalId", e.target.value, ID_MAX_LEN)}
                           inputMode="numeric"
+                          maxLength={ID_MAX_LEN}
                         />
                       </Field>
                       <Field label={t("Occupation")}><Input value={form.fatherOccupation} onChange={(e) => set("fatherOccupation", e.target.value)} /></Field>
@@ -1001,8 +1090,9 @@ export function BursaryApplicationDialog({ trigger }: { trigger: ReactNode }) {
                       <Field label={t("National ID")}>
                         <Input
                           value={form.motherNationalId}
-                          onChange={(e) => setDigits("motherNationalId", e.target.value, 10)}
+                          onChange={(e) => setDigits("motherNationalId", e.target.value, ID_MAX_LEN)}
                           inputMode="numeric"
+                          maxLength={ID_MAX_LEN}
                         />
                       </Field>
                       <Field label={t("Occupation")}><Input value={form.motherOccupation} onChange={(e) => set("motherOccupation", e.target.value)} /></Field>
@@ -1036,8 +1126,9 @@ export function BursaryApplicationDialog({ trigger }: { trigger: ReactNode }) {
                     <Field label={t("National ID")}>
                       <Input
                         value={form.guardianNationalId}
-                        onChange={(e) => setDigits("guardianNationalId", e.target.value, 10)}
+                        onChange={(e) => setDigits("guardianNationalId", e.target.value, ID_MAX_LEN)}
                         inputMode="numeric"
+                        maxLength={ID_MAX_LEN}
                       />
                     </Field>
                     <Field label={t("Occupation")}><Input value={form.guardianOccupation} onChange={(e) => set("guardianOccupation", e.target.value)} /></Field>
@@ -1071,7 +1162,12 @@ export function BursaryApplicationDialog({ trigger }: { trigger: ReactNode }) {
                     <Input type="number" min="0" value={form.siblingsInSchool} onChange={(e) => set("siblingsInSchool", e.target.value)} placeholder="0" />
                   </Field>
                   <Field label={t("Monthly budget (KSh)")}>
-                    <Input type="number" min="0" value={form.monthlyBudget} onChange={(e) => set("monthlyBudget", e.target.value)} placeholder="0" />
+                    <Input
+                      value={form.monthlyBudget}
+                      onChange={(e) => setDigits("monthlyBudget", e.target.value, 9)}
+                      placeholder="0"
+                      inputMode="numeric"
+                    />
                   </Field>
                 </div>
 

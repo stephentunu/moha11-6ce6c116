@@ -474,6 +474,10 @@ export function updateContent(patch: Partial<SiteContent>) {
 //   );
 //   insert into site_settings (id, value) values ('bursary_window', '')
 //   on conflict (id) do nothing;
+//   -- Customizable window length in days (defaults to 10 if this row is
+//   -- absent — see DEFAULT_BURSARY_WINDOW_DURATION_DAYS below):
+//   insert into site_settings (id, value) values ('bursary_window_duration', '10')
+//   on conflict (id) do nothing;
 //   -- Allow public read (no auth needed for the public site):
 //   alter table site_settings enable row level security;
 //   create policy "public read" on site_settings for select using (true);
@@ -501,14 +505,52 @@ export async function saveBursaryWindowStart(dateStr: string): Promise<void> {
     .upsert({ id: "bursary_window", value: dateStr } as never, { onConflict: "id" } as never);
 }
 
-/** React hook: subscribes to the bursary window start from Supabase in real-time. */
+// How many days an application window stays open after its start date. Used
+// to default existing windows (set before this was configurable) to the
+// original fixed behaviour, and as the fallback if the setting is missing.
+export const DEFAULT_BURSARY_WINDOW_DURATION_DAYS = 10;
+
+/** Read the configured window duration (days) from Supabase. Falls back to
+ *  DEFAULT_BURSARY_WINDOW_DURATION_DAYS if not set or invalid. */
+export async function fetchBursaryWindowDuration(): Promise<number> {
+  try {
+    const { data, error } = await supabase
+      .from("site_settings" as never)
+      .select("value")
+      .eq("id", "bursary_window_duration")
+      .single();
+    if (error || !data) return DEFAULT_BURSARY_WINDOW_DURATION_DAYS;
+    const n = parseInt((data as unknown as { value: string }).value ?? "", 10);
+    return Number.isFinite(n) && n > 0 ? n : DEFAULT_BURSARY_WINDOW_DURATION_DAYS;
+  } catch {
+    return DEFAULT_BURSARY_WINDOW_DURATION_DAYS;
+  }
+}
+
+/** Save the window duration (days) to Supabase (admin only). */
+export async function saveBursaryWindowDuration(days: number): Promise<void> {
+  const clamped = Number.isFinite(days) && days > 0 ? Math.round(days) : DEFAULT_BURSARY_WINDOW_DURATION_DAYS;
+  await supabase
+    .from("site_settings" as never)
+    .upsert({ id: "bursary_window_duration", value: String(clamped) } as never, { onConflict: "id" } as never);
+}
+
+/** React hook: subscribes to the bursary window start + duration from
+ *  Supabase in real-time (single shared channel for both settings). */
 export function useBursaryWindow() {
   const [windowStart, setWindowStart] = useState<string>("");
+  const [windowDurationDays, setWindowDurationDays] = useState<number>(DEFAULT_BURSARY_WINDOW_DURATION_DAYS);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     // Initial fetch
-    fetchBursaryWindowStart().then((v) => { setWindowStart(v); setLoading(false); });
+    Promise.all([fetchBursaryWindowStart(), fetchBursaryWindowDuration()]).then(
+      ([start, duration]) => {
+        setWindowStart(start);
+        setWindowDurationDays(duration);
+        setLoading(false);
+      }
+    );
 
     // Real-time subscription — any device saving triggers an update here too
     const ch = supabase
@@ -519,6 +561,10 @@ export function useBursaryWindow() {
         (payload) => {
           const row = payload.new as { id: string; value: string } | null;
           if (row?.id === "bursary_window") setWindowStart(row.value ?? "");
+          if (row?.id === "bursary_window_duration") {
+            const n = parseInt(row.value ?? "", 10);
+            setWindowDurationDays(Number.isFinite(n) && n > 0 ? n : DEFAULT_BURSARY_WINDOW_DURATION_DAYS);
+          }
         }
       )
       .subscribe();
@@ -526,7 +572,7 @@ export function useBursaryWindow() {
     return () => { supabase.removeChannel(ch); };
   }, []);
 
-  return { windowStart, loading };
+  return { windowStart, windowDurationDays, loading };
 }
 
 // ===== Bursary Term (which "window" applications are currently attached to) ==

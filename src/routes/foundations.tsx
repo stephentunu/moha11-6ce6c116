@@ -13,11 +13,14 @@ import {
   Baby,
   Users,
   Clock,
+  FileSearch,
 } from "lucide-react";
 import { PageHero } from "@/components/PageHero";
 import { Button } from "@/components/ui/button";
 import { useContent, useBursaryWindow } from "@/lib/admin-store";
 import { BursaryApplicationDialog } from "@/components/BursaryApplicationDialog";
+import { PreviousApplicationDialog } from "@/components/PreviousApplicationDialog";
+import { Toaster } from "@/components/ui/sonner";
 import vulnerableImg from "@/assets/moha/donation3.jpeg";
 import bursaryImg from "@/assets/moha/bursary1.jpeg";
 import pwdImg from "@/assets/moha/moha30.jpeg";
@@ -306,15 +309,15 @@ const foundations: Foundation[] = [
 function FoundationsPage() {
   const [content] = useContent();
   const title = (content.foundationsHeadline || "").replace(/Foundations/gi, "Foundation");
-  const { windowStart, loading } = useBursaryWindow();
+  const { windowStart, windowDurationDays, loading } = useBursaryWindow();
   const { language, t } = useLanguage();
 
-  // Compute whether the 10-day bursary window is currently open
+  // Compute whether the (admin-configurable) bursary window is currently open
   const bursaryWindowOpen = (() => {
     if (!windowStart) return false;
     const start = new Date(windowStart);
     const end = new Date(start);
-    end.setDate(end.getDate() + 10);
+    end.setDate(end.getDate() + windowDurationDays);
     const now = new Date();
     return now >= start && now <= end;
   })();
@@ -322,11 +325,12 @@ function FoundationsPage() {
   const bursaryWindowEnd = (() => {
     if (!windowStart) return null;
     const end = new Date(windowStart);
-    end.setDate(end.getDate() + 10);
+    end.setDate(end.getDate() + windowDurationDays);
     return end;
   })();
   return (
     <>
+      <Toaster />
       <PageHero
         eyebrow={t("Service in Action")}
         title={t(title)}
@@ -403,23 +407,43 @@ function FoundationsPage() {
                       <div className="h-11 w-48 rounded-lg bg-muted/50 animate-pulse" />
                     ) : bursaryWindowOpen ? (
                       <>
-                        <BursaryApplicationDialog
-                          trigger={
-                            <Button variant="hero" size="lg">
-                              {t("Apply for Bursary")} <ArrowRight className="h-5 w-5" />
-                            </Button>
-                          }
-                        />
+                        <div className="flex flex-wrap gap-3">
+                          <BursaryApplicationDialog
+                            trigger={
+                              <Button variant="hero" size="lg">
+                                {t("Apply for Bursary")} <ArrowRight className="h-5 w-5" />
+                              </Button>
+                            }
+                          />
+                          <PreviousApplicationDialog
+                            trigger={
+                              <Button variant="outline" size="lg">
+                                <FileSearch className="h-5 w-5" /> {t("Previous Applications")}
+                              </Button>
+                            }
+                          />
+                        </div>
                         <p className="mt-2 text-xs text-muted-foreground">
                           {t("4-step application")} · {t("Window closes")}{" "}
                           {bursaryWindowEnd?.toLocaleDateString(language === "sw" ? "sw-KE" : "en-KE", { day: "numeric", month: "long", year: "numeric" })}.
                         </p>
                       </>
                     ) : (
-                      <div className="rounded-xl border-2 border-amber-300 bg-amber-50 px-5 py-4 text-sm text-amber-800 font-medium">
-                        <p className="font-bold text-base mb-1">{t("Applications are currently closed")}</p>
-                        <p>{t("The bursary application window is not open at the moment. Check back soon or follow our social media for the next opening date.")}</p>
-                      </div>
+                      <>
+                        <div className="rounded-xl border-2 border-amber-300 bg-amber-50 px-5 py-4 text-sm text-amber-800 font-medium">
+                          <p className="font-bold text-base mb-1">{t("Applications are currently closed")}</p>
+                          <p>{t("The bursary application window is not open at the moment. Check back soon or follow our social media for the next opening date.")}</p>
+                        </div>
+                        <div className="mt-3">
+                          <PreviousApplicationDialog
+                            trigger={
+                              <Button variant="outline" size="lg">
+                                <FileSearch className="h-5 w-5" /> {t("Previous Applications")}
+                              </Button>
+                            }
+                          />
+                        </div>
+                      </>
                     )}
                   </div>
                 )}

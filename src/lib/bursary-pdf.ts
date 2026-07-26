@@ -1,7 +1,9 @@
 ﻿import { jsPDF } from "jspdf";
+import * as XLSX from "@e965/xlsx";
 
 export type BursaryPdfData = {
   reference: string;
+  term?: string | null;
   student_name: string;
   registration_number?: string | null;
   dob?: string | null;
@@ -51,9 +53,31 @@ export type BursaryPdfData = {
 
 const bool = (v?: boolean | null) => (v ? "Yes" : "No");
 const dash = (v: string | number | null | undefined) =>
-  v === null || v === undefined || v === "" ? "â€”" : String(v);
+  v === null || v === undefined || v === "" ? "—" : String(v);
 const money = (v?: number | null) =>
-  v ? `KSh ${Number(v).toLocaleString()}` : "â€”";
+  v ? `KSh ${Number(v).toLocaleString()}` : "—";
+
+// Vertical rhythm constants for the application form. Centralized here so
+// the field-grid row height and the space reserved for it (rowHeight)
+// never drift out of sync with each other.
+const KV_ROW_H = 7.6;
+// How close to the physical page bottom (297mm on A4) content is allowed
+// to get before a section is pushed onto a fresh page instead of being
+// squeezed in or spilling past the edge.
+const PAGE_SAFE_BOTTOM = 282;
+
+// Reserves `needed` mm of vertical space starting at `y`; if it won't fit
+// before PAGE_SAFE_BOTTOM, starts a new page first. Used before every major
+// section on page 1 so the extra breathing room added below can never
+// silently push content off the bottom of the page — it just continues
+// cleanly on the next one instead.
+function ensureSpace(doc: jsPDF, y: number, needed: number): number {
+  if (y + needed > PAGE_SAFE_BOTTOM) {
+    doc.addPage();
+    return 16;
+  }
+  return y;
+}
 
 export function generateBursaryPdf(d: BursaryPdfData) {
   const doc = new jsPDF({ unit: "mm", format: "a4" });
@@ -70,37 +94,38 @@ export function generateBursaryPdf(d: BursaryPdfData) {
   doc.text("MOHA EDUCATION KITTY", M, 10);
   doc.setFontSize(10);
   doc.setFont("helvetica", "normal");
-  doc.text("WARD BURSARY APPLICATION FORM â€” TERM 2 (2026/2027)", M, 16);
+  doc.text(`CONSTITUENCY BURSARY APPLICATION FORM — ${(d.term || "").trim() || "CURRENT TERM"}`, M, 16);
   doc.setTextColor(0, 0, 0);
 
-  y = 28;
+  y = 29;
   doc.setFontSize(9);
   doc.setFont("helvetica", "bold");
   doc.text(`SERIAL NO: ${d.reference}`, W - M, y, { align: "right" });
 
   // A: Instructions
-  y += 6;
+  y += 7;
   sectionTitle(doc, "A: INSTRUCTIONS", y);
-  y += 5;
+  y += 8;
   doc.setFont("helvetica", "normal");
   doc.setFontSize(8.5);
   const instr = [
     "Attach copies of the following supportive documents:",
-    "â€¢ Parent's National ID  â€¢ Student's Birth Certificate  â€¢ Parent's Death Certificate(s)",
-    "â€¢ Current report form and fee structure  â€¢ NCPWD card or letter  â€¢ Admission letter where necessary",
-    "â€¢ Any other crucial supporting documents",
+    "• Parent's National ID  • Student's Birth Certificate  • Parent's Death Certificate(s)",
+    "• Current report form and fee structure  • NCPWD card or letter  • Admission letter where necessary",
+    "• Any other crucial supporting documents",
     "Duly filled form to be returned to the Moha Coordination Office, Kiamaiko-Mathare.",
     "STUDENTS LIVING WITH DISABILITY ARE ENCOURAGED TO APPLY.",
   ];
   for (const line of instr) {
     doc.text(line, M, y);
-    y += 4;
+    y += 4.4;
   }
 
   // B: Student
-  y += 2;
+  y += 3;
+  y = ensureSpace(doc, y, 15 + rowHeight(14));
   sectionTitle(doc, "B: STUDENT'S DETAILS", y);
-  y += 5;
+  y += 8;
   kvRows(doc, y, [
     ["Student Name", dash(d.student_name)],
     ["Admission / Registration No.", dash(d.registration_number)],
@@ -110,20 +135,21 @@ export function generateBursaryPdf(d: BursaryPdfData) {
     ["Birth Certificate No.", dash(d.birth_cert_number)],
     ["Father Alive", bool(d.father_alive)],
     ["Mother Alive", bool(d.mother_alive)],
-    ["Living with Disability", d.student_disability ? `Yes â€” ${d.student_disability_detail || "specified"}` : "No"],
+    ["Living with Disability", d.student_disability ? `Yes — ${d.student_disability_detail || "specified"}` : "No"],
     ["Student's Outstanding Ability", dash(d.student_outstanding_ability)],
     ["Student Annual Fee Payable", money(d.student_annual_fee)],
     ["Student's Outstanding Balance", money(d.outstanding_balance)],
     ["Amount Applying For", money(d.amount_requested)],
-    ["Received Bursary in Last 6 Months?", d.received_bursary_before ? `Yes â€” ${d.previous_bursary_source || "source unspecified"} (${money(d.previous_bursary_amount)})` : "No"],
+    ["Received Bursary in Last 6 Months?", d.received_bursary_before ? `Yes — ${d.previous_bursary_source || "source unspecified"} (${money(d.previous_bursary_amount)})` : "No"],
   ]);
   y += rowHeight(14);
 
   // B.1: Father's details (only if alive)
   if (d.father_alive) {
-    y += 2;
+    y += 3;
+    y = ensureSpace(doc, y, 15 + rowHeight(4));
     sectionTitle(doc, "B1: FATHER'S DETAILS", y);
-    y += 5;
+    y += 8;
     kvRows(doc, y, [
       ["Father's Name", dash(d.father_name)],
       ["Phone", dash(d.father_phone)],
@@ -135,9 +161,10 @@ export function generateBursaryPdf(d: BursaryPdfData) {
 
   // B.2: Mother's details (only if alive)
   if (d.mother_alive) {
-    y += 2;
+    y += 3;
+    y = ensureSpace(doc, y, 15 + rowHeight(4));
     sectionTitle(doc, "B2: MOTHER'S DETAILS", y);
-    y += 5;
+    y += 8;
     kvRows(doc, y, [
       ["Mother's Name", dash(d.mother_name)],
       ["Phone", dash(d.mother_phone)],
@@ -147,11 +174,11 @@ export function generateBursaryPdf(d: BursaryPdfData) {
     y += rowHeight(4);
   }
 
-
   // C: School
-  y += 2;
+  y += 3;
+  y = ensureSpace(doc, y, 15 + rowHeight(6));
   sectionTitle(doc, "C: SCHOOL'S DETAILS", y);
-  y += 5;
+  y += 8;
   kvRows(doc, y, [
     ["School Name", dash(d.school_name)],
     ["Category", dash(d.school_category)],
@@ -163,9 +190,10 @@ export function generateBursaryPdf(d: BursaryPdfData) {
   y += rowHeight(6);
 
   // D: Parent/Guardian
-  y += 2;
+  y += 3;
+  y = ensureSpace(doc, y, 15 + rowHeight(10));
   sectionTitle(doc, "D: PARENT / GUARDIAN'S DETAILS", y);
-  y += 5;
+  y += 8;
   kvRows(doc, y, [
     ["Parent / Guardian Name", dash(d.guardian_name)],
     ["Phone Contact", dash(d.guardian_phone)],
@@ -174,119 +202,125 @@ export function generateBursaryPdf(d: BursaryPdfData) {
     ["Residential Sub-County", dash(d.parent_residence_sub_county)],
     ["Ward", dash(d.ward)],
     ["Polling Station", dash(d.polling_station)],
-    ["Living with Disability", d.parent_disability ? `Yes â€” ${d.parent_disability_detail || "specified"}` : "No"],
+    ["Living with Disability", d.parent_disability ? `Yes — ${d.parent_disability_detail || "specified"}` : "No"],
     ["Children in School / University", dash(d.siblings_in_school ?? 0)],
     ["Parent's Monthly Budget", money(d.monthly_budget)],
   ]);
   y += rowHeight(10);
 
   // Reason
-  y += 2;
+  y += 3;
+  doc.setFont("helvetica", "normal");
+  const reasonPreview = doc.splitTextToSize(d.reason || "—", W - 2 * M - 2);
+  const reasonBoxHeight = Math.max(16, reasonPreview.length * 4.3 + 3);
+  y = ensureSpace(doc, y, 8 + reasonBoxHeight);
   doc.setFont("helvetica", "bold");
   doc.setFontSize(9);
   doc.text("Brief description of reason for application:", M, y);
-  y += 4;
+  y += 4.5;
   doc.setFont("helvetica", "normal");
-  const reason = d.reason || "â€”";
-  const lines = doc.splitTextToSize(reason, W - 2 * M);
-  doc.rect(M, y - 1, W - 2 * M, Math.max(14, lines.length * 4 + 2));
-  doc.text(lines, M + 1, y + 3);
-  y += Math.max(14, lines.length * 4 + 2) + 2;
+  const reason = d.reason || "—";
+  const lines = doc.splitTextToSize(reason, W - 2 * M - 2);
+  doc.rect(M, y - 1, W - 2 * M, reasonBoxHeight);
+  doc.text(lines, M + 2, y + 3.3);
+  y += reasonBoxHeight + 3;
 
-  // Page 2 â€” Declarations & Official Use
+  // Page 2 — Declarations & Official Use
   doc.addPage();
-  y = 14;
+  y = 16;
 
   sectionTitle(doc, "E: DECLARATIONS", y);
-  y += 6;
+  y += 8.5;
   doc.setFont("helvetica", "normal");
   doc.setFontSize(9);
 
   doc.setFont("helvetica", "bold");
   doc.text("Parent / Guardian", M, y);
-  y += 4;
+  y += 4.5;
   doc.setFont("helvetica", "normal");
   doc.text(
     "I declare that I have read this form / this form has been read to me and I hereby confirm that the",
     M, y,
   );
-  y += 4;
+  y += 4.5;
   doc.text("information given herein is true to the best of my knowledge.", M, y);
-  y += 7;
-  signLine(doc, y, "Parent / Guardian Name", d.guardian_name);
   y += 8;
+  signLine(doc, y, "Parent / Guardian Name", d.guardian_name);
+  y += 9;
   signLine(doc, y, "Contact", d.guardian_phone);
   signLine(doc, y, "Signature", "", W / 2 + 5);
-  y += 8;
+  y += 9;
   signLine(doc, y, "Date", "");
 
-  y += 10;
+  y += 11;
   doc.setFont("helvetica", "bold");
   doc.text("Local Administration", M, y);
-  y += 4;
+  y += 4.5;
   doc.setFont("helvetica", "normal");
   doc.text(
     "I certify that the applicant is a resident of my Village / Location, and that I have checked the",
     M, y,
   );
-  y += 4;
+  y += 4.5;
   doc.text("information herein and confirmed it to be true to the best of my knowledge.", M, y);
-  y += 7;
+  y += 8;
   signLine(doc, y, "Name", "");
   signLine(doc, y, "Signature", "", W / 2 + 5);
-  y += 8;
+  y += 9;
   signLine(doc, y, "Designation", "");
   signLine(doc, y, "Date", "", W / 2 + 5);
-  y += 8;
+  y += 9;
   signLine(doc, y, "Rubber Stamp", "");
   signLine(doc, y, "Phone Contact", "", W / 2 + 5);
 
   // F: Official Use Only
-  y += 12;
+  y += 13;
+  y = ensureSpace(doc, y, 70);
   sectionTitle(doc, "F: OFFICIAL USE ONLY", y);
-  y += 6;
+  y += 8.5;
   doc.setFont("helvetica", "normal");
   doc.setFontSize(9);
   doc.text("Is the applicant's form duly filled and signed?", M, y);
   checkbox(doc, M + 95, y - 3, "YES");
   checkbox(doc, M + 115, y - 3, "NO");
-  y += 7;
+  y += 7.5;
   doc.text("Has the applicant submitted relevant supporting documents?", M, y);
   checkbox(doc, M + 95, y - 3, "YES");
   checkbox(doc, M + 115, y - 3, "NO");
-  y += 7;
+  y += 7.5;
   doc.text("Recommendation on level of need:", M, y);
   checkbox(doc, M + 60, y - 3, "High");
   checkbox(doc, M + 90, y - 3, "Moderate");
   checkbox(doc, M + 130, y - 3, "Low");
-  y += 8;
+  y += 8.5;
   signLine(doc, y, "Recommended amount for bursary award (KSh)", "");
-  y += 8;
+  y += 8.5;
   signLine(doc, y, "Reason", "");
-  y += 14;
+  y += 15;
 
+  y = ensureSpace(doc, y, 45);
   doc.setFont("helvetica", "bold");
   doc.text("Authorized Signatures", M, y);
-  y += 6;
+  y += 6.5;
   doc.setFont("helvetica", "normal");
   doc.text("Committee Chairperson:", M, y);
   doc.text("Committee Secretary:", W / 2 + 5, y);
-  y += 8;
+  y += 8.5;
   signLine(doc, y, "Name", "");
   signLine(doc, y, "Name", "", W / 2 + 5);
-  y += 8;
+  y += 8.5;
   signLine(doc, y, "Signature", "");
   signLine(doc, y, "Signature", "", W / 2 + 5);
-  y += 8;
+  y += 8.5;
   signLine(doc, y, "Date", "");
-  y += 10;
+  y += 11;
   signLine(doc, y, "Official Stamp", "");
 
   // Footer
   doc.setFontSize(7);
   doc.setTextColor(120, 120, 120);
   doc.text(
-    `Moha Education Kitty â€¢ Generated ${new Date().toLocaleString()} â€¢ Ref ${d.reference}`,
+    `Moha Education Kitty • Generated ${new Date().toLocaleString()} • Ref ${d.reference}`,
     W / 2, 290, { align: "center" },
   );
 
@@ -295,7 +329,7 @@ export function generateBursaryPdf(d: BursaryPdfData) {
 
 function sectionTitle(doc: jsPDF, label: string, y: number) {
   doc.setFillColor(212, 175, 55); // gold
-  doc.rect(14, y - 4, 182, 6, "F");
+  doc.rect(14, y - 4.3, 182, 6.6, "F");
   doc.setTextColor(20, 30, 20);
   doc.setFont("helvetica", "bold");
   doc.setFontSize(10);
@@ -307,7 +341,7 @@ function kvRows(doc: jsPDF, startY: number, rows: Array<[string, string]>) {
   const M = 14;
   const W = 210;
   const colW = (W - 2 * M) / 2;
-  const rowH = 7;
+  const rowH = KV_ROW_H;
   doc.setFontSize(9);
   rows.forEach((r, i) => {
     const col = i % 2;
@@ -315,19 +349,19 @@ function kvRows(doc: jsPDF, startY: number, rows: Array<[string, string]>) {
     const x = M + col * colW;
     const yy = startY + row * rowH;
     doc.setDrawColor(180, 180, 180);
-    doc.rect(x, yy - 4, colW, rowH);
+    doc.rect(x, yy - 4.4, colW, rowH);
     doc.setFont("helvetica", "bold");
     doc.setFontSize(7.5);
-    doc.text(r[0].toUpperCase(), x + 1.5, yy - 1);
+    doc.text(r[0].toUpperCase(), x + 2, yy - 1.3);
     doc.setFont("helvetica", "normal");
     doc.setFontSize(9);
-    const val = doc.splitTextToSize(r[1], colW - 3);
-    doc.text(String(val[0] ?? ""), x + 1.5, yy + 2.5);
+    const val = doc.splitTextToSize(r[1], colW - 4);
+    doc.text(String(val[0] ?? ""), x + 2, yy + 2.9);
   });
 }
 
 function rowHeight(itemCount: number) {
-  return Math.ceil(itemCount / 2) * 7;
+  return Math.ceil(itemCount / 2) * KV_ROW_H;
 }
 
 function signLine(doc: jsPDF, y: number, label: string, value: string, xStart = 14) {
@@ -353,7 +387,7 @@ function checkbox(doc: jsPDF, x: number, y: number, label: string) {
 
 // â”€â”€â”€ SCHOOL CONFIRMATION LETTER â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 // Generates the official "Confirmation of Bursary Beneficiaries" letter sent
-// to a school's Principal â€” formatted to match the Moha Education Kitty
+// to a school's Principal — formatted to match the Moha Education Kitty
 // letterhead exactly: address block, RE line, narrative paragraph with the
 // cheque number and total, a 15-row NO/NAME/FORM-ADM NO/AMOUNT table, closing
 // paragraph, and signature block.
@@ -367,13 +401,24 @@ export type ConfirmationLetterRow = {
 
 export type ConfirmationLetterOptions = {
   schoolName: string;
-  termLabel?: string;       // e.g. "2026 T2" — defaults to current year + "T2"
+  // "2026 T2", etc. — defaults to current year + "T2" if omitted entirely.
+  // Pass an empty string "" (as opposed to leaving it out) to print a blank
+  // dotted line instead — used for the blank/manual-fill template.
+  termLabel?: string;
   chequeNumber?: string;    // left blank (dotted line) if not provided
   dateLabel?: string;       // left blank (dotted line) if not provided
   officerName?: string;
   officerPhone?: string;
   schoolCounty?: string | null;    // printed in the footer, for sorting printed letters by location
   schoolSubCounty?: string | null;
+  // Upper bound on how many rows the beneficiary table should have when
+  // there's no real beneficiary data (rows = []) — e.g. for a blank
+  // template meant to be filled in by hand. The actual row count used is
+  // whichever is smaller: this value, or however many rows actually fit on
+  // a single page — so the letter can never spill onto a second page.
+  // Ignored when rows.length > 0 (existing behaviour: rows.length + 3,
+  // capped at 15, is used instead).
+  emptyTemplateRowCount?: number;
 };
 
 export function generateConfirmationLetter(
@@ -385,7 +430,11 @@ export function generateConfirmationLetter(
   const M = 18;
   const contentW = W - 2 * M;
 
-  const term = opts.termLabel || `${new Date().getFullYear()} T2`;
+  // termLabel === "" (explicitly, not just omitted) means "print a blank
+  // line here instead" — used by the blank/manual-fill template.
+  const termProvided = opts.termLabel !== undefined;
+  const termIsBlank = termProvided && opts.termLabel!.trim() === "";
+  const term = termProvided ? opts.termLabel! : `${new Date().getFullYear()} T2`;
   const officerName = opts.officerName || "Nancy Otieno";
   const officerPhone = opts.officerPhone || "0728827978";
   const total = rows.reduce((s, r) => s + (r.amount_requested ?? 0), 0);
@@ -455,17 +504,26 @@ export function generateConfirmationLetter(
     y += 10;
   }
 
-  // â”€â”€ RE line â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── RE line ─────────────────────────────────────────────────────────────
   doc.setFont("helvetica", "bold");
   doc.setFontSize(10.5);
   const reLabel = "RE: ";
   doc.text(reLabel, M, y);
   const reLabelW = doc.getTextWidth(reLabel);
-  const reText = `CONFIRMATION OF BURSARY BENEFICIARIES FOR THE YEAR ${term}`;
-  doc.text(reText, M + reLabelW, y);
-  const reTextW = doc.getTextWidth(reText);
-  doc.setLineWidth(0.3);
-  doc.line(M + reLabelW, y + 0.8, M + reLabelW + reTextW, y + 0.8);
+  if (termIsBlank) {
+    const rePrefix = "CONFIRMATION OF BURSARY BENEFICIARIES FOR THE YEAR";
+    doc.text(rePrefix, M + reLabelW, y);
+    const rePrefixW = doc.getTextWidth(rePrefix);
+    doc.setLineWidth(0.3);
+    doc.line(M + reLabelW, y + 0.8, M + reLabelW + rePrefixW, y + 0.8);
+    doc.line(M + reLabelW + rePrefixW + 3, y + 0.8, M + reLabelW + rePrefixW + 38, y + 0.8);
+  } else {
+    const reText = `CONFIRMATION OF BURSARY BENEFICIARIES FOR THE YEAR ${term}`;
+    doc.text(reText, M + reLabelW, y);
+    const reTextW = doc.getTextWidth(reText);
+    doc.setLineWidth(0.3);
+    doc.line(M + reLabelW, y + 0.8, M + reLabelW + reTextW, y + 0.8);
+  }
   y += 8;
 
   // â”€â”€ Narrative paragraph â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
@@ -482,14 +540,20 @@ export function generateConfirmationLetter(
   doc.setFont("helvetica", "normal");
   doc.text(` for the year `, M + boldPartW, y);
   const yearLabelW = doc.getTextWidth(` for the year `);
-  doc.setFont("helvetica", "bold");
-  doc.text(term, M + boldPartW + yearLabelW, y);
-  const termW = doc.getTextWidth(term);
-  doc.setFont("helvetica", "normal");
-  doc.text(".", M + boldPartW + yearLabelW + termW, y);
+  if (termIsBlank) {
+    doc.setLineWidth(0.25);
+    doc.line(M + boldPartW + yearLabelW, y + 0.8, M + boldPartW + yearLabelW + 30, y + 0.8);
+    doc.text(".", M + boldPartW + yearLabelW + 32, y);
+  } else {
+    doc.setFont("helvetica", "bold");
+    doc.text(term, M + boldPartW + yearLabelW, y);
+    const termW = doc.getTextWidth(term);
+    doc.setFont("helvetica", "normal");
+    doc.text(".", M + boldPartW + yearLabelW + termW, y);
+  }
   y += 6;
 
-  // â”€â”€ Total + cheque â€” rendered all on one single line for consistency â”€â”€â”€â”€â”€â”€
+  // â”€â”€ Total + cheque — rendered all on one single line for consistency â”€â”€â”€â”€â”€â”€
   // "The total amount is Ksh. X,XXX.00 in cheque No. YYYYYY distributed as below."
   const amountStr = total > 0 ? `${total.toLocaleString()}.00` : "";
   let cx = M;
@@ -547,13 +611,28 @@ export function generateConfirmationLetter(
   const availableForRows = maxTableBottom - y - headerH;
 
   // A few blank rows below the real entries look tidy (matches the official
-  // template), but never so many that they'd force a second page.
-  const idealRows = Math.min(rows.length + 3, 15);
-  const tableRows = Math.max(rows.length, idealRows);
-
+  // template), but never so many that they'd force a second page. When
+  // there's no real data at all (the blank/manual-fill template), fill as
+  // much of the remaining page as will fit at the minimum row height —
+  // computed dynamically (rather than a fixed guess) so the blank template
+  // is guaranteed to stay on a single page no matter how the surrounding
+  // layout changes in future. A small safety margin is subtracted first so
+  // the table is never sized to exactly touch the page boundary — leaving
+  // zero slack would make it possible for floating-point rounding alone to
+  // tip the closing signature block onto a second page.
   const DEFAULT_ROW_H = 7.6;
   const MIN_ROW_H = 5.2;
-  const rowH = Math.max(MIN_ROW_H, Math.min(DEFAULT_ROW_H, availableForRows / tableRows));
+  const PAGE_FIT_SAFETY_MARGIN = 6;
+  const rowSizingBudget = rows.length > 0
+    ? availableForRows
+    : Math.max(0, availableForRows - PAGE_FIT_SAFETY_MARGIN);
+  const maxRowsThatFitOnePage = Math.max(1, Math.floor(rowSizingBudget / MIN_ROW_H));
+  const idealRows = rows.length > 0
+    ? Math.min(rows.length + 3, 15)
+    : Math.min(opts.emptyTemplateRowCount ?? maxRowsThatFitOnePage, maxRowsThatFitOnePage);
+  const tableRows = Math.max(rows.length, idealRows);
+
+  const rowH = Math.max(MIN_ROW_H, Math.min(DEFAULT_ROW_H, rowSizingBudget / tableRows));
 
   const tableTop = y;
 
@@ -642,7 +721,8 @@ export function generateConfirmationLetter(
   doc.line(M, y + 0.8, M + doc.getTextWidth(fieldOfficer), y + 0.8);
 
   const safeSchool = opts.schoolName.replace(/[^a-z0-9]/gi, "-").slice(0, 40);
-  doc.save(`Moha-Confirmation-Letter-${safeSchool}-${Date.now()}.pdf`);
+  const fileLabel = safeSchool || "Blank-Template";
+  doc.save(`Moha-Confirmation-Letter-${fileLabel}-${Date.now()}.pdf`);
 }
 
 
@@ -659,7 +739,7 @@ export type BroadsheetRow = {
   school_name: string;
   school_category?: string | null;
   school_bank_account?: string | null;
-  /** County the school is in â€” used for County â†’ School grouping in the broadsheet */
+  /** County the school is in — used for County â†’ School grouping in the broadsheet */
   school_county?: string | null;
 };
 
@@ -858,4 +938,175 @@ export function generateBroadsheetPdf(rows: BroadsheetRow[], title = "Approved B
 
   const safeTitle = title.replace(/[^a-z0-9]/gi, "-").slice(0, 40);
   doc.save(`Moha-Broadsheet-${safeTitle}-${Date.now()}.pdf`);
+}
+
+/**
+ * Generates the same approved-bursary broadsheet as `generateBroadsheetPdf`,
+ * but as a downloadable Excel workbook — one row per student, sorted and
+ * grouped the same way (school name, then student name), with a grand-total
+ * row at the bottom. A flat, sortable/filterable table is more useful in
+ * Excel than trying to reproduce the PDF's printed-page layout.
+ */
+/**
+ * Generates the approved-bursary broadsheet as an Excel "Cheque Summary" —
+ * schools grouped under their county, one row per school (aggregated across
+ * every approved student at that school), with a subtotal row per county
+ * and a grand total at the end. This mirrors the format schools/banks are
+ * used to receiving for issuing cheques, as opposed to a flat per-student
+ * listing.
+ */
+export function generateBroadsheetExcel(rows: BroadsheetRow[], generatedAt: Date = new Date()) {
+  type SchoolAgg = { school: string; bankAccount: string; count: number; total: number };
+
+  // Group approved students by county, then by school within that county.
+  const byCounty = new Map<string, Map<string, SchoolAgg>>();
+  for (const r of rows) {
+    const county = (r.school_county || "").trim().toUpperCase() || "UNSPECIFIED COUNTY";
+    const school = (r.school_name || "").trim().toUpperCase() || "UNSPECIFIED SCHOOL";
+    if (!byCounty.has(county)) byCounty.set(county, new Map());
+    const schools = byCounty.get(county)!;
+    if (!schools.has(school)) {
+      schools.set(school, { school, bankAccount: "", count: 0, total: 0 });
+    }
+    const agg = schools.get(school)!;
+    agg.count += 1;
+    agg.total += r.amount_requested ?? 0;
+    if (!agg.bankAccount && (r.school_bank_account || "").trim()) {
+      agg.bankAccount = r.school_bank_account!.trim();
+    }
+  }
+
+  const counties = [...byCounty.keys()].sort((a, b) => a.localeCompare(b));
+
+  const aoa: Array<Array<string | number | null>> = [];
+  const merges: Array<{ s: { r: number; c: number }; e: { r: number; c: number } }> = [];
+  const mergeFullRow = (rowIndex: number) => merges.push({ s: { r: rowIndex, c: 0 }, e: { r: rowIndex, c: 3 } });
+  const mergeFirstTwoCols = (rowIndex: number) => merges.push({ s: { r: rowIndex, c: 0 }, e: { r: rowIndex, c: 1 } });
+
+  const dateLabel = generatedAt.toLocaleDateString("en-KE", { day: "numeric", month: "long", year: "numeric" });
+
+  aoa.push(["MOHA EDUCATION KITTY — BURSARY CHEQUE SUMMARY", null, null, null]);
+  mergeFullRow(0);
+  aoa.push([`Generated: ${dateLabel}`, null, null, null]);
+  mergeFullRow(1);
+  aoa.push([null, null, null, null]);
+  mergeFullRow(2);
+  aoa.push(["SCHOOL NAME", "BANK ACCOUNT NO.", "NO. OF STUDENTS", "TOTAL AMOUNT (KSh)"]);
+
+  let grandSchools = 0;
+  let grandStudents = 0;
+  let grandAmount = 0;
+
+  for (const county of counties) {
+    const schoolsMap = byCounty.get(county)!;
+    const schoolNames = [...schoolsMap.keys()].sort((a, b) => a.localeCompare(b));
+
+    mergeFullRow(aoa.length);
+    aoa.push([`COUNTY: ${county}`, null, null, null]);
+
+    let countyStudents = 0;
+    let countyAmount = 0;
+    for (const schoolName of schoolNames) {
+      const agg = schoolsMap.get(schoolName)!;
+      aoa.push([agg.school, agg.bankAccount || "", agg.count, agg.total]);
+      countyStudents += agg.count;
+      countyAmount += agg.total;
+    }
+
+    mergeFirstTwoCols(aoa.length);
+    const schoolWord = schoolNames.length === 1 ? "school" : "schools";
+    aoa.push([`${county} TOTAL  (${schoolNames.length} ${schoolWord})`, null, countyStudents, countyAmount]);
+
+    aoa.push([null, null, null, null]); // blank separator row between counties
+
+    grandSchools += schoolNames.length;
+    grandStudents += countyStudents;
+    grandAmount += countyAmount;
+  }
+
+  mergeFirstTwoCols(aoa.length);
+  aoa.push([
+    `GRAND TOTAL — ${counties.length} counties  ·  ${grandSchools} schools  ·  ${grandStudents} students`,
+    null, grandStudents, grandAmount,
+  ]);
+
+  const ws = XLSX.utils.aoa_to_sheet(aoa);
+  ws["!merges"] = merges;
+  ws["!cols"] = [{ wch: 52 }, { wch: 24 }, { wch: 16 }, { wch: 22 }];
+
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, "CHEQUE SUMMARY");
+
+  const fileDate = generatedAt.toISOString().slice(0, 10);
+  XLSX.writeFile(wb, `Moha-Cheque-Summary-${fileDate}-${Date.now()}.xlsx`);
+}
+
+/**
+ * Generates the "Ward List Details" Excel broadsheet — a flat, one-row-per-
+ * student sheet (sorted by school, then student name) that an admin can
+ * freely sort/filter/pivot in Excel, with a grand-total row at the bottom.
+ * Columns: No., Reference, Student Name, Admission No., Grade, Gender,
+ * School, School Category, School County, School Bank Account, Ward,
+ * Guardian Name, Guardian Phone, Amount Awarded (KSh).
+ */
+export function generateWardListExcel(rows: BroadsheetRow[], generatedAt: Date = new Date()) {
+  const sorted = [...rows].sort((a, b) => {
+    const sa = a.school_name.toUpperCase().trim();
+    const sb = b.school_name.toUpperCase().trim();
+    if (sa !== sb) return sa.localeCompare(sb);
+    return a.student_name.localeCompare(b.student_name);
+  });
+
+  const grandTotal = sorted.reduce((s, r) => s + (r.amount_requested ?? 0), 0);
+
+  const sheetRows: Array<Record<string, string | number>> = sorted.map((r, i) => ({
+    "No.": i + 1,
+    "Reference": r.reference,
+    "Student Name": r.student_name,
+    "Admission No.": r.registration_number || "",
+    "Grade": r.current_grade || "",
+    "Gender": r.gender || "",
+    "School": r.school_name,
+    "School Category": r.school_category || "",
+    "School County": r.school_county || "",
+    "School Bank Account": r.school_bank_account || "",
+    "Ward": r.ward || "",
+    "Guardian Name": r.guardian_name || "",
+    "Guardian Phone": r.guardian_phone || "",
+    "Amount Awarded (KSh)": r.amount_requested ?? 0,
+  }));
+
+  // Grand-total row at the bottom.
+  sheetRows.push({
+    "No.": "",
+    "Reference": "", "Student Name": "", "Admission No.": "", "Grade": "",
+    "Gender": "", "School": "", "School Category": "", "School County": "",
+    "School Bank Account": "", "Ward": "", "Guardian Name": "",
+    "Guardian Phone": "GRAND TOTAL",
+    "Amount Awarded (KSh)": grandTotal,
+  });
+
+  const ws = XLSX.utils.json_to_sheet(sheetRows);
+  ws["!cols"] = [
+    { wch: 5 },  // No.
+    { wch: 12 }, // Reference
+    { wch: 26 }, // Student Name
+    { wch: 14 }, // Admission No.
+    { wch: 10 }, // Grade
+    { wch: 8 },  // Gender
+    { wch: 30 }, // School
+    { wch: 12 }, // School Category
+    { wch: 16 }, // School County
+    { wch: 18 }, // School Bank Account
+    { wch: 12 }, // Ward
+    { wch: 24 }, // Guardian Name
+    { wch: 15 }, // Guardian Phone
+    { wch: 18 }, // Amount Awarded
+  ];
+
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, "Broadsheet");
+
+  const fileDate = generatedAt.toISOString().slice(0, 10);
+  XLSX.writeFile(wb, `Moha-Ward-List-Details-${fileDate}-${Date.now()}.xlsx`);
 }

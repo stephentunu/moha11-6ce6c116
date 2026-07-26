@@ -8,7 +8,7 @@ import {
   MapPin, Pencil, ArrowLeft, XCircle, Clock3, UserPlus,
   Archive, ArchiveRestore, History, CalendarClock,
 } from "lucide-react";
-import { generateBursaryPdf, generateBroadsheetPdf, generateConfirmationLetter, type BroadsheetRow, type BursaryPdfData, type ConfirmationLetterRow } from "@/lib/bursary-pdf";
+import { generateBursaryPdf, generateBroadsheetPdf, generateBroadsheetExcel, generateWardListExcel, generateConfirmationLetter, type BroadsheetRow, type BursaryPdfData, type ConfirmationLetterRow } from "@/lib/bursary-pdf";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -117,6 +117,14 @@ const STATUS_COLORS: Record<string, string> = {
  */
 function effectiveSchoolName(r: Row): string {
   return (r.canonical_school_name?.trim() || r.school_name || "").trim().toUpperCase();
+}
+
+// Strips everything but digits — used for amount fields so entries are
+// always whole numbers (no decimals) and, since the input stays a plain
+// text field rather than type="number", there are no up/down spinner
+// arrows to accidentally bump the value by ±1/±500.
+function digitsOnly(value: string, maxLen = 9): string {
+  return value.replace(/\D/g, "").slice(0, maxLen);
 }
 
 type Tab = "applications" | "review" | "broadsheet" | "letters" | "schools";
@@ -588,13 +596,19 @@ function AdminBursariesPage() {
     if (!row) return [];
     const idKey = (row.id_or_birth_cert_number || "").trim().toLowerCase();
     const regKey = (row.registration_number || "").trim().toLowerCase();
+    const schoolKey = effectiveSchoolName(row).trim().toLowerCase();
     const nameKey = row.student_name.trim().toLowerCase();
     const phoneKey = (row.guardian_phone || "").trim();
     return allRows
       .filter((r) => r.id !== row.id)
       .filter((r) => {
         if (idKey && (r.id_or_birth_cert_number || "").trim().toLowerCase() === idKey) return true;
-        if (regKey && (r.registration_number || "").trim().toLowerCase() === regKey) return true;
+        // Admission numbers are only unique within a school — many schools
+        // independently assign "1", "2", "3"... — so this must match school
+        // name too, or two entirely different students at different
+        // schools who happen to share an admission number would be wrongly
+        // treated as the same applicant.
+        if (regKey && schoolKey && (r.registration_number || "").trim().toLowerCase() === regKey && effectiveSchoolName(r).trim().toLowerCase() === schoolKey) return true;
         if (nameKey && phoneKey && r.student_name.trim().toLowerCase() === nameKey && (r.guardian_phone || "").trim() === phoneKey) return true;
         return false;
       })
@@ -988,6 +1002,54 @@ function AdminBursariesPage() {
     toast.success("Broadsheet PDF generated!");
   };
 
+  const downloadBroadsheetExcel = () => {
+    if (approvedRows.length === 0) {
+      toast.error("No approved applications to include in the broadsheet.");
+      return;
+    }
+    const bsRows: BroadsheetRow[] = approvedRows.map((r) => ({
+      reference: r.reference,
+      student_name: r.student_name,
+      registration_number: r.registration_number,
+      current_grade: r.current_grade,
+      gender: r.gender,
+      guardian_name: r.guardian_name,
+      guardian_phone: r.guardian_phone,
+      ward: r.ward,
+      amount_requested: r.amount_requested,
+      school_name: effectiveSchoolName(r),   // use canonical name if set
+      school_category: r.school_category,
+      school_bank_account: r.school_bank_account,
+      school_county: r.school_county,
+    }));
+    generateBroadsheetExcel(bsRows, new Date());
+    toast.success("Broadsheet Excel file generated!");
+  };
+
+  const downloadWardListExcel = () => {
+    if (approvedRows.length === 0) {
+      toast.error("No approved applications to include in the broadsheet.");
+      return;
+    }
+    const bsRows: BroadsheetRow[] = approvedRows.map((r) => ({
+      reference: r.reference,
+      student_name: r.student_name,
+      registration_number: r.registration_number,
+      current_grade: r.current_grade,
+      gender: r.gender,
+      guardian_name: r.guardian_name,
+      guardian_phone: r.guardian_phone,
+      ward: r.ward,
+      amount_requested: r.amount_requested,
+      school_name: effectiveSchoolName(r),   // use canonical name if set
+      school_category: r.school_category,
+      school_bank_account: r.school_bank_account,
+      school_county: r.school_county,
+    }));
+    generateWardListExcel(bsRows, new Date());
+    toast.success("Ward List Details Excel file generated!");
+  };
+
   const downloadConfirmationLetter = async () => {
     if (!letterSelectedSchool || letterVisibleRows.length === 0) {
       toast.error("Select a school with at least one visible approved applicant first.");
@@ -1026,6 +1088,20 @@ function AdminBursariesPage() {
     }
     setLetterSelectedSchool(null);
     setLetterHiddenIds(new Set());
+  };
+
+  // Downloads a blank confirmation letter — identical layout and letterhead
+  // to a real one, but with the school name, term, and beneficiary table
+  // left blank (dotted lines / empty rows) for filling in by hand. Useful
+  // when a letter needs to be prepared for a school that isn't in the
+  // system yet, or filled out manually for any other reason.
+  const downloadBlankConfirmationLetter = () => {
+    generateConfirmationLetter([], {
+      schoolName: "",
+      termLabel: "",
+      emptyTemplateRowCount: 25,
+    });
+    toast.success("Blank confirmation letter template downloaded.");
   };
 
   const toggleSchool = (school: string) => {
@@ -1352,7 +1428,7 @@ function AdminBursariesPage() {
                             <p className="text-xs text-muted-foreground">{r.guardian_name} · {r.guardian_phone}</p>
                           </td>
                           <td className="px-2 py-0.5 leading-tight">
-                            <p>{r.school_name}</p>
+                            <p>{effectiveSchoolName(r) || "—"}</p>
                             <p className="text-xs text-muted-foreground">{r.current_grade}</p>
                           </td>
                           <td className="px-2 py-0.5 text-muted-foreground">{r.ward || "—"}</td>
@@ -1422,7 +1498,7 @@ function AdminBursariesPage() {
                       <div className="min-w-0 flex-1 leading-tight">
                         <p className="font-semibold text-xs truncate">{r.student_name}</p>
                         <p className="text-[10px] text-muted-foreground truncate">
-                          {r.school_name} · {r.ward || "—"} · KSh {r.amount_requested ? Number(r.amount_requested).toLocaleString() : "—"}
+                          {effectiveSchoolName(r) || "—"} · {r.ward || "—"} · KSh {r.amount_requested ? Number(r.amount_requested).toLocaleString() : "—"}
                         </p>
                       </div>
                       <Select value={r.status} onValueChange={(v) => updateStatus(r.id, v)}>
@@ -1679,12 +1755,10 @@ function AdminBursariesPage() {
                               {editAmountId === r.id ? (
                                 <div className="flex items-center justify-end gap-1.5" onClick={(e) => e.stopPropagation()}>
                                   <Input
-                                    type="number"
-                                    min="0"
-                                    step="500"
                                     value={editAmountValue}
-                                    onChange={(e) => setEditAmountValue(e.target.value)}
+                                    onChange={(e) => setEditAmountValue(digitsOnly(e.target.value))}
                                     className="h-8 w-28 text-right text-xs border-primary/50 focus-visible:ring-primary"
+                                    inputMode="numeric"
                                     autoFocus
                                     onKeyDown={(e) => {
                                       if (e.key === "Enter") saveAmount(r.id);
@@ -1792,18 +1866,38 @@ function AdminBursariesPage() {
                     Approved Bursary Broadsheet
                   </h2>
                   <p className="text-xs text-muted-foreground mt-0.5">
-                    All approved applications sorted and grouped by school. Download as a PDF to send to schools.
+                    All approved applications sorted and grouped by school. School List Details is a PDF to send to schools. County List Details and Ward List Details are Excel files for the finance team.
                   </p>
                 </div>
-                <Button
-                  variant="hero"
-                  onClick={downloadBroadsheet}
-                  disabled={approvedRows.length === 0}
-                  className="gap-2 shrink-0"
-                >
-                  <Download className="h-4 w-4" />
-                  Download Broadsheet PDF
-                </Button>
+                <div className="flex flex-wrap gap-2 shrink-0">
+                  <Button
+                    variant="outline"
+                    onClick={downloadBroadsheetExcel}
+                    disabled={approvedRows.length === 0}
+                    className="gap-2"
+                  >
+                    <FileSpreadsheet className="h-4 w-4" />
+                    County List Details (Excel)
+                  </Button>
+                  <Button
+                    variant="outline"
+                    onClick={downloadWardListExcel}
+                    disabled={approvedRows.length === 0}
+                    className="gap-2"
+                  >
+                    <FileSpreadsheet className="h-4 w-4" />
+                    Ward List Details (Excel)
+                  </Button>
+                  <Button
+                    variant="hero"
+                    onClick={downloadBroadsheet}
+                    disabled={approvedRows.length === 0}
+                    className="gap-2"
+                  >
+                    <Download className="h-4 w-4" />
+                    School List Details (PDF)
+                  </Button>
+                </div>
               </div>
 
               {/* Summary stats */}
@@ -1993,13 +2087,29 @@ function AdminBursariesPage() {
                       {approvedRows.length} students across {bySchool.size} school{bySchool.size !== 1 ? "s" : ""}
                     </p>
                   </div>
-                  <Button
-                    variant="outline"
-                    className="border-white/40 text-white hover:bg-white/10 gap-2"
-                    onClick={downloadBroadsheet}
-                  >
-                    <Download className="h-4 w-4" /> Download Full Broadsheet PDF
-                  </Button>
+                  <div className="flex flex-wrap gap-2">
+                    <Button
+                      variant="outline"
+                      className="border-white/40 text-white hover:bg-white/10 gap-2"
+                      onClick={downloadBroadsheetExcel}
+                    >
+                      <FileSpreadsheet className="h-4 w-4" /> County List Details (Excel)
+                    </Button>
+                    <Button
+                      variant="outline"
+                      className="border-white/40 text-white hover:bg-white/10 gap-2"
+                      onClick={downloadWardListExcel}
+                    >
+                      <FileSpreadsheet className="h-4 w-4" /> Ward List Details (Excel)
+                    </Button>
+                    <Button
+                      variant="outline"
+                      className="border-white/40 text-white hover:bg-white/10 gap-2"
+                      onClick={downloadBroadsheet}
+                    >
+                      <Download className="h-4 w-4" /> School List Details (PDF)
+                    </Button>
+                  </div>
                 </div>
               </div>
             )}
@@ -2086,6 +2196,14 @@ function AdminBursariesPage() {
                   <p className="text-xs mt-1 max-w-xs">
                     Pick a school from the list to preview its beneficiaries and generate the official confirmation letter.
                   </p>
+                  <Button
+                    variant="outline"
+                    onClick={downloadBlankConfirmationLetter}
+                    className="gap-2 mt-4"
+                    title="Download a blank copy of this letter to fill in by hand"
+                  >
+                    <FileText className="h-4 w-4" /> Download Blank Template
+                  </Button>
                 </div>
               ) : (
                 <div className="space-y-2">
@@ -2096,9 +2214,14 @@ function AdminBursariesPage() {
                         {letterVisibleRows.length} of {letterSelectedRows.length} approved student{letterSelectedRows.length !== 1 ? "s" : ""} included · Total KSh {letterSelectedTotal.toLocaleString()}
                       </p>
                     </div>
-                    <Button variant="hero" onClick={downloadConfirmationLetter} disabled={letterVisibleRows.length === 0} className="gap-2 shrink-0">
-                      <Download className="h-4 w-4" /> Download Letter
-                    </Button>
+                    <div className="flex gap-2 shrink-0">
+                      <Button variant="outline" onClick={downloadBlankConfirmationLetter} className="gap-2" title="Download a blank copy of this letter to fill in by hand">
+                        <FileText className="h-4 w-4" /> Blank Template
+                      </Button>
+                      <Button variant="hero" onClick={downloadConfirmationLetter} disabled={letterVisibleRows.length === 0} className="gap-2">
+                        <Download className="h-4 w-4" /> Download Letter
+                      </Button>
+                    </div>
                   </div>
 
                   {/* Letter details form */}
@@ -2458,6 +2581,25 @@ function AdminBursariesPage() {
                         />
                       </div>
                       <div className="space-y-1.5">
+                        <Label htmlFor="edit-canonical-school-name">Standardized School Name</Label>
+                        <Input
+                          id="edit-canonical-school-name"
+                          value={editFields.canonical_school_name}
+                          onChange={(e) => setEditFields(prev => ({ ...prev, canonical_school_name: e.target.value }))}
+                          list="school-suggestions"
+                          placeholder="e.g. KANGA HIGH SCHOOL"
+                        />
+                      </div>
+                      <div className="space-y-1.5">
+                        <Label htmlFor="edit-school-name">School (as typed by applicant)</Label>
+                        <Input
+                          id="edit-school-name"
+                          value={editFields.school_name}
+                          onChange={(e) => setEditFields(prev => ({ ...prev, school_name: e.target.value }))}
+                          list="school-suggestions"
+                        />
+                      </div>
+                      <div className="space-y-1.5">
                         <Label htmlFor="edit-status">Status (Approval)</Label>
                         <Select
                           value={editFields.status}
@@ -2473,25 +2615,6 @@ function AdminBursariesPage() {
                             <SelectItem value="rejected">Rejected</SelectItem>
                           </SelectContent>
                         </Select>
-                      </div>
-                      <div className="space-y-1.5">
-                        <Label htmlFor="edit-school-name">School (as typed by applicant)</Label>
-                        <Input
-                          id="edit-school-name"
-                          value={editFields.school_name}
-                          onChange={(e) => setEditFields(prev => ({ ...prev, school_name: e.target.value }))}
-                          list="school-suggestions"
-                        />
-                      </div>
-                      <div className="space-y-1.5">
-                        <Label htmlFor="edit-canonical-school-name">Standardized School Name</Label>
-                        <Input
-                          id="edit-canonical-school-name"
-                          value={editFields.canonical_school_name}
-                          onChange={(e) => setEditFields(prev => ({ ...prev, canonical_school_name: e.target.value }))}
-                          list="school-suggestions"
-                          placeholder="e.g. KANGA HIGH SCHOOL"
-                        />
                       </div>
                       <div className="space-y-1.5">
                         <Label htmlFor="edit-school-category">Category</Label>
@@ -2569,15 +2692,13 @@ function AdminBursariesPage() {
                           </SelectContent>
                         </Select>
                       </div>
-                      <div className="space-y-1.5 sm:col-span-2">
+                      <div className="space-y-1.5">
                         <Label htmlFor="edit-amount-requested">Amount Awarded (KSh)</Label>
                         <Input
                           id="edit-amount-requested"
-                          type="number"
-                          min="0"
-                          step="500"
                           value={editFields.amount_requested}
-                          onChange={(e) => setEditFields(prev => ({ ...prev, amount_requested: e.target.value }))}
+                          onChange={(e) => setEditFields(prev => ({ ...prev, amount_requested: digitsOnly(e.target.value) }))}
+                          inputMode="numeric"
                         />
                       </div>
                     </div>
@@ -2751,9 +2872,6 @@ function AdminBursariesPage() {
               <History className="h-5 w-5 text-gold" />
               Application History{historyRow ? ` — ${historyRow.student_name}` : ""}
             </DialogTitle>
-            <DialogDescription>
-              Every term this student has applied, laid out for side-by-side comparison against the application under review.
-            </DialogDescription>
           </DialogHeader>
 
           {historyRowHistory.length === 0 ? (
@@ -2794,7 +2912,7 @@ function AdminBursariesPage() {
                       <th className="px-2.5 py-2 font-semibold">Ward</th>
                       <th className="px-2.5 py-2 font-semibold">Amount</th>
                       <th className="px-2.5 py-2 font-semibold">Status</th>
-                      <th className="px-2.5 py-2 font-semibold">Date of Application</th>
+                      <th className="px-2.5 py-2 font-semibold">Date &amp; Time of Application</th>
                       <th className="px-2.5 py-2 font-semibold">Birth Certificate No.</th>
                       <th className="px-2.5 py-2 font-semibold">Parent's Name / Contact</th>
                     </tr>
@@ -2826,6 +2944,9 @@ function AdminBursariesPage() {
                           </td>
                           <td className="px-2.5 py-2 align-top whitespace-nowrap">
                             {new Date(h.created_at).toLocaleDateString("en-KE", { year: "numeric", month: "short", day: "numeric" })}
+                            <div className="text-muted-foreground font-normal">
+                              {new Date(h.created_at).toLocaleTimeString("en-KE", { hour: "2-digit", minute: "2-digit" })}
+                            </div>
                           </td>
                           <td className="px-2.5 py-2 align-top whitespace-nowrap">{h.id_or_birth_cert_number || "—"}</td>
                           <td className="px-2.5 py-2 align-top">
@@ -2840,10 +2961,6 @@ function AdminBursariesPage() {
                   </tbody>
                 </table>
               </div>
-
-              <p className="mt-2 text-[11px] text-muted-foreground">
-                Rows highlighted in red have a student name, school, or ward that differs from the application currently under review.
-              </p>
             </>
           )}
 

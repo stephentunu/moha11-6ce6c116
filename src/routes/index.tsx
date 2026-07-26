@@ -71,15 +71,16 @@ function HomePage() {
   const upcoming = filterUpcoming(activitiesAll).slice(0, 6);
   const hero = content.heroImageUrl || heroImg;
   const { language, t } = useLanguage();
-  const { windowStart, loading: windowLoading } = useBursaryWindow();
+  const { windowStart, windowDurationDays, loading: windowLoading } = useBursaryWindow();
 
-  // Stable end-date timestamp — only recomputes when windowStart changes
+  // Stable end-date timestamp — only recomputes when windowStart or the
+  // configured duration changes
   const bursaryWindowEndMs = useMemo(() => {
     if (!windowStart) return null;
     const end = new Date(windowStart);
-    end.setDate(end.getDate() + 10);
+    end.setDate(end.getDate() + windowDurationDays);
     return end.getTime();
-  }, [windowStart]);
+  }, [windowStart, windowDurationDays]);
 
   const bursaryWindowOpen = useMemo(() => {
     if (!bursaryWindowEndMs || !windowStart) return false;
