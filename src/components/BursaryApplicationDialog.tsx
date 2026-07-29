@@ -3,13 +3,14 @@ import { useLanguage } from "@/hooks/useLanguage";
 import { z } from "zod";
 import { toast } from "sonner";
 import {
-  GraduationCap, ArrowRight, ArrowLeft, CheckCircle2, Download, User, School, Users, ShieldCheck, Share2,
+  GraduationCap, ArrowRight, ArrowLeft, CheckCircle2, Download, User, School, Users, ShieldCheck, Share2, X,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger,
@@ -28,61 +29,70 @@ import { generateBursaryPdf } from "@/lib/bursary-pdf";
 const StudentSchema = z.object({
   studentName: z.string().trim().min(2, "Student name is required").max(120)
     .regex(/^[^\d]*$/, "Student name must not contain numbers"),
-  admissionNumber: z.string().trim().max(40).optional(),
-  dob: z.string().optional(),
+  admissionNumber: z.string().trim().min(1, "Admission / registration number is required").max(40),
+  dob: z.string().min(1, "Date of birth is required"),
   currentGrade: z.string().trim().min(1, "Grade / class is required").max(40),
-  gender: z.string().optional(),
+  gender: z.string().min(1, "Gender is required"),
   birthCertNumber: z.string().trim()
     .min(1, "Birth certificate number is required")
     .regex(/^\d{5,12}$/, "Birth certificate number must be 5–12 digits, numbers only"),
-  studentOutstanding: z.string().trim().max(500).optional(),
-  studentAnnualFee: z.string().optional(),
-  amountRequested: z.string().optional(),
-  receivedBursaryBefore: z.boolean().optional(),
-  previousBursaryAmount: z.string().optional(),
-  previousBursarySource: z.string().max(200).optional(),
+  studentOutstanding: z.string().trim().min(1, "Please describe the student's outstanding ability / achievement").max(500),
+  studentAnnualFee: z.string().trim().min(1, "Student's Annual Fee Payable is required"),
+  outstandingBalance: z.string().trim().min(1, "Student's Outstanding Balance is required"),
+  amountRequested: z.string().trim().min(1, "Amount Applying For is required"),
+  receivedBursaryBefore: z.boolean({
+    errorMap: () => ({ message: "Please indicate whether you have received a bursary in the last 6 months" }),
+  }),
 });
 
 const SchoolSchema = z.object({
-  schoolName: z.string().trim().min(2, "School name is required").max(160),
-  schoolCategory: z.string().min(1, "School category is required"),
+  schoolName: z.string().trim().min(2, "School/College Name is required").max(160),
+  schoolCategory: z.string().min(1, "School/College Category is required"),
   schoolCounty: z.string().min(1, "School county is required"),
   schoolSubCounty: z.string().min(1, "School sub-county is required"),
+  yearOfAdmission: z.string().trim().min(1, "Year of Admission is required"),
+  schoolBankAccount: z.string().trim().min(1, "School/College Bank Account Details is required"),
 });
 
-// Standard maximum length for a phone number field (e.g. "+254712345678"
-// is 13 characters). Applies to father/mother/guardian phone contacts.
-const PHONE_MAX_LEN = 13;
+// Kenyan mobile numbers are exactly 10 digits (e.g. 0712345678) — not a
+// range, an exact length.
+const PHONE_LEN = 10;
 
 const digitsField = (label: string, required: boolean) => {
   const base = z.string().trim();
-  const checked = required
-    ? base.min(7, `${label} is required`).regex(new RegExp(`^\\d{7,${PHONE_MAX_LEN}}$`), `${label} must contain numbers only, up to ${PHONE_MAX_LEN} digits`)
-    : base.regex(new RegExp(`^\\d{7,${PHONE_MAX_LEN}}$`), `${label} must contain numbers only, up to ${PHONE_MAX_LEN} digits`).optional().or(z.literal(""));
-  return checked;
+  const msg = `${label} must be exactly ${PHONE_LEN} digits`;
+  return required
+    ? base.min(1, `${label} is required`).regex(new RegExp(`^\\d{${PHONE_LEN}}$`), msg)
+    : base.regex(new RegExp(`^\\d{${PHONE_LEN}}$`), msg).optional().or(z.literal(""));
 };
 
-// Kenyan National ID / birth certificate numbers realistically run from 7
-// digits (older, shorter-format IDs) up to 13 digits (birth certificate
-// serials, and headroom for future longer ID formats).
+// Kenyan National ID numbers realistically run from 7 digits (older,
+// shorter-format IDs) up to 13 digits (headroom for longer future formats).
 const ID_MIN_LEN = 7;
 const ID_MAX_LEN = 13;
 
-const idNumberField = (label: string) => {
+const idNumberField = (label: string, required: boolean) => {
   const base = z.string().trim();
-  return base
-    .regex(new RegExp(`^\\d{${ID_MIN_LEN},${ID_MAX_LEN}}$`), `${label} must be ${ID_MIN_LEN}-${ID_MAX_LEN} digits`)
-    .optional()
-    .or(z.literal(""));
+  const msg = `${label} must be ${ID_MIN_LEN}-${ID_MAX_LEN} digits`;
+  return required
+    ? base.min(1, `${label} is required`).regex(new RegExp(`^\\d{${ID_MIN_LEN},${ID_MAX_LEN}}$`), msg)
+    : base.regex(new RegExp(`^\\d{${ID_MIN_LEN},${ID_MAX_LEN}}$`), msg).optional().or(z.literal(""));
 };
 
 const GuardianSchema = z.object({
   guardianName: z.string().trim().min(2, "Guardian / contact name is required").max(120)
     .regex(/^[^\d]*$/, "Guardian name must not contain numbers"),
   guardianPhone: digitsField("Phone contact", true),
-  guardianNationalId: idNumberField("Guardian's National ID"),
-  fatherNationalId: idNumberField("Father's National ID"),
-  motherNationalId: idNumberField("Mother's National ID"),
+  guardianNationalId: idNumberField("Guardian's National ID", true),
+  guardianOccupation: z.string().trim().min(1, "Guardian's occupation is required"),
+  fatherNationalId: idNumberField("Father's National ID", false),
+  motherNationalId: idNumberField("Mother's National ID", false),
+  parentResidenceSubCounty: z.string().trim().min(1, "Residential sub-county is required"),
+  ward: z.string().min(1, "Ward is required"),
+  pollingStation: z.string().trim().min(1, "Polling station is required"),
+  siblingsInSchool: z.string().trim().min(1, "Number of children in school / university is required"),
+  monthlyBudget: z.string().trim().min(1, "Monthly budget is required"),
+  reason: z.string().trim().min(30, "Please provide at least 30 characters describing your reason for applying"),
 });
 
 const ConsentSchema = z.object({
@@ -97,6 +107,7 @@ type Form = {
   admissionNumber: string;
   dob: string;
   currentGrade: string;
+  yearOfStudy: string;
   gender: string;
   studentDisability: boolean;
   studentDisabilityDetail: string;
@@ -151,7 +162,7 @@ type Form = {
 };
 
 const EMPTY: Form = {
-  studentName: "", admissionNumber: "", dob: "", currentGrade: "", gender: "",
+  studentName: "", admissionNumber: "", dob: "", currentGrade: "", yearOfStudy: "", gender: "",
   studentDisability: false, studentDisabilityDetail: "",
   birthCertNumber: "", studentOutstanding: "", studentAnnualFee: "", outstandingBalance: "", amountRequested: "",
   receivedBursaryBefore: null, previousBursarySource: "", previousBursaryAmount: "",
@@ -171,17 +182,74 @@ const EMPTY: Form = {
 
 const GRADES = [
   "Grade 10", "Grade 11", "Grade 12", "Form 3", "Form 4",
-  "TVET / College", "University / Degree",
+  "TVET/College/Vocational", "University / Degree",
 ];
+
+// Grades where "Year of Study" applies instead of the secondary-school
+// grade progression — a TVET/College or University/Degree applicant needs
+// to say which year of their course they're in.
+const TERTIARY_GRADES = ["TVET/College/Vocational", "University / Degree"];
+const isTertiaryGrade = (grade: string) => TERTIARY_GRADES.includes(grade);
+
+const YEARS_OF_STUDY = ["Year 1", "Year 2", "Year 3", "Year 4", "Year 5", "Year 6+"];
+
+// Structured options for "Student's outstanding ability / achievement" —
+// grouped into 5 categories; the applicant picks a category, then checks
+// as many constituent items as apply, across as many categories as they
+// like. Categories that include "Other (Specify)" reveal a free-text field
+// for anything not already listed.
+type AchievementCategory = { key: string; label: string; items: string[] };
+const ACHIEVEMENT_CATEGORIES: AchievementCategory[] = [
+  {
+    key: "games",
+    label: "Games",
+    items: [
+      "Rugby", "Basketball", "Hockey", "Handball", "Football", "Volleyball",
+      "Netball", "Badminton", "Lawn Tennis", "Table Tennis", "Chess", "Scrabble",
+      "Athletics & Cross Country", "Field & Throwing Events", "Other (Specify)",
+    ],
+  },
+  {
+    key: "academic",
+    label: "Academic & Subject Clubs",
+    items: [
+      "Maths & Science/STEM Club", "Debate & Public Speaking", "Model United Nations",
+      "Language Clubs", "Young Farmers Club", "Environment Club",
+      "ICT/Computer", "Wildlife & Geography Club", "Other (Specify)",
+    ],
+  },
+  {
+    key: "religious",
+    label: "Religious Societies",
+    items: ["CU", "YCS", "Islamic Society", "SDA"],
+  },
+  {
+    key: "creative",
+    label: "Creative Arts & Performance",
+    items: [
+      "Drama & Music Club", "Journalism Club", "Art and Design Club",
+      "Integrity Club", "Young Achievers Club",
+    ],
+  },
+  {
+    key: "leadership",
+    label: "Leadership, Personality & Uniformed Movements",
+    items: [
+      "Scouts and Girl Guides", "Red Cross", "St. John Ambulance",
+      "President's Award Kenya", "School Captain", "Dorm Captain", "Class Prefect",
+      "Disciplined", "Smartest", "Top Performing", "Other (Specify)",
+    ],
+  },
+];
+const OTHER_SPECIFY = "Other (Specify)";
 
 const SCHOOL_CATEGORIES = [
   { v: "C1", l: "C1 — National" },
   { v: "C2", l: "C2 — Extra-County" },
   { v: "C3", l: "C3 — County" },
   { v: "C4", l: "C4 — Sub-County / Day" },
+  { v: "Public", l: "Public" },
   { v: "Private", l: "Private" },
-  { v: "TVET", l: "TVET / Vocational" },
-  { v: "University", l: "University" },
 ];
 
 // Strips everything except digits as the user types, so fields that expect a
@@ -451,10 +519,69 @@ export function BursaryApplicationDialog({ trigger }: { trigger: ReactNode }) {
 
   const validateStep = async (): Promise<boolean> => {
     try {
-      if (step === 1) StudentSchema.parse(form);
-      else if (step === 2) SchoolSchema.parse(form);
-      else if (step === 3) GuardianSchema.parse(form);
-      else if (step === 4) {
+      if (step === 1) {
+        StudentSchema.parse(form);
+        if (form.studentDisability && !form.studentDisabilityDetail.trim()) {
+          toast.error("Please specify the student's disability / NCPWD details");
+          return false;
+        }
+        if (isTertiaryGrade(form.currentGrade) && !form.yearOfStudy) {
+          toast.error("Please select the year of study");
+          return false;
+        }
+        if (form.receivedBursaryBefore === true) {
+          if (!form.previousBursarySource.trim()) {
+            toast.error("Please state the source of the previous bursary");
+            return false;
+          }
+          if (!form.previousBursaryAmount.trim()) {
+            toast.error("Please state the amount received previously");
+            return false;
+          }
+        }
+        // A student can't owe more than their total annual fee, and can't
+        // be applying for more bursary support than they actually owe —
+        // catches typos and keeps the figures internally consistent.
+        const annualFee = Number(form.studentAnnualFee) || 0;
+        const outstandingBalance = Number(form.outstandingBalance) || 0;
+        const amountRequested = Number(form.amountRequested) || 0;
+        if (outstandingBalance > annualFee) {
+          toast.error("Student's Outstanding Balance cannot be more than the Student's Annual Fee Payable");
+          return false;
+        }
+        if (amountRequested > outstandingBalance) {
+          toast.error("Amount Applying For cannot be more than the Student's Outstanding Balance");
+          return false;
+        }
+      } else if (step === 2) {
+        SchoolSchema.parse(form);
+      } else if (step === 3) {
+        GuardianSchema.parse(form);
+        if (form.guardianDisability && !form.guardianDisabilityDetail.trim()) {
+          toast.error("Please specify the guardian's disability details");
+          return false;
+        }
+        if (form.fatherAlive) {
+          if (!form.fatherName.trim()) { toast.error("Father's name is required"); return false; }
+          if (!/^\d{10}$/.test(form.fatherPhone.trim())) { toast.error("Father's phone contact must be exactly 10 digits"); return false; }
+          if (!form.fatherNationalId.trim()) { toast.error("Father's National ID is required"); return false; }
+          if (!form.fatherOccupation.trim()) { toast.error("Father's occupation is required"); return false; }
+          if (form.fatherDisability && !form.fatherDisabilityDetail.trim()) {
+            toast.error("Please specify the father's disability details");
+            return false;
+          }
+        }
+        if (form.motherAlive) {
+          if (!form.motherName.trim()) { toast.error("Mother's name is required"); return false; }
+          if (!/^\d{10}$/.test(form.motherPhone.trim())) { toast.error("Mother's phone contact must be exactly 10 digits"); return false; }
+          if (!form.motherNationalId.trim()) { toast.error("Mother's National ID is required"); return false; }
+          if (!form.motherOccupation.trim()) { toast.error("Mother's occupation is required"); return false; }
+          if (form.motherDisability && !form.motherDisabilityDetail.trim()) {
+            toast.error("Please specify the mother's disability details");
+            return false;
+          }
+        }
+      } else if (step === 4) {
         if (!form.dataConsent) {
           toast.error("You must agree to the data policy before submitting");
           return false;
@@ -487,6 +614,12 @@ export function BursaryApplicationDialog({ trigger }: { trigger: ReactNode }) {
         id_or_birth_cert_number: upperForm.birthCertNumber || null,
         dob: upperForm.dob || null,
         current_grade: upperForm.currentGrade,
+        // Only meaningful (and only collected) for TVET/College and
+        // University/Degree applicants — null otherwise. Requires a
+        // `year_of_study` text column on bursary_applications; if that
+        // column doesn't exist yet, the fallback-retry below drops it so
+        // the submission still succeeds rather than hard-failing.
+        year_of_study: isTertiaryGrade(upperForm.currentGrade) ? (upperForm.yearOfStudy || null) : null,
         gender: upperForm.gender || null,
         father_alive: upperForm.fatherAlive,
         mother_alive: upperForm.motherAlive,
@@ -614,7 +747,7 @@ export function BursaryApplicationDialog({ trigger }: { trigger: ReactNode }) {
       // migration was run), retry once without the newer optional fields
       // rather than losing the whole application.
       if (error && /column .* does not exist/i.test(error.message)) {
-        const { student_annual_fee, outstanding_balance, ...fallbackPayload } = payloadWithTerm as typeof payload & { term?: string };
+        const { student_annual_fee, outstanding_balance, year_of_study, ...fallbackPayload } = payloadWithTerm as typeof payload & { term?: string };
         const retry = await supabase
           .from("bursary_applications" as never)
           .insert(fallbackPayload as never)
@@ -804,20 +937,20 @@ export function BursaryApplicationDialog({ trigger }: { trigger: ReactNode }) {
                 <SectionLabel icon={User}>{t("Student's Details")}</SectionLabel>
 
                 <div className="grid sm:grid-cols-2 gap-4">
-                  <Field label={t("Student name *")}>
+                  <Field label={t("Student's Name *")}>
                     <Input
                       value={form.studentName}
                       onChange={(e) => setLetters("studentName", e.target.value, 120)}
-                      placeholder={t("Full legal name")}
+                      placeholder={t("Full Official Name")}
                     />
                   </Field>
-                  <Field label={t("Admission / Registration number")}>
+                  <Field label={t("Admission Number *")}>
                     <Input value={form.admissionNumber} onChange={(e) => set("admissionNumber", e.target.value)} placeholder="e.g. ADM/2024/001" />
                   </Field>
-                  <Field label={t("Date of birth")}>
+                  <Field label={t("Date of Birth *")}>
                     <Input type="date" value={form.dob} onChange={(e) => set("dob", e.target.value)} />
                   </Field>
-                  <Field label={t("Gender")}>
+                  <Field label={t("Gender *")}>
                     <Select value={form.gender} onValueChange={(v) => set("gender", v)}>
                       <SelectTrigger><SelectValue placeholder={t("Select")} /></SelectTrigger>
                       <SelectContent>
@@ -827,14 +960,30 @@ export function BursaryApplicationDialog({ trigger }: { trigger: ReactNode }) {
                     </Select>
                   </Field>
                   <Field label={t("Grade / Class *")}>
-                    <Select value={form.currentGrade} onValueChange={(v) => set("currentGrade", v)}>
+                    <Select
+                      value={form.currentGrade}
+                      onValueChange={(v) => {
+                        set("currentGrade", v);
+                        if (!isTertiaryGrade(v)) set("yearOfStudy", "");
+                      }}
+                    >
                       <SelectTrigger><SelectValue placeholder={t("Select grade")} /></SelectTrigger>
                       <SelectContent className="max-h-72">
                         {GRADES.map((g) => <SelectItem key={g} value={g}>{g}</SelectItem>)}
                       </SelectContent>
                     </Select>
                   </Field>
-                  <Field label={t("Birth certificate number *")}>
+                  {isTertiaryGrade(form.currentGrade) && (
+                    <Field label={t("Year of Study *")}>
+                      <Select value={form.yearOfStudy} onValueChange={(v) => set("yearOfStudy", v)}>
+                        <SelectTrigger><SelectValue placeholder={t("Select year of study")} /></SelectTrigger>
+                        <SelectContent>
+                          {YEARS_OF_STUDY.map((y) => <SelectItem key={y} value={y}>{y}</SelectItem>)}
+                        </SelectContent>
+                      </Select>
+                    </Field>
+                  )}
+                  <Field label={t("Birth Certificate Number *")}>
                     <Input
                       value={form.birthCertNumber}
                       onChange={(e) => setDigits("birthCertNumber", e.target.value, 12)}
@@ -844,7 +993,7 @@ export function BursaryApplicationDialog({ trigger }: { trigger: ReactNode }) {
                       maxLength={12}
                     />
                     <p className="text-[11px] text-muted-foreground mt-1">
-                      {t("Numbers only. Must be unique to this student — it cannot already be in use by another applicant this term.")}
+                      {t("Numericals only and it's unique to each student - as per school record.")}
                     </p>
                   </Field>
                 </div>
@@ -862,24 +1011,21 @@ export function BursaryApplicationDialog({ trigger }: { trigger: ReactNode }) {
                     />
                   </div>
                   {form.studentDisability && (
-                    <Field label={t("Please specify (NCPWD card / nature of disability)")}>
+                    <Field label={t("Please Specify (NCPWD Card / Nature of Disability)")}>
                       <Input value={form.studentDisabilityDetail} onChange={(e) => set("studentDisabilityDetail", e.target.value)} />
                     </Field>
                   )}
                 </div>
 
                 <div className="grid sm:grid-cols-2 gap-4">
-                  <Field label={t("Student's outstanding ability / achievement")}>
-                    <Textarea
-                      rows={3}
+                  <Field label={t("Student's Outstanding Ability/Achievements *")}>
+                    <OutstandingAbilityPicker
                       value={form.studentOutstanding}
-                      onChange={(e) => set("studentOutstanding", e.target.value)}
-                      placeholder={t("Academic performance, talent, conduct…")}
-                      maxLength={500}
+                      onChange={(v) => set("studentOutstanding", v)}
                     />
                   </Field>
                   <div className="space-y-4">
-                    <Field label={t("Student annual fee payable (KSh)")}>
+                    <Field label={t("Student's Annual Fee Payable (KSh) *")}>
                       <Input
                         value={form.studentAnnualFee}
                         onChange={(e) => setDigits("studentAnnualFee", e.target.value, 9)}
@@ -887,21 +1033,31 @@ export function BursaryApplicationDialog({ trigger }: { trigger: ReactNode }) {
                         inputMode="numeric"
                       />
                     </Field>
-                    <Field label={t("Student's outstanding fee balance (KSh)")}>
+                    <Field label={t("Student's Outstanding Balance (KSh) *")}>
                       <Input
                         value={form.outstandingBalance}
                         onChange={(e) => setDigits("outstandingBalance", e.target.value, 9)}
                         placeholder="0"
                         inputMode="numeric"
                       />
+                      {form.studentAnnualFee && form.outstandingBalance && Number(form.outstandingBalance) > Number(form.studentAnnualFee) && (
+                        <p className="text-[11px] text-destructive mt-1">
+                          {t("Cannot be more than the Student's Annual Fee Payable")}
+                        </p>
+                      )}
                     </Field>
-                    <Field label={t("Amount applying for (KSh)")}>
+                    <Field label={t("Amount Applying For (KSh) *")}>
                       <Input
                         value={form.amountRequested}
                         onChange={(e) => setDigits("amountRequested", e.target.value, 9)}
                         placeholder="0"
                         inputMode="numeric"
                       />
+                      {form.outstandingBalance && form.amountRequested && Number(form.amountRequested) > Number(form.outstandingBalance) && (
+                        <p className="text-[11px] text-destructive mt-1">
+                          {t("Cannot be more than the Student's Outstanding Balance")}
+                        </p>
+                      )}
                     </Field>
                   </div>
                 </div>
@@ -929,10 +1085,10 @@ export function BursaryApplicationDialog({ trigger }: { trigger: ReactNode }) {
                   </div>
                   {form.receivedBursaryBefore === true && (
                     <div className="grid sm:grid-cols-2 gap-4 pt-1">
-                      <Field label={t("If yes, state the source (e.g. Moha Foundation, NG-CDF, Equity Wings)")}>
+                      <Field label={t("If Yes, State the Source (e.g. Moha Foundation, NG-CDF, Equity Wings)")}>
                         <Input value={form.previousBursarySource} onChange={(e) => set("previousBursarySource", e.target.value)} />
                       </Field>
-                      <Field label={t("Amount received (KSh)")}>
+                      <Field label={t("Amount Received (KSh)")}>
                         <Input
                           value={form.previousBursaryAmount}
                           onChange={(e) => setDigits("previousBursaryAmount", e.target.value, 9)}
@@ -951,7 +1107,7 @@ export function BursaryApplicationDialog({ trigger }: { trigger: ReactNode }) {
               <div className="space-y-4">
                 <SectionLabel icon={School}>{t("School's Details")}</SectionLabel>
                 <div className="grid sm:grid-cols-2 gap-4">
-                  <Field label={t("School name *")}>
+                  <Field label={t("School/College Name *")}>
                     <div ref={schoolFieldRef} className="relative">
                       <Input
                         value={form.schoolName}
@@ -976,7 +1132,7 @@ export function BursaryApplicationDialog({ trigger }: { trigger: ReactNode }) {
                       )}
                     </div>
                   </Field>
-                  <Field label={t("School category *")}>
+                  <Field label={t("School/College Category *")}>
                     <Select value={form.schoolCategory} onValueChange={(v) => set("schoolCategory", v)}>
                       <SelectTrigger><SelectValue placeholder={t("Select category")} /></SelectTrigger>
                       <SelectContent>
@@ -997,7 +1153,7 @@ export function BursaryApplicationDialog({ trigger }: { trigger: ReactNode }) {
                       </SelectContent>
                     </Select>
                   </Field>
-                  <Field label={t("Sub-county *")}>
+                  <Field label={t("Sub-County *")}>
                     <Select
                       value={form.schoolSubCounty}
                       onValueChange={(v) => set("schoolSubCounty", v)}
@@ -1011,10 +1167,10 @@ export function BursaryApplicationDialog({ trigger }: { trigger: ReactNode }) {
                       </SelectContent>
                     </Select>
                   </Field>
-                  <Field label={t("Year of admission")}>
+                  <Field label={t("Year of Admission *")}>
                     <Input value={form.yearOfAdmission} onChange={(e) => set("yearOfAdmission", e.target.value)} placeholder="e.g. 2024" />
                   </Field>
-                  <Field label={t("School bank account")}>
+                  <Field label={t("School/College Bank Account Details *")}>
                     <Input value={form.schoolBankAccount} onChange={(e) => set("schoolBankAccount", e.target.value)} placeholder="Bank · Branch · A/C No." />
                   </Field>
                 </div>
@@ -1032,8 +1188,8 @@ export function BursaryApplicationDialog({ trigger }: { trigger: ReactNode }) {
                     {t("Parents — alive / deceased")}
                   </p>
                   <div className="grid grid-cols-2 gap-3">
-                    <CheckboxRow label={t("Father alive")} checked={form.fatherAlive} onChange={(v) => set("fatherAlive", v)} />
-                    <CheckboxRow label={t("Mother alive")} checked={form.motherAlive} onChange={(v) => set("motherAlive", v)} />
+                    <CheckboxRow label={t("Father Alive")} checked={form.fatherAlive} onChange={(v) => set("fatherAlive", v)} />
+                    <CheckboxRow label={t("Mother Alive")} checked={form.motherAlive} onChange={(v) => set("motherAlive", v)} />
                   </div>
                 </div>
 
@@ -1042,17 +1198,17 @@ export function BursaryApplicationDialog({ trigger }: { trigger: ReactNode }) {
                   <div className="rounded-lg border border-border bg-muted/30 p-4 space-y-3">
                     <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">{t("Father's Details")}</p>
                     <div className="grid sm:grid-cols-2 gap-4">
-                      <Field label={t("Name")}><Input value={form.fatherName} onChange={(e) => setLetters("fatherName", e.target.value, 120)} /></Field>
-                      <Field label={t("Phone contact")}>
+                      <Field label={t("Name *")}><Input value={form.fatherName} onChange={(e) => setLetters("fatherName", e.target.value, 120)} /></Field>
+                      <Field label={t("Phone Contact *")}>
                         <Input
                           value={form.fatherPhone}
-                          onChange={(e) => setDigits("fatherPhone", e.target.value, PHONE_MAX_LEN)}
+                          onChange={(e) => setDigits("fatherPhone", e.target.value, PHONE_LEN)}
                           placeholder="07XX XXX XXX"
                           inputMode="tel"
-                          maxLength={PHONE_MAX_LEN}
+                          maxLength={PHONE_LEN}
                         />
                       </Field>
-                      <Field label={t("National ID")}>
+                      <Field label={t("National ID *")}>
                         <Input
                           value={form.fatherNationalId}
                           onChange={(e) => setDigits("fatherNationalId", e.target.value, ID_MAX_LEN)}
@@ -1060,14 +1216,14 @@ export function BursaryApplicationDialog({ trigger }: { trigger: ReactNode }) {
                           maxLength={ID_MAX_LEN}
                         />
                       </Field>
-                      <Field label={t("Occupation")}><Input value={form.fatherOccupation} onChange={(e) => set("fatherOccupation", e.target.value)} /></Field>
+                      <Field label={t("Occupation *")}><Input value={form.fatherOccupation} onChange={(e) => set("fatherOccupation", e.target.value)} /></Field>
                     </div>
                     <div className="flex items-center justify-between pt-1">
                       <Label className="text-sm font-semibold cursor-pointer">{t("Father lives with a disability")}</Label>
                       <Switch checked={form.fatherDisability} onCheckedChange={(v) => set("fatherDisability", v)} />
                     </div>
                     {form.fatherDisability && (
-                      <Field label={t("Please specify")}><Input value={form.fatherDisabilityDetail} onChange={(e) => set("fatherDisabilityDetail", e.target.value)} /></Field>
+                      <Field label={t("Please Specify")}><Input value={form.fatherDisabilityDetail} onChange={(e) => set("fatherDisabilityDetail", e.target.value)} /></Field>
                     )}
                   </div>
                 )}
@@ -1077,17 +1233,17 @@ export function BursaryApplicationDialog({ trigger }: { trigger: ReactNode }) {
                   <div className="rounded-lg border border-border bg-muted/30 p-4 space-y-3">
                     <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">{t("Mother's Details")}</p>
                     <div className="grid sm:grid-cols-2 gap-4">
-                      <Field label={t("Name")}><Input value={form.motherName} onChange={(e) => setLetters("motherName", e.target.value, 120)} /></Field>
-                      <Field label={t("Phone contact")}>
+                      <Field label={t("Name *")}><Input value={form.motherName} onChange={(e) => setLetters("motherName", e.target.value, 120)} /></Field>
+                      <Field label={t("Phone Contact *")}>
                         <Input
                           value={form.motherPhone}
-                          onChange={(e) => setDigits("motherPhone", e.target.value, PHONE_MAX_LEN)}
+                          onChange={(e) => setDigits("motherPhone", e.target.value, PHONE_LEN)}
                           placeholder="07XX XXX XXX"
                           inputMode="tel"
-                          maxLength={PHONE_MAX_LEN}
+                          maxLength={PHONE_LEN}
                         />
                       </Field>
-                      <Field label={t("National ID")}>
+                      <Field label={t("National ID *")}>
                         <Input
                           value={form.motherNationalId}
                           onChange={(e) => setDigits("motherNationalId", e.target.value, ID_MAX_LEN)}
@@ -1095,14 +1251,14 @@ export function BursaryApplicationDialog({ trigger }: { trigger: ReactNode }) {
                           maxLength={ID_MAX_LEN}
                         />
                       </Field>
-                      <Field label={t("Occupation")}><Input value={form.motherOccupation} onChange={(e) => set("motherOccupation", e.target.value)} /></Field>
+                      <Field label={t("Occupation *")}><Input value={form.motherOccupation} onChange={(e) => set("motherOccupation", e.target.value)} /></Field>
                     </div>
                     <div className="flex items-center justify-between pt-1">
                       <Label className="text-sm font-semibold cursor-pointer">{t("Mother lives with a disability")}</Label>
                       <Switch checked={form.motherDisability} onCheckedChange={(v) => set("motherDisability", v)} />
                     </div>
                     {form.motherDisability && (
-                      <Field label={t("Please specify")}><Input value={form.motherDisabilityDetail} onChange={(e) => set("motherDisabilityDetail", e.target.value)} /></Field>
+                      <Field label={t("Please Specify")}><Input value={form.motherDisabilityDetail} onChange={(e) => set("motherDisabilityDetail", e.target.value)} /></Field>
                     )}
                   </div>
                 )}
@@ -1114,16 +1270,16 @@ export function BursaryApplicationDialog({ trigger }: { trigger: ReactNode }) {
                   </p>
                   <div className="grid sm:grid-cols-2 gap-4">
                     <Field label={t("Name *")}><Input value={form.guardianName} onChange={(e) => setLetters("guardianName", e.target.value, 120)} placeholder="Full name" /></Field>
-                    <Field label={t("Phone contact *")}>
+                    <Field label={t("Phone Contact *")}>
                       <Input
                         value={form.guardianPhone}
-                        onChange={(e) => setDigits("guardianPhone", e.target.value, PHONE_MAX_LEN)}
+                        onChange={(e) => setDigits("guardianPhone", e.target.value, PHONE_LEN)}
                         placeholder="07XX XXX XXX"
                         inputMode="tel"
-                        maxLength={PHONE_MAX_LEN}
+                        maxLength={PHONE_LEN}
                       />
                     </Field>
-                    <Field label={t("National ID")}>
+                    <Field label={t("National ID *")}>
                       <Input
                         value={form.guardianNationalId}
                         onChange={(e) => setDigits("guardianNationalId", e.target.value, ID_MAX_LEN)}
@@ -1131,23 +1287,23 @@ export function BursaryApplicationDialog({ trigger }: { trigger: ReactNode }) {
                         maxLength={ID_MAX_LEN}
                       />
                     </Field>
-                    <Field label={t("Occupation")}><Input value={form.guardianOccupation} onChange={(e) => set("guardianOccupation", e.target.value)} /></Field>
+                    <Field label={t("Occupation *")}><Input value={form.guardianOccupation} onChange={(e) => set("guardianOccupation", e.target.value)} /></Field>
                   </div>
                   <div className="flex items-center justify-between pt-1">
                     <Label className="text-sm font-semibold cursor-pointer">{t("Guardian lives with a disability")}</Label>
                     <Switch checked={form.guardianDisability} onCheckedChange={(v) => set("guardianDisability", v)} />
                   </div>
                   {form.guardianDisability && (
-                    <Field label={t("Please specify")}><Input value={form.guardianDisabilityDetail} onChange={(e) => set("guardianDisabilityDetail", e.target.value)} /></Field>
+                    <Field label={t("Please Specify")}><Input value={form.guardianDisabilityDetail} onChange={(e) => set("guardianDisabilityDetail", e.target.value)} /></Field>
                   )}
                 </div>
 
                 {/* Household & Residence */}
                 <div className="grid sm:grid-cols-2 gap-4">
-                  <Field label={t("Residential sub-county")}>
+                  <Field label={t("Residential Sub-County *")}>
                     <Input value={form.parentResidenceSubCounty} onChange={(e) => set("parentResidenceSubCounty", e.target.value)} />
                   </Field>
-                  <Field label={t("Ward")}>
+                  <Field label={t("Ward *")}>
                     <Select value={form.ward} onValueChange={(v) => set("ward", v)}>
                       <SelectTrigger><SelectValue placeholder={t("Select your Ward")} /></SelectTrigger>
                       <SelectContent>
@@ -1155,13 +1311,18 @@ export function BursaryApplicationDialog({ trigger }: { trigger: ReactNode }) {
                       </SelectContent>
                     </Select>
                   </Field>
-                  <Field label={t("Polling station")}>
+                  <Field label={t("Polling Station *")}>
                     <Input value={form.pollingStation} onChange={(e) => set("pollingStation", e.target.value)} />
                   </Field>
-                  <Field label={t("Number of children in school / University")}>
-                    <Input type="number" min="0" value={form.siblingsInSchool} onChange={(e) => set("siblingsInSchool", e.target.value)} placeholder="0" />
+                  <Field label={t("Number of Children in School / University *")}>
+                    <Input
+                      value={form.siblingsInSchool}
+                      onChange={(e) => setDigits("siblingsInSchool", e.target.value, 2)}
+                      placeholder="0"
+                      inputMode="numeric"
+                    />
                   </Field>
-                  <Field label={t("Monthly budget (KSh)")}>
+                  <Field label={t("Monthly Budget (KSh) *")}>
                     <Input
                       value={form.monthlyBudget}
                       onChange={(e) => setDigits("monthlyBudget", e.target.value, 9)}
@@ -1171,7 +1332,7 @@ export function BursaryApplicationDialog({ trigger }: { trigger: ReactNode }) {
                   </Field>
                 </div>
 
-                <Field label={t("Brief description of reason for application")}>
+                <Field label={t("Brief Description of Reason for Application *")}>
                   <Textarea
                     rows={4}
                     maxLength={1000}
@@ -1179,6 +1340,9 @@ export function BursaryApplicationDialog({ trigger }: { trigger: ReactNode }) {
                     onChange={(e) => set("reason", e.target.value)}
                     placeholder={t("Tell us briefly why you need support…")}
                   />
+                  <p className={`text-[11px] mt-1 ${form.reason.trim().length < 30 ? "text-muted-foreground" : "text-emerald-600"}`}>
+                    {form.reason.trim().length}/1000 {t("characters")} — {t("minimum 30 required")}
+                  </p>
                 </Field>
               </div>
             )}
@@ -1189,19 +1353,19 @@ export function BursaryApplicationDialog({ trigger }: { trigger: ReactNode }) {
                 <SectionLabel icon={ShieldCheck}>{t("Review & Data Consent")}</SectionLabel>
 
                 <div className="space-y-1.5 text-sm">
-                  <Row label={t("Student")} value={`${form.studentName} · ${form.currentGrade}`} />
+                  <Row label={t("Student")} value={`${form.studentName} · ${form.currentGrade}${isTertiaryGrade(form.currentGrade) && form.yearOfStudy ? " · " + form.yearOfStudy : ""}`} />
                   <Row label={t("Admission No.")} value={form.admissionNumber} />
                   <Row label={t("Birth Cert No.")} value={form.birthCertNumber} />
                   <Row label={t("School")} value={`${form.schoolName} (${form.schoolCategory || "—"})`} />
-                  <Row label={t("School location")} value={`${form.schoolCounty || "—"} / ${form.schoolSubCounty || "—"}`} />
-                  <Row label={t("Annual fee")} value={form.studentAnnualFee ? `KSh ${Number(form.studentAnnualFee).toLocaleString()}` : "—"} />
-                  <Row label={t("Outstanding balance")} value={form.outstandingBalance ? `KSh ${Number(form.outstandingBalance).toLocaleString()}` : "—"} />
-                  <Row label={t("Amount requested")} value={form.amountRequested ? `KSh ${Number(form.amountRequested).toLocaleString()}` : "—"} />
+                  <Row label={t("School Location")} value={`${form.schoolCounty || "—"} / ${form.schoolSubCounty || "—"}`} />
+                  <Row label={t("Annual Fee")} value={form.studentAnnualFee ? `KSh ${Number(form.studentAnnualFee).toLocaleString()}` : "—"} />
+                  <Row label={t("Outstanding Balance")} value={form.outstandingBalance ? `KSh ${Number(form.outstandingBalance).toLocaleString()}` : "—"} />
+                  <Row label={t("Amount Requested")} value={form.amountRequested ? `KSh ${Number(form.amountRequested).toLocaleString()}` : "—"} />
                   <Row label={t("Guardian")} value={`${form.guardianName} · ${form.guardianPhone}`} />
                   <Row label={t("Ward / Polling")} value={`${form.ward || "—"} · ${form.pollingStation || "—"}`} />
-                  <Row label={t("Children in school")} value={form.siblingsInSchool || "0"} />
-                  <Row label={t("Monthly budget")} value={form.monthlyBudget ? `KSh ${Number(form.monthlyBudget).toLocaleString()}` : "—"} />
-                  <Row label={t("Previous bursary")} value={form.receivedBursaryBefore === null ? t("Not answered") : form.receivedBursaryBefore ? `${t("Yes")} — ${form.previousBursarySource || "—"} (KSh ${Number(form.previousBursaryAmount || 0).toLocaleString()})` : t("No")} />
+                  <Row label={t("Children in School")} value={form.siblingsInSchool || "0"} />
+                  <Row label={t("Monthly Budget")} value={form.monthlyBudget ? `KSh ${Number(form.monthlyBudget).toLocaleString()}` : "—"} />
+                  <Row label={t("Previous Bursary")} value={form.receivedBursaryBefore === null ? t("Not answered") : form.receivedBursaryBefore ? `${t("Yes")} — ${form.previousBursarySource || "—"} (KSh ${Number(form.previousBursaryAmount || 0).toLocaleString()})` : t("No")} />
                 </div>
 
                 {/* Data Policy / Consent */}
@@ -1316,6 +1480,147 @@ function CheckboxRow({ label, checked, onChange }: { label: string; checked: boo
       <Checkbox checked={checked} onCheckedChange={(v) => onChange(Boolean(v))} />
       {label}
     </label>
+  );
+}
+
+// Structured picker for "Student's outstanding ability / achievement":
+// choose a category, tick as many constituent items as apply, repeat
+// across categories, and specify free text wherever "Other (Specify)" is
+// available. The final selections are compiled into a single readable
+// string (e.g. "Football, Chess, CU, Other (Games): Kickboxing") which is
+// what actually gets stored — same field, same column, just filled in a
+// more guided way than a blank textarea.
+function OutstandingAbilityPicker({ value, onChange }: { value: string; onChange: (v: string) => void }) {
+  const [activeCategory, setActiveCategory] = useState<string>(ACHIEVEMENT_CATEGORIES[0].key);
+  // Keys are `${categoryKey}::${item}`.
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [otherText, setOtherText] = useState<Record<string, string>>({});
+  const hydrated = useRef(false);
+
+  // Best-effort restore when editing a draft that already has a value: any
+  // exact item label found in the stored text is re-checked. Anything that
+  // doesn't match a known item (e.g. free text from before this picker
+  // existed) is left alone rather than lost — it stays in the field as-is
+  // until the applicant actively changes a selection.
+  useEffect(() => {
+    if (hydrated.current || !value) { hydrated.current = true; return; }
+    const next = new Set<string>();
+    for (const cat of ACHIEVEMENT_CATEGORIES) {
+      for (const item of cat.items) {
+        if (item === OTHER_SPECIFY) continue;
+        if (value.includes(item)) next.add(`${cat.key}::${item}`);
+      }
+    }
+    setSelected(next);
+    hydrated.current = true;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const buildSummary = (sel: Set<string>, other: Record<string, string>) => {
+    const parts: string[] = [];
+    for (const cat of ACHIEVEMENT_CATEGORIES) {
+      for (const item of cat.items) {
+        if (item === OTHER_SPECIFY) continue;
+        if (sel.has(`${cat.key}::${item}`)) parts.push(item);
+      }
+      if (sel.has(`${cat.key}::${OTHER_SPECIFY}`) && other[cat.key]?.trim()) {
+        parts.push(`Other (${cat.label}): ${other[cat.key].trim()}`);
+      }
+    }
+    return parts.join(", ");
+  };
+
+  const toggleItem = (catKey: string, item: string, checked: boolean) => {
+    const next = new Set(selected);
+    const itemKey = `${catKey}::${item}`;
+    if (checked) next.add(itemKey); else next.delete(itemKey);
+    setSelected(next);
+    onChange(buildSummary(next, otherText));
+  };
+
+  const updateOtherText = (catKey: string, text: string) => {
+    const nextOther = { ...otherText, [catKey]: text };
+    setOtherText(nextOther);
+    onChange(buildSummary(selected, nextOther));
+  };
+
+  const removeChip = (catKey: string, item: string) => {
+    if (item === OTHER_SPECIFY) {
+      const nextOther = { ...otherText, [catKey]: "" };
+      const next = new Set(selected);
+      next.delete(`${catKey}::${OTHER_SPECIFY}`);
+      setOtherText(nextOther);
+      setSelected(next);
+      onChange(buildSummary(next, nextOther));
+    } else {
+      toggleItem(catKey, item, false);
+    }
+  };
+
+  const activeCat = ACHIEVEMENT_CATEGORIES.find((c) => c.key === activeCategory)!;
+  const chips: { catKey: string; catLabel: string; item: string; display: string }[] = [];
+  for (const cat of ACHIEVEMENT_CATEGORIES) {
+    for (const item of cat.items) {
+      if (item === OTHER_SPECIFY) continue;
+      if (selected.has(`${cat.key}::${item}`)) chips.push({ catKey: cat.key, catLabel: cat.label, item, display: item });
+    }
+    if (selected.has(`${cat.key}::${OTHER_SPECIFY}`)) {
+      chips.push({
+        catKey: cat.key,
+        catLabel: cat.label,
+        item: OTHER_SPECIFY,
+        display: `Other: ${otherText[cat.key]?.trim() || "…"}`,
+      });
+    }
+  }
+
+  return (
+    <div className="space-y-3">
+      <Select value={activeCategory} onValueChange={setActiveCategory}>
+        <SelectTrigger><SelectValue placeholder="Choose a category" /></SelectTrigger>
+        <SelectContent>
+          {ACHIEVEMENT_CATEGORIES.map((c) => <SelectItem key={c.key} value={c.key}>{c.label}</SelectItem>)}
+        </SelectContent>
+      </Select>
+
+      <div className="rounded-lg border border-border bg-muted/20 p-3 grid grid-cols-2 sm:grid-cols-3 gap-x-3 gap-y-2">
+        {activeCat.items.map((item) => (
+          <CheckboxRow
+            key={item}
+            label={item}
+            checked={selected.has(`${activeCat.key}::${item}`)}
+            onChange={(v) => toggleItem(activeCat.key, item, v)}
+          />
+        ))}
+      </div>
+
+      {selected.has(`${activeCat.key}::${OTHER_SPECIFY}`) && (
+        <Input
+          value={otherText[activeCat.key] || ""}
+          onChange={(e) => updateOtherText(activeCat.key, e.target.value)}
+          placeholder={`Specify other ${activeCat.label.toLowerCase()}`}
+          maxLength={100}
+        />
+      )}
+
+      {chips.length > 0 && (
+        <div className="flex flex-wrap gap-1.5">
+          {chips.map((c) => (
+            <Badge key={`${c.catKey}::${c.item}`} variant="secondary" className="gap-1 pr-1">
+              {c.display}
+              <button
+                type="button"
+                onClick={() => removeChip(c.catKey, c.item)}
+                className="rounded-full hover:bg-black/10 p-0.5"
+                aria-label={`Remove ${c.display}`}
+              >
+                <X className="h-3 w-3" />
+              </button>
+            </Badge>
+          ))}
+        </div>
+      )}
+    </div>
   );
 }
 

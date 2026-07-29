@@ -192,28 +192,67 @@ function AdminSupportersPage() {
     }
     const phone = normalizePhone(form.phone);
     if (!phone) { toast.error("Invalid phone number"); return; }
+    const idNumber = form.id_number.trim();
     setBusy(true);
-    const { error } = await supabase.from("supporters" as never).upsert(
-      { name: form.name.trim(), phone, id_number: form.id_number.trim(), ward: form.ward || null, notes: form.notes.trim() } as never,
-      { onConflict: "phone" } as never
-    );
+
+    // ID number is the source of truth for "is this the same supporter?" —
+    // a supporter can change their name, but not their ID number. Look for
+    // an existing supporter with this ID number first, and update that
+    // record instead of creating a second one under a different name.
+    const { data: existing } = await supabase
+      .from("supporters" as never)
+      .select("id")
+      .eq("id_number", idNumber)
+      .limit(1)
+      .maybeSingle();
+
+    const payload = { name: form.name.trim(), phone, id_number: idNumber, ward: form.ward || null, notes: form.notes.trim() };
+    const { error } = existing
+      ? await supabase.from("supporters" as never).update(payload as never).eq("id", (existing as unknown as { id: string }).id)
+      : await supabase.from("supporters" as never).insert(payload as never);
+
     setBusy(false);
     if (error) { toast.error(error.message); return; }
     setForm({ name: "", phone: "", id_number: "", ward: "", notes: "" });
-    toast.success("Supporter saved");
+    toast.success(existing ? "Supporter already on file — details updated" : "Supporter saved");
     load();
   };
 
   const upsertBatch = async (rows: ParsedRow[]) => {
-    let inserted = 0; let failed = 0;
+    let inserted = 0; let failed = 0; let duplicates = 0;
     setProgress({ done: 0, total: rows.length });
     for (let i = 0; i < rows.length; i += BATCH_SIZE) {
       const batch = rows.slice(i, i + BATCH_SIZE);
-      const { error } = await supabase.from("supporters" as never).upsert(batch as never, { onConflict: "phone" } as never);
-      if (error) { failed += batch.length; } else { inserted += batch.length; }
+      const idNumbers = [...new Set(batch.map((r) => r.id_number).filter(Boolean))];
+
+      // ID number is the source of truth for "is this the same supporter?"
+      // — a supporter can change their name, but not their ID number, so a
+      // row whose ID number is already on file is skipped rather than
+      // creating a duplicate record under a new name. Checked against both
+      // what's already saved and other rows earlier in this same import.
+      const { data: existingRows } = idNumbers.length
+        ? await supabase.from("supporters" as never).select("id_number").in("id_number", idNumbers)
+        : { data: [] as unknown[] };
+      const existingIds = new Set(
+        ((existingRows as unknown as { id_number: string }[] | null) ?? []).map((r) => r.id_number),
+      );
+
+      const seenInBatch = new Set<string>();
+      const toInsert = batch.filter((r) => {
+        if (!r.id_number) return true; // nothing to de-duplicate against
+        if (existingIds.has(r.id_number) || seenInBatch.has(r.id_number)) return false;
+        seenInBatch.add(r.id_number);
+        return true;
+      });
+      duplicates += batch.length - toInsert.length;
+
+      if (toInsert.length) {
+        const { error } = await supabase.from("supporters" as never).insert(toInsert as never);
+        if (error) { failed += toInsert.length; } else { inserted += toInsert.length; }
+      }
       setProgress({ done: Math.min(i + BATCH_SIZE, rows.length), total: rows.length });
     }
-    return { inserted, failed };
+    return { inserted, failed, duplicates };
   };
 
   const importBulk = async () => {
@@ -229,10 +268,14 @@ function AdminSupportersPage() {
     }
     if (!rows.length) { toast.error("No valid rows. Format per line: Name, Phone, ID, Ward"); return; }
     setImporting(true);
-    const { inserted, failed } = await upsertBatch(rows);
+    const { inserted, failed, duplicates } = await upsertBatch(rows);
     setImporting(false); setProgress(null);
     if (failed) toast.error(`${failed} rows failed`);
-    toast.success(`Imported ${inserted} supporters${skipped.length ? ` · skipped ${skipped.length} invalid` : ""}`);
+    toast.success(
+      `Imported ${inserted} supporters` +
+      (duplicates ? ` · skipped ${duplicates} already on file (matched by ID number)` : "") +
+      (skipped.length ? ` · skipped ${skipped.length} invalid` : ""),
+    );
     setBulkPaste(""); load();
   };
 
@@ -257,9 +300,13 @@ function AdminSupportersPage() {
         else skipped.push(idx + 2);
       });
       if (!rows.length) { toast.error("No valid rows found. Required columns: name, phone, id"); setImporting(false); return; }
-      const { inserted, failed } = await upsertBatch(rows);
+      const { inserted, failed, duplicates } = await upsertBatch(rows);
       if (failed) toast.error(`${failed} rows failed`);
-      toast.success(`Imported ${inserted} from ${file.name}${skipped.length ? ` · skipped ${skipped.length} invalid` : ""}`);
+      toast.success(
+        `Imported ${inserted} from ${file.name}` +
+        (duplicates ? ` · skipped ${duplicates} already on file (matched by ID number)` : "") +
+        (skipped.length ? ` · skipped ${skipped.length} invalid` : ""),
+      );
       load();
     } catch (err) {
       console.error(err); toast.error("Could not read file. Use .xlsx, .xls or .csv");

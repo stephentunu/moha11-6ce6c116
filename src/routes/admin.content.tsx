@@ -126,21 +126,21 @@ function AdminContentPage() {
         {/* Home page */}
         <Section title="Home Page" icon={Home}>
           <div className="grid gap-3">
-            <Field label="Headline (large gold word)">
+            <Field label="Headline (Large Gold Word)">
               <Input
                 value={draft.homeHeadline}
                 onChange={(e) => update("homeHeadline", e.target.value)}
                 maxLength={40}
               />
             </Field>
-            <Field label="Tagline / slogan">
+            <Field label="Tagline / Slogan">
               <Input
                 value={draft.homeTagline}
                 onChange={(e) => update("homeTagline", e.target.value)}
                 maxLength={80}
               />
             </Field>
-            <Field label="Pull quote">
+            <Field label="Pull Quote">
               <Textarea
                 value={draft.homeQuote}
                 onChange={(e) => update("homeQuote", e.target.value)}
@@ -148,7 +148,7 @@ function AdminContentPage() {
                 maxLength={300}
               />
             </Field>
-            <Field label="Quote author">
+            <Field label="Quote Author">
               <Input
                 value={draft.homeQuoteAuthor}
                 onChange={(e) => update("homeQuoteAuthor", e.target.value)}
@@ -158,7 +158,7 @@ function AdminContentPage() {
 
             {/* Hero image */}
             <div>
-              <Label className="font-semibold mb-2 block">Hero image</Label>
+              <Label className="font-semibold mb-2 block">Hero Image</Label>
               <input
                 ref={fileRef}
                 type="file"
@@ -303,7 +303,7 @@ function AdminContentPage() {
               to close the window.
             </p>
             <div className="flex flex-wrap gap-2 items-end">
-              <Field label="Application window start date">
+              <Field label="Application Window Start Date">
                 <Input
                   type="date"
                   value={draftWindowStart}
@@ -312,7 +312,7 @@ function AdminContentPage() {
                   className="w-44"
                 />
               </Field>
-              <Field label="Duration (days)">
+              <Field label="Duration (Days)">
                 <Input
                   type="number"
                   min={1}

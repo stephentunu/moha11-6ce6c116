@@ -1194,7 +1194,7 @@ function AdminBursariesPage() {
             }`}
           >
             <span className="flex items-center gap-2">
-              <Mail className="h-4 w-4" /> School Confirmation Letters
+              <Mail className="h-4 w-4" /> Confirmation Letter
             </span>
           </button>
           <button
@@ -1846,7 +1846,7 @@ function AdminBursariesPage() {
 
                 <p className="text-xs text-muted-foreground">
                   Approved applications appear automatically in the <strong>Approved Broadsheet</strong> and{" "}
-                  <strong>School Confirmation Letters</strong> tabs under this same school name.
+                  <strong>Confirmation Letter</strong> tabs under this same school name.
                 </p>
               </div>
             )}
@@ -2125,7 +2125,7 @@ function AdminBursariesPage() {
               <div>
                 <h2 className="font-display font-bold text-sm flex items-center gap-2">
                   <Mail className="h-5 w-5 text-gold" />
-                  Confirmation Letters
+                  Confirmation Letter
                 </h2>
                 <p className="text-xs text-muted-foreground mt-0.5">
                   Search a school, then generate its official confirmation-of-beneficiaries letter.
@@ -2617,7 +2617,7 @@ function AdminBursariesPage() {
                         </Select>
                       </div>
                       <div className="space-y-1.5">
-                        <Label htmlFor="edit-school-category">Category</Label>
+                        <Label htmlFor="edit-school-category">School/College Category</Label>
                         <Select
                           value={editFields.school_category}
                           onValueChange={(val) => setEditFields(prev => ({ ...prev, school_category: val }))}
@@ -2630,9 +2630,8 @@ function AdminBursariesPage() {
                             <SelectItem value="C2">C2 — Extra-County</SelectItem>
                             <SelectItem value="C3">C3 — County</SelectItem>
                             <SelectItem value="C4">C4 — Sub-County / Day</SelectItem>
+                            <SelectItem value="Public">Public</SelectItem>
                             <SelectItem value="Private">Private</SelectItem>
-                            <SelectItem value="TVET">TVET / Vocational</SelectItem>
-                            <SelectItem value="University">University</SelectItem>
                           </SelectContent>
                         </Select>
                       </div>
@@ -2660,7 +2659,7 @@ function AdminBursariesPage() {
                         </Select>
                       </div>
                       <div className="space-y-1.5">
-                        <Label htmlFor="edit-school-sub-county">School Sub-county</Label>
+                        <Label htmlFor="edit-school-sub-county">School Sub-County</Label>
                         <Select
                           value={editFields.school_sub_county}
                           onValueChange={(val) => setEditFields(prev => ({ ...prev, school_sub_county: val }))}
@@ -2759,11 +2758,11 @@ function AdminBursariesPage() {
                       <Detail label="DOB" value={selected.dob} />
                       <Detail label="Gender" value={selected.gender} />
                       <Detail label="Grade" value={selected.current_grade} />
-                      <Detail label="Father alive" value={yn(selected.father_alive)} />
-                      <Detail label="Mother alive" value={yn(selected.mother_alive)} />
-                      <Detail label="Student disability" value={selected.student_disability ? (selected.student_disability_detail || "Yes") : "No"} />
-                      <Detail label="Student annual fee" value={selected.student_annual_fee ? `KSh ${Number(selected.student_annual_fee).toLocaleString()}` : null} />
-                      <Detail label="Outstanding balance" value={selected.outstanding_balance ? `KSh ${Number(selected.outstanding_balance).toLocaleString()}` : null} />
+                      <Detail label="Father Alive" value={yn(selected.father_alive)} />
+                      <Detail label="Mother Alive" value={yn(selected.mother_alive)} />
+                      <Detail label="Student Disability" value={selected.student_disability ? (selected.student_disability_detail || "Yes") : "No"} />
+                      <Detail label="Student Annual Fee" value={selected.student_annual_fee ? `KSh ${Number(selected.student_annual_fee).toLocaleString()}` : null} />
+                      <Detail label="Outstanding Balance" value={selected.outstanding_balance ? `KSh ${Number(selected.outstanding_balance).toLocaleString()}` : null} />
                       <Detail
                         label="Received bursary before"
                         value={selected.received_bursary_before ? `Yes${selected.previous_bursary_source ? ` — ${selected.previous_bursary_source}` : ""}${selected.previous_bursary_amount ? ` (KSh ${Number(selected.previous_bursary_amount).toLocaleString()})` : ""}` : "No"}
@@ -2788,26 +2787,26 @@ function AdminBursariesPage() {
                     <DetailGroup title="School">
                       <Detail label="School (as typed by applicant)" value={selected.school_name} />
                       {selected.canonical_school_name && selected.canonical_school_name.trim() !== selected.school_name.trim() && (
-                        <Detail label="Standardized school name" value={selected.canonical_school_name} />
+                        <Detail label="Standardized School Name" value={selected.canonical_school_name} />
                       )}
                       <Detail label="Category" value={selected.school_category} />
                       <Detail label="County" value={selected.school_county} />
-                      <Detail label="Sub-county" value={selected.school_sub_county} />
-                      <Detail label="Year of admission" value={selected.year_of_admission} />
-                      <Detail label="Bank account" value={selected.school_bank_account} />
+                      <Detail label="Sub-County" value={selected.school_sub_county} />
+                      <Detail label="Year of Admission" value={selected.year_of_admission} />
+                      <Detail label="Bank Account" value={selected.school_bank_account} />
                     </DetailGroup>
                     <DetailGroup title="Primary Contactable Parent / Guardian">
                       <Detail label="Name" value={selected.guardian_name} />
                       <Detail label="Phone" value={selected.guardian_phone} />
                       <Detail label="National ID" value={selected.parent_national_id} />
                       <Detail label="Occupation" value={selected.parent_occupation} />
-                      <Detail label="Sub-county" value={selected.parent_residence_sub_county} />
+                      <Detail label="Sub-County" value={selected.parent_residence_sub_county} />
                       <Detail label="Ward" value={selected.ward} />
-                      <Detail label="Polling station" value={selected.polling_station} />
+                      <Detail label="Polling Station" value={selected.polling_station} />
                       <Detail label="Disability" value={selected.parent_disability ? (selected.parent_disability_detail || "Yes") : "No"} />
-                      <Detail label="Children in school" value={String(selected.siblings_in_school ?? "0")} />
-                      <Detail label="Monthly budget" value={selected.monthly_budget ? `KSh ${Number(selected.monthly_budget).toLocaleString()}` : null} />
-                      <Detail label="Amount requested" value={selected.amount_requested ? `KSh ${Number(selected.amount_requested).toLocaleString()}` : null} />
+                      <Detail label="Children in School" value={String(selected.siblings_in_school ?? "0")} />
+                      <Detail label="Monthly Budget" value={selected.monthly_budget ? `KSh ${Number(selected.monthly_budget).toLocaleString()}` : null} />
+                      <Detail label="Amount Requested" value={selected.amount_requested ? `KSh ${Number(selected.amount_requested).toLocaleString()}` : null} />
                       <Detail label="Submitted" value={new Date(selected.created_at).toLocaleString()} />
                     </DetailGroup>
                   </div>
