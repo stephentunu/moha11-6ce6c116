@@ -954,8 +954,8 @@ export function BursaryApplicationDialog({ trigger }: { trigger: ReactNode }) {
                     <Select value={form.gender} onValueChange={(v) => set("gender", v)}>
                       <SelectTrigger><SelectValue placeholder={t("Select")} /></SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="female">{t("Female")}</SelectItem>
-                        <SelectItem value="male">{t("Male")}</SelectItem>
+                        <SelectItem value="female">{t("FEMALE")}</SelectItem>
+                        <SelectItem value="male">{t("MALE")}</SelectItem>
                       </SelectContent>
                     </Select>
                   </Field>
