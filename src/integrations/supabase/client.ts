@@ -9,8 +9,18 @@ function createSupabaseClient() {
   const SUPABASE_PUBLISHABLE_KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY || process.env.SUPABASE_PUBLISHABLE_KEY;
 
   if (!SUPABASE_URL || !SUPABASE_PUBLISHABLE_KEY) {
-    throw new Error(
-      'Missing Supabase environment variables. Ensure SUPABASE_URL and SUPABASE_PUBLISHABLE_KEY (or VITE_ prefixed versions) are set in your .env file.'
+    console.warn(
+      'Missing Supabase environment variables. The application will run in fallback/mock mode. ' +
+      'Ensure SUPABASE_URL and SUPABASE_PUBLISHABLE_KEY (or VITE_ prefixed versions) are set in your .env file or project environment variables.'
+    );
+    return createClient<Database>(
+      'https://missing-supabase-url-please-configure.supabase.co',
+      'missing-supabase-key-please-configure',
+      {
+        auth: {
+          persistSession: false,
+        },
+      }
     );
   }
 

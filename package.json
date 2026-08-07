@@ -5,9 +5,9 @@
   "type": "module",
   "scripts": {
     "dev": "vite dev",
-    "build": "vite build && bun run postbuild",
-    "postbuild": "rm -rf dist && cp -r .vercel/output/static dist",
-    "build:dev": "vite build --mode development && bun run postbuild",
+    "build": "vite build && node -e \"const fs = require('fs'); fs.rmSync('dist', { recursive: true, force: true }); fs.cpSync('.vercel/output/static', 'dist', { recursive: true });\"",
+    "postbuild": "node -e \"const fs = require('fs'); fs.rmSync('dist', { recursive: true, force: true }); fs.cpSync('.vercel/output/static', 'dist', { recursive: true });\"",
+    "build:dev": "vite build --mode development && npm run postbuild",
     "preview": "vite preview",
     "lint": "eslint .",
     "format": "prettier --write ."
